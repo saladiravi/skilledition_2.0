@@ -826,8 +826,9 @@ exports.getTutorOnboarding = async (req, res) => {
       }
     }
 
-    return res.json({
-      success: true,
+    return res.status(200).json({
+      statusCode:200,
+      message:'Fetched sucessfully',
       tutor: {
         tutor_details: tutor,
         education: educationRes.rows,
@@ -887,11 +888,11 @@ exports.addDemoVideo = async (req, res) => {
 
     const result = await pool.query(query, values);
 
-    return res.status(201).json({
-      statusCode: 201,
+    return res.status(200).json({
+      statusCode: 200,
       message: "Demo video added successfully",
-      demo_video_id: result.rows[0].demo_video_id,
-      next_step: "profile_details"
+      demo_video_id: result.rows[0].demo_video_id
+  
     });
 
   } catch (error) {

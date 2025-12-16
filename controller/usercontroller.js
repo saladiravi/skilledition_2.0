@@ -32,8 +32,8 @@ exports.addUser = async (req, res) => {
         [full_name,email,hashedpassword,role]
     )
 
-    return res.status(201).json({
-      statusCode: 201,
+    return res.status(200).json({
+      statusCode: 200,
       message: 'Registered successfully',
       data: newUser.rows[0],
     });
@@ -92,7 +92,7 @@ exports.loginUser = async (req, res) => {
         role: user.role
       },
       jwr_secret,
-      { expiresIn: '1h' }
+      { expiresIn: '12h' }
     );
 
     return res.status(200).json({
