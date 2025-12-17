@@ -1152,6 +1152,29 @@ exports.updatestatus = async (req, res) => {
     }
 };
 
+exports.getonboardstatus=async(req,res)=>{
+  const {tutor_id}  =req.body
+  if(!tutor_id){
+    return res.status(400).json({
+      statusCode:400,
+      message:'Missing required Field'
+    })
+  }
+  try{
+      const result=await pool.query(`SELECT status,demo_video_reject_reason FROM tbl_demo_videos WHERE tutor_id=$1`,[tutor_id])
+      return res.status(200).json({
+        statusCode:200,
+        message:'Fetched Sucessfully',
+        status:result.rows
+      })
+  }catch(error){
+    console.log(error)
+    return res.status(500).json({
+      statusCode:500,
+      message:'Internal Server Error'
+    })
+  }
+}
 
 exports.onboardnotification = async(req,res)=>{
   const {sender_id,type,type_id,message} =req.body

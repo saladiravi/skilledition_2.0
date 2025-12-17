@@ -33,6 +33,7 @@ router.post('/tutoronboardnotification',verifyToken, allowRoles("admin", "studen
  
 
 router.post('/updatestatus', verifyToken, allowRoles("admin", "student", "tutor"), tutorcontroller.updatestatus);
+router.post('/getonboardstatus', verifyToken, allowRoles("admin", "student", "tutor"), tutorcontroller.getonboardstatus);
 
 
 
