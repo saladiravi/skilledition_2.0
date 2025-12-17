@@ -1005,8 +1005,7 @@ exports.updateDemoVideoProfileDetails = async (req, res) => {
       SET
         short_bio = $1,
         teaching_style = $2,
-        status = $3,
-        student_can_expect=$4
+        student_can_expect=$3
         
       WHERE demo_video_id = $4
       RETURNING demo_video_id
@@ -1152,3 +1151,23 @@ exports.updatestatus = async (req, res) => {
         });
     }
 };
+
+
+exports.onboardnotification = async(req,res)=>{
+  const {sender_id,type,type_id,message} =req.body
+  try{
+   const result=await pool.query(`INSERT INTO tbl_notifications (sender_id,type,receiver_id,type_id,message)
+    VALUES($1,$2,$3,$4,$5) RETURNING * `,[sender_id,type,'1',type_id,message])
+
+    return res.status(200).json({
+      statusCode:200,
+    })
+     
+  }catch(error){
+    console.log(error)
+    return res.status(500).json({
+      statusCode:500,
+      message:'Internal Server Error'
+    })
+  }
+}

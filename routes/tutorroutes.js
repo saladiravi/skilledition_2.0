@@ -28,6 +28,7 @@ router.post('/adddemovideos', verifyToken, allowRoles("admin", "student", "tutor
 router.post('/updateDemovideo', verifyToken, allowRoles("admin", "student", "tutor"), uploads.fields([{ name: "video_file", maxCount: 20 }]), tutorcontroller.updateDemoVideo);
 router.post('/updatedemovideodescription', verifyToken, allowRoles("admin", "student", "tutor"), tutorcontroller.updateDemoVideoProfileDetails);
 router.post('/updatedemovideoplandetails', verifyToken, allowRoles("admin", "student", "tutor"), uploads.none(), tutorcontroller.updateDemoVideoPlanDetails);
+router.post('/tutoronboardnotification',verifyToken, allowRoles("admin", "student", "tutor"),tutorcontroller.onboardnotification);
 
  
 
