@@ -812,7 +812,7 @@ exports.getTutorOnboarding = async (req, res) => {
 
     // 4️⃣ Demo video
     const demoVideoRes = await pool.query(
-      `SELECT video_title, video_description, video_file, short_bio, teaching_style
+      `SELECT *
        FROM tbl_demo_videos
        WHERE tutor_id = $1`,
       [tutor_id]
