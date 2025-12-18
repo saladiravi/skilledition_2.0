@@ -786,7 +786,7 @@ exports.getTutorOnboarding = async (req, res) => {
 
     // 2️⃣ Education details
     const educationRes = await pool.query(
-      `SELECT degree, institution, specialization, year_of_passout
+      `SELECT tutor_education_id,degree, institution, specialization, year_of_passout
        FROM tbl_tutor_education
        WHERE tutor_id = $1`,
       [tutor_id]
@@ -794,7 +794,7 @@ exports.getTutorOnboarding = async (req, res) => {
 
     // 3️⃣ Certificates
     const certificateRes = await pool.query(
-      `SELECT certificate_name, issued_by, date_of_issue, certificate_file
+      `SELECT tutor_certificate_id,certificate_name, issued_by, date_of_issue, certificate_file
        FROM tbl_tutor_certificates
        WHERE tutor_id = $1`,
       [tutor_id]
