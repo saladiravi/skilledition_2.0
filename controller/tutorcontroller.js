@@ -1,11 +1,11 @@
 const express = require('express');
 const pool = require('../config/db');
-const { uploadToS3, getSignedVideoUrl} =require('../utils/s3upload');
+const { uploadToS3, getSignedVideoUrl } = require('../utils/s3upload');
 
 
- 
 
-  
+
+
 exports.addtutorAbout = async (req, res) => {
   const {
     first_name,
@@ -22,7 +22,7 @@ exports.addtutorAbout = async (req, res) => {
   if (
     !first_name || !last_name || !email ||
     !country || !subject_to_teach || !speak_language ||
-    !phone_number || !user_id  
+    !phone_number || !user_id
   ) {
     return res.status(400).json({
       statusCode: 400,
@@ -31,7 +31,7 @@ exports.addtutorAbout = async (req, res) => {
   }
 
   try {
-     
+
 
     const query = `
       INSERT INTO tbl_tutor
@@ -70,7 +70,7 @@ exports.addtutorAbout = async (req, res) => {
   }
 };
 
- exports.updateTutorabout = async (req, res) => {
+exports.updateTutorabout = async (req, res) => {
   try {
     const {
       tutor_id,
@@ -330,7 +330,7 @@ exports.updateTutorProfilePic = async (req, res) => {
   }
 };
 
- 
+
 
 
 
@@ -376,7 +376,7 @@ exports.addCertificates = async (req, res) => {
       const file = files[i];
       const cert = certificateList[i];
 
-        const certificateKey = await uploadToS3(file, 'tutors/certificates');
+      const certificateKey = await uploadToS3(file, 'tutors/certificates');
       const query = `
         INSERT INTO tbl_tutor_certificates
         (tutor_id, certificate_name, issued_by, date_of_issue, certificate_file)
@@ -410,7 +410,7 @@ exports.addCertificates = async (req, res) => {
     });
   }
 };
-   
+
 exports.updateTutorCertificates = async (req, res) => {
   const client = await pool.connect();
 
@@ -784,7 +784,7 @@ exports.getTutorOnboarding = async (req, res) => {
       tutor.profile_pic_url = await getSignedVideoUrl(tutor.profile_pic);
     }
 
-      const tutors = await pool.query(`SELECT full_name FROM tbl_user WHERE user_id=$1`, [user_id])
+    const tutors = await pool.query(`SELECT full_name FROM tbl_user WHERE user_id=$1`, [user_id])
 
     // 2️⃣ Education details
     const educationRes = await pool.query(
@@ -829,8 +829,8 @@ exports.getTutorOnboarding = async (req, res) => {
     }
 
     return res.status(200).json({
-      statusCode:200,
-      message:'Fetched sucessfully',
+      statusCode: 200,
+      message: 'Fetched sucessfully',
       tutor: {
         fullname: tutors.rows[0],
         tutor_details: tutor,
@@ -849,8 +849,8 @@ exports.getTutorOnboarding = async (req, res) => {
     });
   }
 };
- 
- 
+
+
 
 exports.addDemoVideo = async (req, res) => {
   try {
@@ -895,7 +895,7 @@ exports.addDemoVideo = async (req, res) => {
       statusCode: 200,
       message: "Demo video added successfully",
       demo_video_id: result.rows[0].demo_video_id
-  
+
     });
 
   } catch (error) {
@@ -909,7 +909,7 @@ exports.addDemoVideo = async (req, res) => {
 
 
 
-exports. updateDemoVideo = async (req, res) => {
+exports.updateDemoVideo = async (req, res) => {
   try {
     const {
       demo_video_id,
@@ -1017,7 +1017,7 @@ exports.updateDemoVideoProfileDetails = async (req, res) => {
     const values = [
       short_bio || null,
       teaching_style || null,
-      student_can_expect || null, 
+      student_can_expect || null,
       demo_video_id
     ];
 
@@ -1033,7 +1033,7 @@ exports.updateDemoVideoProfileDetails = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Profile details updated successfully",
-    
+
     });
 
   } catch (error) {
@@ -1108,7 +1108,7 @@ exports.updateDemoVideoPlanDetails = async (req, res) => {
 
 
 exports.updatestatus = async (req, res) => {
-  const { demo_video_id, status ,demo_video_reject_reason} = req.body;
+  const { demo_video_id, status, demo_video_reject_reason } = req.body;
 
   if (!demo_video_id || !status) {
     return res.status(400).json({
@@ -1138,15 +1138,15 @@ exports.updatestatus = async (req, res) => {
              demo_video_reject_reason=$2
              WHERE demo_video_id = $3
              RETURNING *`,
-      [status,demo_video_reject_reason, demo_video_id]
+      [status, demo_video_reject_reason, demo_video_id]
     );
 
     return res.status(200).json({
       statusCode: 200,
       message: "Status Updated Successfully",
-      data: 
+      data:
       {
-        demo_video_id:result.rows[0].demo_video_id,
+        demo_video_id: result.rows[0].demo_video_id,
         status: result.rows[0].status,
         demo_video_reject_reason: result.rows[0].demo_video_reject_reason
       }
@@ -1161,57 +1161,59 @@ exports.updatestatus = async (req, res) => {
   }
 };
 
-exports.getonboardstatus=async(req,res)=>{
-  const {tutor_id}  =req.body
-  if(!tutor_id){
+exports.getonboardstatus = async (req, res) => {
+  const { tutor_id } = req.body
+  if (!tutor_id) {
     return res.status(400).json({
-      statusCode:400,
-      message:'Missing required Field'
+      statusCode: 400,
+      message: 'Missing required Field'
     })
   }
-  try{
-     const result = await pool.query(
+  try {
+    const result = await pool.query(
       `SELECT 
-          tdv.status,
-          tdv.demo_video_reject_reason,
-          tu.full_name
-        FROM tbl_demo_videos AS tdv
-        JOIN tbl_user AS tu 
-          ON tdv.tutor_id = tu.user_id
-        WHERE tdv.tutor_id = $1
+        tdv.status,
+        tdv.demo_video_reject_reason,
+        tu.full_name
+      FROM tbl_demo_videos AS tdv
+      JOIN tbl_tutor AS tt
+        ON tdv.tutor_id = tt.tutor_id
+      JOIN tbl_user AS tu
+        ON tt.user_id = tu.user_id
+      WHERE tdv.tutor_id = $1;
         `,
       [tutor_id]
     );
-       return res.status(200).json({
-        statusCode:200,
-        message:'Fetched Sucessfully',
-        status:result.rows
-      })
-  }catch(error){
+    return res.status(200).json({
+      statusCode: 200,
+      message: 'Fetched Sucessfully',
+      status: result.rows
+    })
+  } catch (error) {
     console.log(error)
     return res.status(500).json({
-      statusCode:500,
-      message:'Internal Server Error'
+      statusCode: 500,
+      message: 'Internal Server Error'
     })
   }
 }
 
-exports.onboardnotification = async(req,res)=>{
-  const {sender_id,type,type_id,message} =req.body
-  try{
-   const result=await pool.query(`INSERT INTO tbl_notifications (sender_id,type,receiver_id,type_id,message)
-    VALUES($1,$2,$3,$4,$5) RETURNING * `,[sender_id,type,'1',type_id,message])
+exports.onboardnotification = async (req, res) => {
+  const { sender_id, type, type_id, message } = req.body
+  try {
+    const result = await pool.query(`INSERT INTO tbl_notifications (sender_id,type,receiver_id,type_id,message)
+    VALUES($1,$2,$3,$4,$5) RETURNING * `, [sender_id, type, '1', type_id, message])
 
     return res.status(200).json({
-      statusCode:200,
-      message:'Review Submited Sucessfully'
+      statusCode: 200,
+      message: 'Review Submited Sucessfully'
     })
-     
-  }catch(error){
+
+  } catch (error) {
     console.log(error)
     return res.status(500).json({
-      statusCode:500,
-      message:'Internal Server Error'
+      statusCode: 500,
+      message: 'Internal Server Error'
     })
   }
 }
