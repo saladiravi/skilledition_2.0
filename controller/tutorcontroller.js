@@ -784,6 +784,8 @@ exports.getTutorOnboarding = async (req, res) => {
       tutor.profile_pic_url = await getSignedVideoUrl(tutor.profile_pic);
     }
 
+      const tutors = await pool.query(`SELECT full_name FROM tbl_user WHERE user_id=$1`, [user_id])
+
     // 2️⃣ Education details
     const educationRes = await pool.query(
       `SELECT tutor_education_id,degree, institution, specialization, year_of_passout
@@ -830,6 +832,7 @@ exports.getTutorOnboarding = async (req, res) => {
       statusCode:200,
       message:'Fetched sucessfully',
       tutor: {
+        fullname: tutors.rows[0],
         tutor_details: tutor,
         education: educationRes.rows,
         certificates,
@@ -1167,8 +1170,19 @@ exports.getonboardstatus=async(req,res)=>{
     })
   }
   try{
-      const result=await pool.query(`SELECT status,demo_video_reject_reason FROM tbl_demo_videos WHERE tutor_id=$1`,[tutor_id])
-      return res.status(200).json({
+     const result = await pool.query(
+      `SELECT 
+          tdv.status,
+          tdv.demo_video_reject_reason,
+          tu.full_name
+        FROM tbl_demo_videos AS tdv
+        JOIN tbl_user AS tu 
+          ON tdv.tutor_id = tu.user_id
+        WHERE tdv.tutor_id = $1
+        `,
+      [tutor_id]
+    );
+       return res.status(200).json({
         statusCode:200,
         message:'Fetched Sucessfully',
         status:result.rows
@@ -1190,6 +1204,7 @@ exports.onboardnotification = async(req,res)=>{
 
     return res.status(200).json({
       statusCode:200,
+      message:'Review Submited Sucessfully'
     })
      
   }catch(error){
