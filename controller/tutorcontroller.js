@@ -1177,15 +1177,15 @@ exports.updatestatus = async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    // 1️⃣ Check demo video exists & get tutor/user id
-    const exists = await client.query(
-      `SELECT demo_video_id, tutor_id 
+    // 1️⃣ Get tutor_id from demo video
+    const demoVideo = await client.query(
+      `SELECT tutor_id 
        FROM tbl_demo_videos 
        WHERE demo_video_id = $1`,
       [demo_video_id]
     );
 
-    if (exists.rowCount === 0) {
+    if (demoVideo.rowCount === 0) {
       await client.query("ROLLBACK");
       return res.status(404).json({
         statusCode: 404,
@@ -1193,9 +1193,27 @@ exports.updatestatus = async (req, res) => {
       });
     }
 
-    const tutorId = exists.rows[0].user_id;
+    const tutorId = demoVideo.rows[0].tutor_id;
 
-    // 2️⃣ Update demo video status
+    // 2️⃣ Get user_id from tbl_tutor
+    const tutor = await client.query(
+      `SELECT user_id 
+       FROM tbl_tutor 
+       WHERE tutor_id = $1`,
+      [tutorId]
+    );
+
+    if (tutor.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Tutor not found"
+      });
+    }
+
+    const userId = tutor.rows[0].user_id;
+
+    // 3️⃣ Update demo video status
     const result = await client.query(
       `UPDATE tbl_demo_videos 
        SET 
@@ -1210,13 +1228,13 @@ exports.updatestatus = async (req, res) => {
       ]
     );
 
-    // 3️⃣ ONLY when approved → update tbl_user
+    // 4️⃣ ONLY when status = accept → update tbl_user
     if (status === "accept") {
       await client.query(
         `UPDATE tbl_user
          SET status = 'accept'
          WHERE user_id = $1`,
-        [tutorId]
+        [userId]
       );
     }
 
