@@ -1193,7 +1193,7 @@ exports.updatestatus = async (req, res) => {
       });
     }
 
-    const tutorId = exists.rows[0].tutor_id;
+    const tutorId = exists.rows[0].user_id;
 
     // 2️⃣ Update demo video status
     const result = await client.query(
