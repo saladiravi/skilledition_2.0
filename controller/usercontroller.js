@@ -113,3 +113,27 @@ exports.loginUser = async (req, res) => {
 
 
 
+
+exports.getuser=async(req,res)=>{
+  const {user_id} =req.body
+  
+  try{
+     const exittutor=await pool.query(`SELECT role FROM tbl_user WHERE user_id=$1 AND role=$2`,[user_id,'tutor']);
+     if(exittutor.rows.length ===0){
+      return res.status(404).json({
+        statusCode:404,
+        message:'Tutor Not Found'
+      })
+     }
+      const user=await pool.query(`SELECT full_name,role,status FROM tbl_user WHERE user_id=$1`,[user_id]);
+      return res.status(200).json({
+        statusCode:200,
+        message:'Fetched Sucessfully',
+        user:user.rows[0]
+      })
+  }catch(error){
+    return res.status(500).json({
+      statusCode:'Internal Server Error'
+    })
+  }
+}

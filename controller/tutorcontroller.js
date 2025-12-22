@@ -956,7 +956,8 @@ exports.updateDemoVideo = async (req, res) => {
       SET
         video_title = COALESCE($1, video_title),
         video_description = COALESCE($2, video_description),
-        video_file = $3
+        video_file = $3,
+        status = 'pending'
          
       WHERE demo_video_id = $4 AND tutor_id = $5
       RETURNING *
@@ -1107,6 +1108,60 @@ exports.updateDemoVideoPlanDetails = async (req, res) => {
 };
 
 
+// exports.updatestatus = async (req, res) => {
+//   const { demo_video_id, status, demo_video_reject_reason } = req.body;
+
+//   if (!demo_video_id || !status) {
+//     return res.status(400).json({
+//       statusCode: 400,
+//       message: "Missing Required Fields (demo_video_id, status)"
+//     });
+//   }
+
+//   try {
+//     // Check record exists
+//     const exists = await pool.query(
+//       `SELECT demo_video_id FROM tbl_demo_videos WHERE demo_video_id = $1`,
+//       [demo_video_id]
+//     );
+
+//     if (exists.rows.length === 0) {
+//       return res.status(404).json({
+//         statusCode: 404,
+//         message: "Demo video not found"
+//       });
+//     }
+
+//     // Update Status
+//     const result = await pool.query(
+//       `UPDATE tbl_demo_videos 
+//              SET status = $1,
+//              demo_video_reject_reason=$2
+//              WHERE demo_video_id = $3
+//              RETURNING *`,
+//       [status, demo_video_reject_reason, demo_video_id]
+//     );
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: "Status Updated Successfully",
+//       data:
+//       {
+//         demo_video_id: result.rows[0].demo_video_id,
+//         status: result.rows[0].status,
+//         demo_video_reject_reason: result.rows[0].demo_video_reject_reason
+//       }
+//     });
+
+//   } catch (error) {
+//     console.log(error);
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error"
+//     });
+//   }
+// };
+
 exports.updatestatus = async (req, res) => {
   const { demo_video_id, status, demo_video_reject_reason } = req.body;
 
@@ -1117,35 +1172,60 @@ exports.updatestatus = async (req, res) => {
     });
   }
 
+  const client = await pool.connect();
+
   try {
-    // Check record exists
-    const exists = await pool.query(
-      `SELECT demo_video_id FROM tbl_demo_videos WHERE demo_video_id = $1`,
+    await client.query("BEGIN");
+
+    // 1️⃣ Check demo video exists & get tutor/user id
+    const exists = await client.query(
+      `SELECT demo_video_id, tutor_id 
+       FROM tbl_demo_videos 
+       WHERE demo_video_id = $1`,
       [demo_video_id]
     );
 
-    if (exists.rows.length === 0) {
+    if (exists.rowCount === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({
         statusCode: 404,
         message: "Demo video not found"
       });
     }
 
-    // Update Status
-    const result = await pool.query(
+    const tutorId = exists.rows[0].tutor_id;
+
+    // 2️⃣ Update demo video status
+    const result = await client.query(
       `UPDATE tbl_demo_videos 
-             SET status = $1,
-             demo_video_reject_reason=$2
-             WHERE demo_video_id = $3
-             RETURNING *`,
-      [status, demo_video_reject_reason, demo_video_id]
+       SET 
+         status = $1,
+         demo_video_reject_reason = $2
+       WHERE demo_video_id = $3
+       RETURNING *`,
+      [
+        status,
+        status === "rejected" ? demo_video_reject_reason : null,
+        demo_video_id
+      ]
     );
+
+    // 3️⃣ ONLY when approved → update tbl_user
+    if (status === "accept") {
+      await client.query(
+        `UPDATE tbl_user
+         SET status = 'accept'
+         WHERE user_id = $1`,
+        [tutorId]
+      );
+    }
+
+    await client.query("COMMIT");
 
     return res.status(200).json({
       statusCode: 200,
       message: "Status Updated Successfully",
-      data:
-      {
+      data: {
         demo_video_id: result.rows[0].demo_video_id,
         status: result.rows[0].status,
         demo_video_reject_reason: result.rows[0].demo_video_reject_reason
@@ -1153,11 +1233,15 @@ exports.updatestatus = async (req, res) => {
     });
 
   } catch (error) {
-    console.log(error);
+    await client.query("ROLLBACK");
+    console.error(error);
+
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
     });
+  } finally {
+    client.release();
   }
 };
 
@@ -1217,3 +1301,5 @@ exports.onboardnotification = async (req, res) => {
     })
   }
 }
+
+
