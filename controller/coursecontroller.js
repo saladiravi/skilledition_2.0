@@ -240,158 +240,78 @@ exports.getcourseBytutor = async (req, res) => {
 
 
 
-exports.addmodulewithvideos = async (req, res) => {
-  const { course_id, module_title, module_description } = req.body;
+// exports.addmodulewithvideos = async (req, res) => {
+//   const { course_id, module_title, module_description } = req.body;
 
-  try {
-    const exitcourse = await pool.query(
-      `SELECT course_id FROM tbl_course WHERE course_id=$1`,
-      [course_id]
-    );
-
-    if (exitcourse.rows.length === 0) {
-      return res.status(404).json({ statusCode: 404, message: "Course Not Found" });
-    }
-
-    let sheet_file = null;
-    if (req.files?.sheet_file?.length > 0) {
-      sheet_file = await uploadToS3(req.files.sheet_file[0], "modules/sheets");
-    }
-
-    const moduleInsert = await pool.query(
-      `INSERT INTO tbl_module (course_id, module_title, module_description, sheet_file)
-       VALUES ($1, $2, $3, $4)
-       RETURNING module_id`,
-      [course_id, module_title, module_description, sheet_file]
-    );
-
-    const module_id = moduleInsert.rows[0].module_id;
-    let insertedVideos = 0;
-
-    if (req.files?.video_files?.length > 0) {
-      // let index = 0;
-
-      for (const file of req.files.video_files) {
-
-        const durationSeconds = await getVideoDuration(file.path);
-        const formattedDuration = formatDurationHMS(durationSeconds);
-
-        const uploadedVideoUrl = await uploadToS3(file, "modules/videos");
-
-       
-
-        // let duration = Array.isArray(video_duration)
-        //   ? video_duration[index]
-        //   : video_duration;
-      
-       const videoTitle = file.originalname.replace(/\.[^/.]+$/, "");
-        await pool.query(
-          `INSERT INTO tbl_module_videos 
-            (module_id, video, video_title, video_duration, status)
-            VALUES ($1, $2, $3, $4, $5)`,
-          [
-            module_id,
-           uploadedVideoUrl,
-            videoTitle,
-            formattedDuration,
-            "pending" 
-          ]
-        );
-
-       
-        insertedVideos++;
-      }
-    }
-
-    return res.status(200).json({
-      statusCode: 200,
-      message: "Module and videos added successfully",
-      module_id,
-      videos_uploaded: insertedVideos
-    });
-
-  } catch (error) {
-    console.error("Error adding module with videos:", error);
-    return res.status(500).json({
-      statusCode: 500,
-      message: "Internal Server Error"
-    });
-  }
-};
-
-
-
-// exports.getcoursewithmoduledetails = async (req, res) => {
 //   try {
-//     const result = await pool.query(`
-//             SELECT 
-//                 tc.course_id,
-//                 tc.course_title,
-//                 tc.course_description,
-//                 tc.duration,
-//                 tm.module_id,
-//                 tm.module_title,
-//                 tm.module_description,
-//                 tmv.module_video_id,
-//                 tmv.video_title,
-//                 tmv.video,
-//                 tmv.video_duration
-//             FROM tbl_course AS tc
-//             JOIN tbl_module AS tm ON tc.course_id = tm.course_id
-//             JOIN tbl_module_videos AS tmv ON tm.module_id = tmv.module_id
-//         `);
+//     const exitcourse = await pool.query(
+//       `SELECT course_id FROM tbl_course WHERE course_id=$1`,
+//       [course_id]
+//     );
 
-//     // Use Map for better performance & clean grouping
-//     const coursesMap = new Map();
+//     if (exitcourse.rows.length === 0) {
+//       return res.status(404).json({ statusCode: 404, message: "Course Not Found" });
+//     }
 
-//     result.rows.map(row => {
-//       // 1️⃣ Course creation
-//       if (!coursesMap.has(row.course_id)) {
-//         coursesMap.set(row.course_id, {
-//           course_id: row.course_id,
-//           course_title: row.course_title,
-//           course_description: row.course_description,
-//           duration: row.duration,
-//           modules: new Map()  // modules stored as Map()
-//         });
+//     let sheet_file = null;
+//     if (req.files?.sheet_file?.length > 0) {
+//       sheet_file = await uploadToS3(req.files.sheet_file[0], "modules/sheets");
+//     }
+
+//     const moduleInsert = await pool.query(
+//       `INSERT INTO tbl_module (course_id, module_title, module_description, sheet_file)
+//        VALUES ($1, $2, $3, $4)
+//        RETURNING module_id`,
+//       [course_id, module_title, module_description, sheet_file]
+//     );
+
+//     const module_id = moduleInsert.rows[0].module_id;
+//     let insertedVideos = 0;
+
+//     if (req.files?.video_files?.length > 0) {
+//       // let index = 0;
+
+//       for (const file of req.files.video_files) {
+
+//         const durationSeconds = await getVideoDuration(file.path);
+//         const formattedDuration = formatDurationHMS(durationSeconds);
+
+//         const uploadedVideoUrl = await uploadToS3(file, "modules/videos");
+
+       
+
+//         // let duration = Array.isArray(video_duration)
+//         //   ? video_duration[index]
+//         //   : video_duration;
+      
+//        const videoTitle = file.originalname.replace(/\.[^/.]+$/, "");
+//         await pool.query(
+//           `INSERT INTO tbl_module_videos 
+//             (module_id, video, video_title, video_duration, status)
+//             VALUES ($1, $2, $3, $4, $5)`,
+//           [
+//             module_id,
+//            uploadedVideoUrl,
+//             videoTitle,
+//             formattedDuration,
+//             "pending" 
+//           ]
+//         );
+
+       
+//         insertedVideos++;
 //       }
-
-//       const course = coursesMap.get(row.course_id);
-
-//       // 2️⃣ Module creation
-//       if (!course.modules.has(row.module_id)) {
-//         course.modules.set(row.module_id, {
-//           module_id: row.module_id,
-//           module_title: row.module_title,
-//           module_description: row.module_description,
-//           videos: []
-//         });
-//       }
-
-//       const moduleData = course.modules.get(row.module_id);
-
-//       // 3️⃣ Add video
-//       moduleData.videos.push({
-//         video_module_id: row.video_module_id,
-//         video_title: row.video_title,
-//         video: row.video
-//       });
-//     });
-
-//     // Convert Map → array structure
-//     const finalCourses = Array.from(coursesMap.values()).map(course => ({
-//       ...course,
-//       modules: Array.from(course.modules.values())
-//     }));
+//     }
 
 //     return res.status(200).json({
 //       statusCode: 200,
-//       message: "course details fetched successfully",
-//       course: finalCourses
+//       message: "Module and videos added successfully",
+//       module_id,
+//       videos_uploaded: insertedVideos
 //     });
 
 //   } catch (error) {
-//     console.log(error);
+//     console.error("Error adding module with videos:", error);
 //     return res.status(500).json({
 //       statusCode: 500,
 //       message: "Internal Server Error"
@@ -399,6 +319,114 @@ exports.addmodulewithvideos = async (req, res) => {
 //   }
 // };
 
+
+
+exports.addModulesWithVideos = async (req, res) => {
+  const { course_id, modules } = req.body;
+
+  if (!course_id || !modules) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "course_id and modules are required"
+    });
+  }
+
+  const parsedModules = JSON.parse(modules);
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // 1️⃣ Check course
+    const course = await client.query(
+      `SELECT course_id FROM tbl_course WHERE course_id=$1`,
+      [course_id]
+    );
+
+    if (course.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    let moduleResults = [];
+
+    for (let i = 0; i < parsedModules.length; i++) {
+      const module = parsedModules[i];
+
+      // 2️⃣ Upload sheet (one per module)
+      const sheet = req.files.find(
+        file => file.fieldname === `sheet_files[${i}]`
+      );
+
+      let sheetFile = null;
+      if (sheet) {
+        sheetFile = await uploadToS3(sheet, "modules/sheets");
+      }
+
+
+      // 3️⃣ Insert module
+      const moduleInsert = await client.query(
+        `INSERT INTO tbl_module
+         (course_id, module_title, module_description, sheet_file)
+         VALUES ($1, $2, $3, $4)
+         RETURNING module_id`,
+        [course_id, module.module_title, module.module_description, sheetFile]
+      );
+
+      const module_id = moduleInsert.rows[0].module_id;
+      let videoCount = 0;
+
+      // 4️⃣ Insert videos for this module
+      // Videos for module i
+      const videos = req.files.filter(file =>
+        file.fieldname.startsWith(`video_files[${i}]`)
+      );
+
+
+      for (const file of videos) {
+        const durationSeconds = await getVideoDuration(file.path);
+        const formattedDuration = formatDurationHMS(durationSeconds);
+
+        const videoUrl = await uploadToS3(file, "modules/videos");
+        const videoTitle = file.originalname.replace(/\.[^/.]+$/, "");
+
+        await client.query(
+          `INSERT INTO tbl_module_videos
+           (module_id, video, video_title, video_duration, status)
+           VALUES ($1, $2, $3, $4, 'pending')`,
+          [module_id, videoUrl, videoTitle, formattedDuration]
+        );
+
+        videoCount++;
+      }
+
+      moduleResults.push({
+        module_id,
+        videos_uploaded: videoCount
+      });
+    }
+
+    await client.query("COMMIT");
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Modules and videos added successfully",
+      modules: moduleResults
+    });
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  } finally {
+    client.release();
+  }
+};
+
+ 
 exports.getcoursewithmoduledetails = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -616,4 +644,175 @@ exports.updatestatus = async (req, res) => {
 };
 
 
+exports.gettotalcourse = async (req, res) => {
+  const { tutor_id } = req.body;
+
+  if (!tutor_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "tutor_id is required"
+    });
+  }
+
+  try {
+    const { rows } = await pool.query(`
+      SELECT
+        tc.course_id,
+        tc.course_title,
+        tc.course_description,
+        tc.duration,
+        tc.no_of_modules,
+        tc.level,
+        tc.course_image,
+        tc.status AS course_status,
+
+        tcg.category_id,
+        tcg.category_name,
+
+        tm.module_id,
+        tm.module_title,
+        tm.module_description,
+        tm.sheet_file,
+        tm.total_duration,
+
+        tmv.module_video_id,
+        tmv.video,
+        tmv.video_title,
+        tmv.status AS video_status,
+        tmv.reason,
+        tmv.video_duration,
+
+        COUNT(DISTINCT tsc.student_id) AS enrolled_count
+
+      FROM tbl_course tc
+      JOIN tbl_category tcg 
+        ON tc.category_id = tcg.category_id
+
+      LEFT JOIN tbl_module tm 
+        ON tc.course_id = tm.course_id
+
+      LEFT JOIN tbl_module_videos tmv
+        ON tm.module_id = tmv.module_id
+       AND tmv.status IN ('pending', 'published', 'rejected')
+
+      LEFT JOIN tbl_student_course tsc
+        ON tc.course_id = tsc.course_id
+
+      WHERE tc.tutor_id = $1
+
+      GROUP BY
+        tc.course_id,
+        tcg.category_id,
+        tm.module_id,
+        tmv.module_video_id;
+    `, [tutor_id]);
+
+    const coursesMap = {};
+
+    // ------------------ GROUP DATA ------------------
+    for (const row of rows) {
+
+      // ---------- COURSE ----------
+      if (!coursesMap[row.course_id]) {
+        coursesMap[row.course_id] = {
+          course_id: row.course_id,
+          course_title: row.course_title,
+          course_description: row.course_description,
+          duration: row.duration,
+          no_of_modules: row.no_of_modules,
+          level: row.level,
+          course_image: row.course_image,
+          status: row.course_status,
+          category: {
+            category_id: row.category_id,
+            category_name: row.category_name
+          },
+          enrolled_count: Number(row.enrolled_count),
+          modules: []
+        };
+      }
+
+      const course = coursesMap[row.course_id];
+
+      // ---------- MODULE ----------
+      let module = course.modules.find(
+        m => m.module_id === row.module_id
+      );
+      
+      if (!module && row.module_id) {
+        module = {
+          module_id: row.module_id,
+          module_title: row.module_title,
+          module_description: row.module_description,
+          sheet_file: row.sheet_file,
+          total_duration: row.total_duration,
+          videos: []
+        };
+        course.modules.push(module);
+      }
+
+      // ---------- VIDEO ----------
+      if (row.module_video_id && module) {
+        module.videos.push({
+          module_video_id: row.module_video_id,
+          video: row.video,
+          video_title: row.video_title,
+          status: row.video_status,
+          reason: row.reason,
+          video_duration: row.video_duration
+        });
+      }
+    }
+
+
+    for (const course of Object.values(coursesMap)) {
+      for (const module of course.modules) {
+        const rejectedVideos = module.videos.filter(
+          v => v.status === 'rejected'
+        );
+
+
+        if (rejectedVideos.length > 0) {
+          module.videos = rejectedVideos;
+        }
+      }
+    }
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Courses fetched successfully",
+      data: Object.values(coursesMap)
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
+
+
+exports.getvideosbymoduleid = async (req, res) => {
+  const { module_id, status } = req.body
+  try {
+    const result = await pool.query(`
+        SELECT tmv.*
+        FROM tbl_module AS tm
+        JOIN  tbl_module_videos AS tmv ON tm.module_id=tmV.module_id
+        WHERE tm.module_id=$1 AND status=$2`, [module_id, status])
+    return res.status(200).json({
+      statusCode: 200,
+      message: 'Fetched Sucessfully',
+      videos: result.rows
+    })
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      statusCode: 500,
+      message: 'Internal Server Error'
+    })
+  }
+}
 

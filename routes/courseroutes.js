@@ -12,11 +12,15 @@ router.post('/updatecourse',verifyToken, allowRoles("admin","student","tutor"),u
 router.post('/getcoursebytutor',verifyToken, allowRoles("admin","student","tutor"),Course.getcourseBytutor);
 router.get('/getcoursewithmodules',verifyToken, allowRoles("admin","student","tutor"),Course.getcoursewithmoduledetails);
 router.post('/getcoursemodulebyId',verifyToken, allowRoles("admin","student","tutor"),Course.getcoursemoduleById);
-router.post('/add-module',upload.fields([
-    { name: "sheet_file", maxCount: 1 },
-    { name: "video_files", maxCount: 20 }]),verifyToken, allowRoles("admin","student","tutor"), Course.addmodulewithvideos);
-
+ 
+router.post(
+  "/add-module",
+  upload.any(),verifyToken, allowRoles("admin","student","tutor"),
+  Course.addModulesWithVideos
+);
 router.post('/updatemodulevideostatus',verifyToken, allowRoles("admin","student","tutor"),Course.updatestatus);
+router.post('/gettotalcourse',verifyToken, allowRoles("admin","student","tutor"),Course.gettotalcourse);
+router.post('/getmodulebyid',verifyToken, allowRoles("admin","student","tutor"),Course.getvideosbymoduleid);
 
 
 module.exports = router;
