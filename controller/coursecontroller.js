@@ -991,29 +991,30 @@ exports.getvideosbymoduleid = async (req, res) => {
 }
 
 
-exports.updateModuleVideos = async (req, rees) => {
-  const { module_id, module_video_id } = req.body;
+exports.updateModuleVideos = async (req, res) => {
+  const {
+    module_id,
+    module_video_id,
+    module_title,
+    module_description
+  } = req.body;
 
-  if (!module_id || !module_video_id) {
+  if (!module_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "module_id and module_video_id are required"
+      message: "module_id is required"
     });
   }
 
   // Ensure module_video_id is array
-  const videoIds = Array.isArray(module_video_id)
-    ? module_video_id
-    : [module_video_id];
+  const videoIds = module_video_id
+    ? (Array.isArray(module_video_id) ? module_video_id : [module_video_id])
+    : [];
 
-  if (!req.files || req.files.length === 0) {
-    return res.status(400).json({
-      statusCode: 400,
-      message: "No video files uploaded"
-    });
-  }
+  const videoFiles = req.files?.video_files || [];
+  const sheetFile = req.files?.sheet_file?.[0] || null;
 
-  if (videoIds.length !== req.files.length) {
+  if (videoIds.length > 0 && videoIds.length !== videoFiles.length) {
     return res.status(400).json({
       statusCode: 400,
       message: "module_video_id count must match uploaded videos count"
@@ -1033,17 +1034,45 @@ exports.updateModuleVideos = async (req, rees) => {
 
     if (moduleCheck.rowCount === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ message: "Module not found" });
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Module not found"
+      });
     }
 
+    // 2️⃣ UPDATE MODULE DETAILS (if provided)
+    if (module_title || module_description || sheetFile) {
+      let sheetUrl = null;
+
+      if (sheetFile) {
+        sheetUrl = await uploadToS3(sheetFile, "modules/sheets");
+      }
+
+      await client.query(
+        `
+        UPDATE tbl_module
+        SET
+          module_title = COALESCE($1, module_title),
+          module_description = COALESCE($2, module_description),
+          sheet_file = COALESCE($3, sheet_file)
+        WHERE module_id = $4
+        `,
+        [
+          module_title || null,
+          module_description || null,
+          sheetUrl,
+          module_id
+        ]
+      );
+    }
+
+    // 3️⃣ UPDATE MODULE VIDEOS (ONLY REJECTED)
     let updatedCount = 0;
 
-    // 2️⃣ Update videos one by one (ID-based)
     for (let i = 0; i < videoIds.length; i++) {
-      const file = req.files[i];
       const mvId = videoIds[i];
+      const file = videoFiles[i];
 
-      // Ensure this video belongs to module & is rejected
       const checkVideo = await client.query(
         `
         SELECT module_video_id
@@ -1055,9 +1084,7 @@ exports.updateModuleVideos = async (req, rees) => {
         [mvId, module_id]
       );
 
-      if (checkVideo.rowCount === 0) {
-        continue; // skip invalid / non-rejected videos
-      }
+      if (checkVideo.rowCount === 0) continue;
 
       const durationSeconds = await getVideoDuration(file.path);
       const formattedDuration = formatDurationHMS(durationSeconds);
@@ -1073,7 +1100,8 @@ exports.updateModuleVideos = async (req, rees) => {
           video_title = $2,
           video_duration = $3,
           status = 'pending',
-          reason = NULL
+          reason = NULL,
+          module_video_created_at = NOW()
         WHERE module_video_id = $4
         `,
         [videoUrl, videoTitle, formattedDuration, mvId]
@@ -1086,7 +1114,7 @@ exports.updateModuleVideos = async (req, rees) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Module videos updated successfully",
+      message: "Module updated successfully",
       updated_videos: updatedCount
     });
 
