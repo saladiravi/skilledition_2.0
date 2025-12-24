@@ -816,3 +816,194 @@ exports.getvideosbymoduleid = async (req, res) => {
   }
 }
 
+
+exports.updateModuleVideos = async (req, rees) => {
+  const { module_id, module_video_id } = req.body;
+
+  if (!module_id || !module_video_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "module_id and module_video_id are required"
+    });
+  }
+
+  // Ensure module_video_id is array
+  const videoIds = Array.isArray(module_video_id)
+    ? module_video_id
+    : [module_video_id];
+
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "No video files uploaded"
+    });
+  }
+
+  if (videoIds.length !== req.files.length) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "module_video_id count must match uploaded videos count"
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // 1️⃣ Check module exists
+    const moduleCheck = await client.query(
+      `SELECT module_id FROM tbl_module WHERE module_id = $1`,
+      [module_id]
+    );
+
+    if (moduleCheck.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Module not found" });
+    }
+
+    let updatedCount = 0;
+
+    // 2️⃣ Update videos one by one (ID-based)
+    for (let i = 0; i < videoIds.length; i++) {
+      const file = req.files[i];
+      const mvId = videoIds[i];
+
+      // Ensure this video belongs to module & is rejected
+      const checkVideo = await client.query(
+        `
+        SELECT module_video_id
+        FROM tbl_module_videos
+        WHERE module_video_id = $1
+          AND module_id = $2
+          AND status = 'rejected'
+        `,
+        [mvId, module_id]
+      );
+
+      if (checkVideo.rowCount === 0) {
+        continue; // skip invalid / non-rejected videos
+      }
+
+      const durationSeconds = await getVideoDuration(file.path);
+      const formattedDuration = formatDurationHMS(durationSeconds);
+
+      const videoUrl = await uploadToS3(file, "modules/videos");
+      const videoTitle = file.originalname.replace(/\.[^/.]+$/, "");
+
+      await client.query(
+        `
+        UPDATE tbl_module_videos
+        SET
+          video = $1,
+          video_title = $2,
+          video_duration = $3,
+          status = 'pending',
+          reason = NULL
+        WHERE module_video_id = $4
+        `,
+        [videoUrl, videoTitle, formattedDuration, mvId]
+      );
+
+      updatedCount++;
+    }
+
+    await client.query("COMMIT");
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Module videos updated successfully",
+      updated_videos: updatedCount
+    });
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  } finally {
+    client.release();
+  }
+};
+
+
+
+exports.getvideos = async (req, res) => {
+  const { module_id, module_video_id } = req.body;
+
+  if (!module_id || !module_video_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "module_id and module_video_id are required"
+    });
+  }
+
+  // Normalize module_video_id to array
+  const videoIds = Array.isArray(module_video_id)
+    ? module_video_id
+    : [module_video_id];
+
+  const client = await pool.connect();
+
+  try {
+    const result = await client.query(
+      `
+      SELECT
+        module_video_id,
+        module_id,
+        video,
+        video_title,
+        video_duration,
+        status,
+        reason
+      FROM tbl_module_videos
+      WHERE module_id = $1
+        AND module_video_id = ANY($2::int[])
+      ORDER BY module_video_id
+      `,
+      [module_id, videoIds]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "No videos found"
+      });
+    }
+
+    // 🔹 Generate signed URLs
+    const videosWithSignedUrl = await Promise.all(
+      result.rows.map(async (row) => {
+        const signedUrl = await getSignedVideoUrl(row.video);
+
+        return {
+          module_video_id: row.module_video_id,
+          module_id: row.module_id,
+          video_url: signedUrl,        // ✅ signed URL
+          video_title: row.video_title,
+          video_duration: row.video_duration,
+          status: row.status,
+          reason: row.reason
+        };
+      })
+    );
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Videos fetched successfully",
+      count: videosWithSignedUrl.length,
+      data: videosWithSignedUrl
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  } finally {
+    client.release();
+  }
+};

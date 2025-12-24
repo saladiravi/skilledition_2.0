@@ -21,6 +21,11 @@ router.post(
 router.post('/updatemodulevideostatus',verifyToken, allowRoles("admin","student","tutor"),Course.updatestatus);
 router.post('/gettotalcourse',verifyToken, allowRoles("admin","student","tutor"),Course.gettotalcourse);
 router.post('/getmodulebyid',verifyToken, allowRoles("admin","student","tutor"),Course.getvideosbymoduleid);
-
+router.post(
+  "/update-module-videos",
+  upload.any(),verifyToken, allowRoles("admin","student","tutor"),
+  Course.updateModuleVideos
+);
+router.post('/getvideos',verifyToken, allowRoles("admin","student","tutor"),Course.getvideos);
 
 module.exports = router;
