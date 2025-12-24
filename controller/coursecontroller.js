@@ -1079,7 +1079,7 @@ exports.updateModuleVideos = async (req, res) => {
         FROM tbl_module_videos
         WHERE module_video_id = $1
           AND module_id = $2
-          AND status = 'rejected'
+          AND status IN ('rejected', 'pending')
         `,
         [mvId, module_id]
       );
