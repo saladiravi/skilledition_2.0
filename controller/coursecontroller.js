@@ -644,6 +644,155 @@ exports.updatestatus = async (req, res) => {
 };
 
 
+// exports.gettotalcourse = async (req, res) => {
+//   const { tutor_id } = req.body;
+
+//   if (!tutor_id) {
+//     return res.status(400).json({
+//       statusCode: 400,
+//       message: "tutor_id is required"
+//     });
+//   }
+
+//   try {
+//     const { rows } = await pool.query(`
+//       SELECT
+//         tc.course_id,
+//         tc.course_title,
+//         tc.course_description,
+//         tc.duration,
+//         tc.no_of_modules,
+//         tc.level,
+//         tc.course_image,
+//         tc.status AS course_status,
+
+//         tcg.category_id,
+//         tcg.category_name,
+
+//         tm.module_id,
+//         tm.module_title,
+//         tm.module_description,
+//         tm.sheet_file,
+//         tm.total_duration,
+
+//         tmv.module_video_id,
+//         tmv.video,
+//         tmv.video_title,
+//         tmv.status AS video_status,
+//         tmv.reason,
+//         tmv.video_duration,
+
+//         COUNT(DISTINCT tsc.student_id) AS enrolled_count
+
+//       FROM tbl_course tc
+//       JOIN tbl_category tcg 
+//         ON tc.category_id = tcg.category_id
+
+//       LEFT JOIN tbl_module tm 
+//         ON tc.course_id = tm.course_id
+
+//       LEFT JOIN tbl_module_videos tmv
+//         ON tm.module_id = tmv.module_id
+//        AND tmv.status IN ('pending', 'published', 'rejected')
+
+//       LEFT JOIN tbl_student_course tsc
+//         ON tc.course_id = tsc.course_id
+
+//       WHERE tc.tutor_id = $1
+
+//       GROUP BY
+//         tc.course_id,
+//         tcg.category_id,
+//         tm.module_id,
+//         tmv.module_video_id;
+//     `, [tutor_id]);
+
+//     const coursesMap = {};
+
+//     // ------------------ GROUP DATA ------------------
+//     for (const row of rows) {
+
+//       // ---------- COURSE ----------
+//       if (!coursesMap[row.course_id]) {
+//         coursesMap[row.course_id] = {
+//           course_id: row.course_id,
+//           course_title: row.course_title,
+//           course_description: row.course_description,
+//           duration: row.duration,
+//           no_of_modules: row.no_of_modules,
+//           level: row.level,
+//           course_image: row.course_image,
+//           status: row.course_status,
+//           category: {
+//             category_id: row.category_id,
+//             category_name: row.category_name
+//           },
+//           enrolled_count: Number(row.enrolled_count),
+//           modules: []
+//         };
+//       }
+
+//       const course = coursesMap[row.course_id];
+
+//       // ---------- MODULE ----------
+//       let module = course.modules.find(
+//         m => m.module_id === row.module_id
+//       );
+      
+//       if (!module && row.module_id) {
+//         module = {
+//           module_id: row.module_id,
+//           module_title: row.module_title,
+//           module_description: row.module_description,
+//           sheet_file: row.sheet_file,
+//           total_duration: row.total_duration,
+//           videos: []
+//         };
+//         course.modules.push(module);
+//       }
+
+//       // ---------- VIDEO ----------
+//       if (row.module_video_id && module) {
+//         module.videos.push({
+//           module_video_id: row.module_video_id,
+//           video: row.video,
+//           video_title: row.video_title,
+//           status: row.video_status,
+//           reason: row.reason,
+//           video_duration: row.video_duration
+//         });
+//       }
+//     }
+
+
+//     for (const course of Object.values(coursesMap)) {
+//       for (const module of course.modules) {
+//         const rejectedVideos = module.videos.filter(
+//           v => v.status === 'rejected'
+//         );
+
+
+//         if (rejectedVideos.length > 0) {
+//           module.videos = rejectedVideos;
+//         }
+//       }
+//     }
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: "Courses fetched successfully",
+//       data: Object.values(coursesMap)
+//     });
+
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error"
+//     });
+//   }
+// };
+
 exports.gettotalcourse = async (req, res) => {
   const { tutor_id } = req.body;
 
@@ -682,6 +831,9 @@ exports.gettotalcourse = async (req, res) => {
         tmv.reason,
         tmv.video_duration,
 
+        tu.user_id AS student_id,
+        tu.full_name AS student_name,
+
         COUNT(DISTINCT tsc.student_id) AS enrolled_count
 
       FROM tbl_course tc
@@ -698,13 +850,18 @@ exports.gettotalcourse = async (req, res) => {
       LEFT JOIN tbl_student_course tsc
         ON tc.course_id = tsc.course_id
 
+      LEFT JOIN tbl_user tu
+        ON tsc.student_id = tu.user_id
+       AND tu.role = 'student'
+
       WHERE tc.tutor_id = $1
 
       GROUP BY
         tc.course_id,
         tcg.category_id,
         tm.module_id,
-        tmv.module_video_id;
+        tmv.module_video_id,
+        tu.user_id;
     `, [tutor_id]);
 
     const coursesMap = {};
@@ -728,7 +885,8 @@ exports.gettotalcourse = async (req, res) => {
             category_name: row.category_name
           },
           enrolled_count: Number(row.enrolled_count),
-          modules: []
+          modules: [],
+          students: []
         };
       }
 
@@ -738,7 +896,7 @@ exports.gettotalcourse = async (req, res) => {
       let module = course.modules.find(
         m => m.module_id === row.module_id
       );
-      
+
       if (!module && row.module_id) {
         module = {
           module_id: row.module_id,
@@ -762,19 +920,37 @@ exports.gettotalcourse = async (req, res) => {
           video_duration: row.video_duration
         });
       }
+
+      // ---------- STUDENT ----------
+      if (row.student_id) {
+        const exists = course.students.find(
+          s => s.student_id === row.student_id
+        );
+
+        if (!exists) {
+          course.students.push({
+            student_id: row.student_id,
+            student_name: row.student_name
+          });
+        }
+      }
     }
 
-
+    // ---------- SHOW ONLY REJECTED VIDEOS ----------
     for (const course of Object.values(coursesMap)) {
       for (const module of course.modules) {
         const rejectedVideos = module.videos.filter(
           v => v.status === 'rejected'
         );
 
-
         if (rejectedVideos.length > 0) {
           module.videos = rejectedVideos;
         }
+      }
+
+      // ---------- NO STUDENTS -> NULL ----------
+      if (course.students.length === 0) {
+        course.students = null;
       }
     }
 
@@ -792,8 +968,6 @@ exports.gettotalcourse = async (req, res) => {
     });
   }
 };
-
-
 exports.getvideosbymoduleid = async (req, res) => {
   const { module_id, status } = req.body
   try {
