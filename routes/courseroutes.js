@@ -31,8 +31,8 @@ router.post(
   Course.updateModuleVideos
 );
 router.post('/getvideos',verifyToken, allowRoles("admin","student","tutor"),Course.getvideos);
-router.delete('/deletecourse',allowRoles("admin","student","tutor"),Course.deleteCourse);
-router.post('/deletemodule',allowRoles("admin","student","tutor"),Course.deleteModule);
+router.post('/deletecourse',verifyToken,allowRoles("admin","student","tutor"),Course.deleteCourse);
+router.post('/deletemodule',verifyToken,allowRoles("admin","student","tutor"),Course.deleteModule);
 
 
 module.exports = router;
