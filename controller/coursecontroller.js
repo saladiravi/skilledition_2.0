@@ -1,5 +1,5 @@
 const pool = require('../config/db');
-const {uploadToS3,getSignedVideoUrl} =require('../utils/s3upload');
+const { uploadToS3, getSignedVideoUrl } = require('../utils/s3upload');
 const ffmpeg = require("fluent-ffmpeg");
 const ffprobe = require("ffprobe-static");
 
@@ -215,7 +215,7 @@ exports.getcourseBytutor = async (req, res) => {
     const coursesWithSignedUrl = await Promise.all(
       result.rows.map(async (course) => {
         if (course.course_image) {
-          course.course_image_url = await getSignedVideoUrl(course.course_image); 
+          course.course_image_url = await getSignedVideoUrl(course.course_image);
         } else {
           course.course_image_url = null;
         }
@@ -278,12 +278,12 @@ exports.getcourseBytutor = async (req, res) => {
 
 //         const uploadedVideoUrl = await uploadToS3(file, "modules/videos");
 
-       
+
 
 //         // let duration = Array.isArray(video_duration)
 //         //   ? video_duration[index]
 //         //   : video_duration;
-      
+
 //        const videoTitle = file.originalname.replace(/\.[^/.]+$/, "");
 //         await pool.query(
 //           `INSERT INTO tbl_module_videos 
@@ -298,7 +298,7 @@ exports.getcourseBytutor = async (req, res) => {
 //           ]
 //         );
 
-       
+
 //         insertedVideos++;
 //       }
 //     }
@@ -426,7 +426,7 @@ exports.addModulesWithVideos = async (req, res) => {
   }
 };
 
- 
+
 exports.getcoursewithmoduledetails = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -604,43 +604,43 @@ exports.getcoursemoduleById = async (req, res) => {
 
 
 exports.updatestatus = async (req, res) => {
-    const { module_video_id, status, reason } = req.body;
+  const { module_video_id, status, reason } = req.body;
 
-    if (!module_video_id || !status) {
-        return res.status(400).json({
-            statusCode: 400,
-            message: "module_video_id and status are required"
-        });
-    }
+  if (!module_video_id || !status) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "module_video_id and status are required"
+    });
+  }
 
-    try {
+  try {
 
-        const updateResult = await pool.query(
-            `UPDATE tbl_module_videos
+    const updateResult = await pool.query(
+      `UPDATE tbl_module_videos
              SET status = $1, reason = $2
              WHERE module_video_id = $3`,
-            [status, reason, module_video_id]
-        );
+      [status, reason, module_video_id]
+    );
 
-        if (updateResult.rowCount === 0) {
-            return res.status(404).json({
-                statusCode: 404,
-                message: "Module video not found"
-            });
-        }
-
-        return res.status(200).json({
-            statusCode: 200,
-            message: "Status updated successfully"
-        });
-
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({
-            statusCode: 500,
-            message: "Internal Server Error"
-        });
+    if (updateResult.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Module video not found"
+      });
     }
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Status updated successfully"
+    });
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
 };
 
 
@@ -738,7 +738,7 @@ exports.updatestatus = async (req, res) => {
 //       let module = course.modules.find(
 //         m => m.module_id === row.module_id
 //       );
-      
+
 //       if (!module && row.module_id) {
 //         module = {
 //           module_id: row.module_id,
@@ -898,7 +898,7 @@ exports.gettotalcourse = async (req, res) => {
       );
 
       if (!module && row.module_id) {
-         
+
         module = {
           module_id: row.module_id,
           module_title: row.module_title,
@@ -915,7 +915,7 @@ exports.gettotalcourse = async (req, res) => {
         const signedUrl = await getSignedVideoUrl(row.video);
         module.videos.push({
           module_video_id: row.module_video_id,
-          video_url: signedUrl, 
+          video_url: signedUrl,
           video: row.video,
           video_title: row.video_title,
           status: row.video_status,
@@ -1208,6 +1208,214 @@ exports.getvideos = async (req, res) => {
       statusCode: 500,
       message: "Internal Server Error"
     });
+  } finally {
+    client.release();
+  }
+};
+
+
+exports.deleteModule = async (req, res) => {
+  const { module_id } = req.body;
+
+  if (!module_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "module_id is required"
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // 1️⃣ Get module sheet file
+    const moduleRes = await client.query(
+      `
+      SELECT sheet_file
+      FROM tbl_module
+      WHERE module_id = $1
+      `,
+      [module_id]
+    );
+
+    if (moduleRes.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Module Not Found'
+      })
+    }
+
+    const sheetFileKey = moduleRes.rows[0].sheet_file;
+
+    // 2️⃣ Get module video files
+    const videoRes = await client.query(
+      `
+      SELECT video
+      FROM tbl_module_videos
+      WHERE module_id = $1
+      `,
+      [module_id]
+    );
+
+    // 3️⃣ Delete sheet file from S3
+    if (sheetFileKey) {
+      await deletefroms3(sheetFileKey);
+    }
+
+    // 4️⃣ Delete video files from S3
+    for (const v of videoRes.rows) {
+      if (v.video) {
+        await deletefroms3(v.video);
+      }
+    }
+
+    // 5️⃣ Delete videos from DB
+    await client.query(
+      `
+      DELETE FROM tbl_module_videos
+      WHERE module_id = $1
+      `,
+      [module_id]
+    );
+
+    // 6️⃣ Delete module
+    await client.query(
+      `
+      DELETE FROM tbl_module
+      WHERE module_id = $1
+      `,
+      [module_id]
+    );
+
+    await client.query('COMMIT');
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Module, sheet file, and videos deleted successfully"
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    return res.status(500).json({
+      statusCode: 500,
+      message: error.message || "Internal Server Error"
+    });
+
+  } finally {
+    client.release();
+  }
+};
+
+
+exports.deleteCourse = async (req, res) => {
+  const { course_id } = req.body;
+
+  if (!course_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "course_id is required"
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // 1️⃣ Check course exists
+    const courseCheck = await client.query(
+      `SELECT course_id FROM tbl_course WHERE course_id = $1`,
+      [course_id]
+    );
+
+    if (courseCheck.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Course Not Found'
+      })
+    }
+
+    // 2️⃣ Get all module sheet files
+    const moduleSheets = await client.query(
+      `
+      SELECT sheet_file
+      FROM tbl_module
+      WHERE course_id = $1
+      `,
+      [course_id]
+    );
+
+    // 3️⃣ Get all module video files
+    const moduleVideos = await client.query(
+      `
+      SELECT mv.video
+      FROM tbl_module_videos mv
+      JOIN tbl_module m ON m.module_id = mv.module_id
+      WHERE m.course_id = $1
+      `,
+      [course_id]
+    );
+
+    // 4️⃣ Delete sheet files from S3
+    for (const m of moduleSheets.rows) {
+      if (m.sheet_file) {
+        await deletefroms3(m.sheet_file);
+      }
+    }
+
+    // 5️⃣ Delete video files from S3
+    for (const v of moduleVideos.rows) {
+      if (v.video) {
+        await deletefroms3(v.video);
+      }
+    }
+
+    // 6️⃣ Delete module videos from DB
+    await client.query(
+      `
+      DELETE FROM tbl_module_videos
+      WHERE module_id IN (
+        SELECT module_id FROM tbl_module WHERE course_id = $1
+      )
+      `,
+      [course_id]
+    );
+
+    // 7️⃣ Delete modules
+    await client.query(
+      `
+      DELETE FROM tbl_module
+      WHERE course_id = $1
+      `,
+      [course_id]
+    );
+
+    // 8️⃣ Delete course
+    await client.query(
+      `
+      DELETE FROM tbl_course
+      WHERE course_id = $1
+      `,
+      [course_id]
+    );
+
+    await client.query("COMMIT");
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Course, modules, videos, and S3 files deleted successfully"
+    });
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error(error);
+
+    return res.status(500).json({
+      statusCode: 500,
+      message: error.message || "Internal Server Error"
+    });
+
   } finally {
     client.release();
   }
