@@ -898,6 +898,7 @@ exports.gettotalcourse = async (req, res) => {
       );
 
       if (!module && row.module_id) {
+         
         module = {
           module_id: row.module_id,
           module_title: row.module_title,
@@ -911,8 +912,10 @@ exports.gettotalcourse = async (req, res) => {
 
       // ---------- VIDEO ----------
       if (row.module_video_id && module) {
+        const signedUrl = await getSignedVideoUrl(row.video);
         module.videos.push({
           module_video_id: row.module_video_id,
+          video_url: signedUrl, 
           video: row.video,
           video_title: row.video_title,
           status: row.video_status,
