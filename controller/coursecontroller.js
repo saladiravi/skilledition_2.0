@@ -1,5 +1,5 @@
 const pool = require('../config/db');
-const { uploadToS3, getSignedVideoUrl } = require('../utils/s3upload');
+const { uploadToS3, getSignedVideoUrl ,deletefroms3} = require('../utils/s3upload');
 const ffmpeg = require("fluent-ffmpeg");
 const ffprobe = require("ffprobe-static");
 
