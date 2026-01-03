@@ -12,5 +12,7 @@ router.post('/getassignmentById',verifyToken, allowRoles("admin","student","tuto
 router.post('/addassignmentquestions',verifyToken, allowRoles("admin","student","tutor"),assignment.addassignmentquestion);
 router.post('/getassignmentdetails',verifyToken, allowRoles("admin","student","tutor"),assignment.getassignmentsdetails);
 
+router.post('/getTutorAssignmentDetails',verifyToken, allowRoles("admin","student","tutor"),assignment.getTutorAssignmentDetails)
+
 
 module.exports=router;

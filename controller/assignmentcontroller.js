@@ -409,3 +409,113 @@ exports.getassignmentsdetails=async(req,res)=>{
         })
     }
 }
+
+
+exports.getTutorAssignmentDetails = async (req, res) => {
+  const { tutorId } = req.body;
+
+  try {
+     const query = `
+      SELECT
+        c.course_id,
+        c.course_title,
+        m.module_id,
+        m.module_title,
+        a.assignment_id,
+        a.assignment_title,
+        a.assignment_type,
+        a.total_marks,
+        a.pass_percentage,
+        a.status,
+        a.assignment_date,
+        COUNT(q.question_id) AS total_questions
+      FROM tbl_course c
+      JOIN tbl_module m ON m.course_id = c.course_id
+      JOIN tbl_assignment a ON a.module_id = m.module_id
+      LEFT JOIN tbl_questions q ON q.assignment_id = a.assignment_id
+      WHERE c.tutor_id = $1
+      GROUP BY
+        c.course_id,
+        c.course_title,
+        m.module_id,
+        m.module_title,
+        a.assignment_id
+      ORDER BY c.course_id, m.module_id, a.assignment_id
+    `;
+    const result = await pool.query(query, [tutorId]);
+
+    const courseMap = {};
+
+    result.rows.forEach(row => {
+      // COURSE LEVEL
+      if (!courseMap[row.course_id]) {
+        courseMap[row.course_id] = {
+          course_id: row.course_id,
+          course_title: row.course_title,
+          assignment_date: row.assignment_date, // ✅ keep as you said
+          status:row.status,
+          total_modules: new Set(),        // for counting
+          total_assignments: 0,
+          total_questions: 0,
+          assignment_type: row.assignment_type,
+          pass_percentage: row.pass_percentage,
+
+          modules: []
+        };
+      }
+
+      const course = courseMap[row.course_id];
+
+      // count assignments
+      course.total_assignments += 1;
+
+      // add questions
+      course.total_questions += Number(row.total_questions);
+
+      // MODULE LEVEL
+      let module = course.modules.find(m => m.module_id === row.module_id);
+      if (!module) {
+        module = {
+          module_id: row.module_id,
+          module_title: row.module_title,
+          assignments: []
+        };
+        course.modules.push(module);
+
+        // count unique modules
+        course.total_modules.add(row.module_id);
+      }
+
+      // ASSIGNMENT LEVEL
+      module.assignments.push({
+        assignment_id: row.assignment_id,
+        assignment_title: row.assignment_title,
+        assignment_type: row.assignment_type,
+        total_questions: Number(row.total_questions),
+        total_marks: row.total_marks,
+        pass_percentage: row.pass_percentage,
+     
+        assignment_date: row.assignment_date
+      });
+    });
+
+    // convert Set → number
+    const finalData = Object.values(courseMap).map(course => ({
+      ...course,
+      total_modules: course.total_modules.size
+    }));
+
+    res.status(200).json({
+      statusCode:200,
+      message:'Fectched Sucessfully',
+      data: finalData
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: false,
+      message: "Server error"
+    });
+  }
+};
