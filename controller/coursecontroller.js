@@ -1,5 +1,5 @@
 const pool = require('../config/db');
-const { uploadToS3, getSignedVideoUrl ,deletefroms3} = require('../utils/s3upload');
+const { uploadToS3, getSignedVideoUrl, deletefroms3 } = require('../utils/s3upload');
 const ffmpeg = require("fluent-ffmpeg");
 const ffprobe = require("ffprobe-static");
 
@@ -1418,5 +1418,81 @@ exports.deleteCourse = async (req, res) => {
 
   } finally {
     client.release();
+  }
+};
+
+exports.getTutorCoursesWithModules = async (req, res) => {
+  const { tutorid } = req.body;
+
+  try {
+    const getCoursesWithModulesByTutor = `
+        SELECT
+          c.course_id,
+          c.course_title,
+          c.course_description,
+          c.duration,
+          c.no_of_modules,
+          c.level,
+          c.course_image,
+          c.status,
+          c.course_created_at,
+
+          m.module_id,
+          m.module_title,
+          m.module_description,
+          m.sheet_file,
+          m.total_duration
+        FROM tbl_course c
+        LEFT JOIN tbl_module m
+          ON c.course_id = m.course_id
+        WHERE c.tutor_id = $1
+        ORDER BY c.course_id, m.module_id
+      `;
+
+
+    const result = await pool.query(getCoursesWithModulesByTutor, [tutorid]);
+
+    const coursesMap = {};
+
+    result.rows.forEach(row => {
+      // If course not yet added
+      if (!coursesMap[row.course_id]) {
+        coursesMap[row.course_id] = {
+          course_id: row.course_id,
+          course_title: row.course_title,
+          course_description: row.course_description,
+          duration: row.duration,
+          no_of_modules: row.no_of_modules,
+          level: row.level,
+          course_image: row.course_image,
+          status: row.status,
+          course_created_at: row.course_created_at,
+          modules: []
+        };
+      }
+
+      // Add module if exists
+      if (row.module_id) {
+        coursesMap[row.course_id].modules.push({
+          module_id: row.module_id,
+          module_title: row.module_title,
+          module_description: row.module_description,
+          sheet_file: row.sheet_file,
+          total_duration: row.total_duration
+        });
+      }
+    });
+
+    res.status(200).json({
+      status: true,
+      data: Object.values(coursesMap)
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: false,
+      message: "Server error"
+    });
   }
 };

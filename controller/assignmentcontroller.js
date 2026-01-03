@@ -141,6 +141,77 @@ exports.updateAssignment = async (req, res) => {
 };
 
 
+// exports.addassignmentquestion = async (req, res) => {
+//     const { assignment_id, questions } = req.body;
+
+//     if (!assignment_id || !questions || !Array.isArray(questions)) {
+//         return res.status(400).json({
+//             statusCode: 400,
+//             message: "Bad Request: assignment_id and questions are required"
+//         });
+//     }
+
+//     try {
+//         // Get assignment + total question count
+//         const existAssign = await pool.query(
+//             `SELECT assignment_id, total_questions 
+//              FROM tbl_assignment 
+//              WHERE assignment_id = $1`,
+//             [assignment_id]
+//         );
+
+//         if (existAssign.rows.length === 0) {
+//             return res.status(404).json({
+//                 statusCode: 404,
+//                 message: "Assignment Not Found"
+//             });
+//         }
+
+//         const totalAllowed = existAssign.rows[0].total_questions;
+//         const incomingCount = questions.length;
+
+//         // Strict total match check
+//         if (incomingCount !== totalAllowed) {
+//             return res.status(400).json({
+//                 statusCode: 400,
+//                 message: `You must add exactly ${totalAllowed} questions. You sent ${incomingCount}. Nothing was added.`
+//             });
+//         }
+
+//         // Insert question only when count matches
+//         for (const q of questions) {
+//             await pool.query(
+//                 `INSERT INTO tbl_questions 
+//                 (question, a, b, c, d, answer, assignment_id)
+//                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+//                 [
+//                     q.question,
+//                     q.a,
+//                     q.b,
+//                     q.c,
+//                     q.d,
+//                     q.answer,
+//                     assignment_id
+//                 ]
+//             );
+//         }
+
+//         return res.status(200).json({
+//             statusCode: 200,
+//             message: "Questions added successfully",
+//             added: incomingCount
+//         });
+
+//     } catch (error) {
+//         console.log(error);
+//         return res.status(500).json({
+//             statusCode: 500,
+//             message: "Internal Server Error"
+//         });
+//     }
+// };
+
+
 exports.addassignmentquestion = async (req, res) => {
     const { assignment_id, questions } = req.body;
 
@@ -169,6 +240,7 @@ exports.addassignmentquestion = async (req, res) => {
 
         const totalAllowed = existAssign.rows[0].total_questions;
         const incomingCount = questions.length;
+        console.log('totalAllowd', totalAllowed);
 
         // Strict total match check
         if (incomingCount !== totalAllowed) {
@@ -177,13 +249,13 @@ exports.addassignmentquestion = async (req, res) => {
                 message: `You must add exactly ${totalAllowed} questions. You sent ${incomingCount}. Nothing was added.`
             });
         }
-
+        const assignmentStatus = questions[0].status;
         // Insert question only when count matches
         for (const q of questions) {
             await pool.query(
                 `INSERT INTO tbl_questions 
-                (question, a, b, c, d, answer, assignment_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                (question, a, b, c, d, answer, status,assignment_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7,$8)`,
                 [
                     q.question,
                     q.a,
@@ -191,11 +263,18 @@ exports.addassignmentquestion = async (req, res) => {
                     q.c,
                     q.d,
                     q.answer,
+                    q.status,
                     assignment_id
                 ]
             );
         }
 
+        await pool.query(
+            `UPDATE tbl_assignment 
+             SET status = $1 
+             WHERE assignment_id = $2`,
+            [assignmentStatus, assignment_id]
+        );
         return res.status(200).json({
             statusCode: 200,
             message: "Questions added successfully",
@@ -210,9 +289,6 @@ exports.addassignmentquestion = async (req, res) => {
         });
     }
 };
-
-
-
 
 
 exports.getAssignmentById = async (req, res) => {

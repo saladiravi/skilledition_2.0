@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const upload = require('../utils/uploadfile');
 const  Course  = require('../controller/coursecontroller');
+const upload = require('../utils/uploadfile');
 const { verifyToken } = require("../middleware/authMiddleware");
 const { allowRoles } = require("../middleware/roleMiddleware");
 
@@ -33,6 +33,6 @@ router.post(
 router.post('/getvideos',verifyToken, allowRoles("admin","student","tutor"),Course.getvideos);
 router.post('/deletecourse',verifyToken,allowRoles("admin","student","tutor"),Course.deleteCourse);
 router.post('/deletemodule',verifyToken,allowRoles("admin","student","tutor"),Course.deleteModule);
-
+router.post('/getTutorCoursesWithModules',verifyToken,allowRoles("admin","student","tutor"),Course.getTutorCoursesWithModules);
 
 module.exports = router;
