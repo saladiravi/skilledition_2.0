@@ -488,6 +488,7 @@ exports.getTutorAssignmentDetails = async (req, res) => {
           module_id: row.module_id,
           module_title: row.module_title,
            module_total_marks: 0,
+             status:row.status,
           assignments: []
         };
         course.modules.push(module);
