@@ -465,6 +465,7 @@ exports.getTutorAssignmentDetails = async (req, res) => {
           total_modules: new Set(),        // for counting
           total_assignments: 0,
           total_questions: 0,
+          course_total_marks: 0,
           assignment_type: row.assignment_type,
           pass_percentage: row.pass_percentage,
 
@@ -479,13 +480,14 @@ exports.getTutorAssignmentDetails = async (req, res) => {
 
       // add questions
       course.total_questions += Number(row.total_questions);
-
+        course.course_total_marks += Number(row.total_marks || 0);
       // MODULE LEVEL
       let module = course.modules.find(m => m.module_id === row.module_id);
       if (!module) {
         module = {
           module_id: row.module_id,
           module_title: row.module_title,
+           module_total_marks: 0,
           assignments: []
         };
         course.modules.push(module);
@@ -493,7 +495,7 @@ exports.getTutorAssignmentDetails = async (req, res) => {
         // count unique modules
         course.total_modules.add(row.module_id);
       }
-
+        module.module_total_marks += Number(row.total_marks || 0); // ✅
       // ASSIGNMENT LEVEL
       module.assignments.push({
         assignment_id: row.assignment_id,
