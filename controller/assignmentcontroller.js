@@ -309,6 +309,7 @@ exports.getAssignmentById = async (req, res) => {
         }
 
         const assignment = assignmentData.rows[0];
+        const fetchdata = await pool.query(`SELECT * FROM tbl_assignment WHERE assignment_id=$1`, [assignment_id]);
 
         // Fetch questions belonging to this assignment
         const questionData = await pool.query(
@@ -319,14 +320,21 @@ exports.getAssignmentById = async (req, res) => {
         );
 
         const questions = questionData.rows;
+        console.log(questions, 'questions');
 
         return res.status(200).json({
             statusCode: 200,
             message: "Assignment fetched successfully",
             assignment: {
                 assignment_id: assignment.assignment_id,
-                course_id: assignment.course_id,
-                module_id: assignment.module_id,
+                assignment_title:assignment.assignment_title,
+                assignment_type:assignment.assignment_type,
+                total_questions:assignment.total_questions,
+                total_marks:assignment.total_marks,
+                pass_percentage:assignment.pass_percentage,
+                status:assignment.status,
+                assignment_date:assignment.assignment_date,
+            
                 assignment_description: assignment.assignment_description,
                 questions: questions
             }
