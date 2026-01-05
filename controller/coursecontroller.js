@@ -1484,7 +1484,8 @@ exports.getTutorCoursesWithModules = async (req, res) => {
     });
 
     res.status(200).json({
-      status: true,
+      statusCode:200,
+      message:'Fetched Sucessfully',
       data: Object.values(coursesMap)
     });
 
