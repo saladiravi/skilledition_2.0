@@ -155,7 +155,7 @@ exports.getTutorFeedbacks = async (req, res) => {
       });
     }
 
-    const feedbackResult = await con.query(`SELECT f.feedback_id, f.rating, f.enjoy_most, f.review, f.response, f.feedback_created_at, u.user_id AS student_id, u.full_name AS student_name, c.course_id, c.course_title FROM tbl_feedback f JOIN tbl_user u ON f.student_id = u.user_id LEFT JOIN tbl_course c ON f.course_id = c.course_id WHERE f.tutor_id = $1 ORDER BY f.feedback_created_at DESC`,
+     const feedbackResult = await con.query(`SELECT f.feedback_id, f.rating, f.enjoy_most, f.review, f.response, f.feedback_created_at, u.user_id AS student_id, u.full_name AS student_name, c.course_id, c.course_title FROM tbl_feedback f JOIN tbl_user u ON f.student_id = u.user_id LEFT JOIN tbl_course c ON f.course_id = c.course_id WHERE f.tutor_id = $1 ORDER BY f.feedback_id DESC`,
       [tutor_id]
     );
 
@@ -186,16 +186,16 @@ exports.respondToFeedback = async (req, res) => {
 
     if (!feedback_id || !response) {
       return res.status(400).json({
-        statusCode:404,
+        statusCode:400,
         message: "feedback_id and response are required"
       });
     }
 
-    const result = await con.query(`UPDATE tbl_feedback SET response = $1 WHERE feedback_id = $2 RETURNING *`,
+    const result = await con.query(`UPDATE tbl_feedback SET response = $1 WHERE feedback_id = $2`,
       [response, feedback_id]
     );
 
-    if (result.rows.length === 0) {
+    if (result.rowCount === 0) {
       return res.status(404).json({
         statusCode:404,
         message: "Feedback not found"
@@ -204,7 +204,7 @@ exports.respondToFeedback = async (req, res) => {
 
     return res.status(200).json({
       statusCode:200,
-      message: "Response sent successfully",
+      message: "Updated Successfully",
       data: result.rows[0]
     });
 
