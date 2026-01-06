@@ -136,6 +136,7 @@ exports.getTutorFeedbacks = async (req, res) => {
 
     if (!tutor_id) {
       return res.status(400).json({
+         statusCode:400,
         message: "tutor_id is required"
       });
     }
@@ -149,6 +150,7 @@ exports.getTutorFeedbacks = async (req, res) => {
     );
 
     return res.status(200).json({
+      statusCode:200,
       message: "Tutor feedbacks fetched successfully",
       total_feedbacks: feedbackResult.rows.length,
       rating_summary: ratingResult.rows[0],
@@ -156,8 +158,9 @@ exports.getTutorFeedbacks = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("GET TUTOR FEEDBACKS ERROR 🔴:", error);
+   
     return res.status(500).json({
+       statusCode:500,
       message: "Internal server error"
     });
   }
@@ -169,6 +172,7 @@ exports.respondToFeedback = async (req, res) => {
 
     if (!feedback_id || !response) {
       return res.status(400).json({
+        statusCode:404,
         message: "feedback_id and response are required"
       });
     }
@@ -179,11 +183,13 @@ exports.respondToFeedback = async (req, res) => {
 
     if (result.rows.length === 0) {
       return res.status(404).json({
+        statusCode:404,
         message: "Feedback not found"
       });
     }
 
     return res.status(200).json({
+      statusCode:200,
       message: "Response sent successfully",
       data: result.rows[0]
     });
@@ -191,6 +197,7 @@ exports.respondToFeedback = async (req, res) => {
   } catch (error) {
     console.error("RESPOND FEEDBACK ERROR 🔴:", error);
     return res.status(500).json({
+      statusCode:500,
       message: "Internal server error"
     });
   }
