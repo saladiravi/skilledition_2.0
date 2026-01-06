@@ -147,12 +147,14 @@ exports.changePassword = async (req, res) => {
   // 1️⃣ Validate input
   if (!currentPassword || !newPassword || !confirmNewPassword) {
     return res.status(400).json({
+      statusCode:400,
       message: "All fields are required"
     });
   }
 
   if (newPassword !== confirmNewPassword) {
     return res.status(400).json({
+      statusCode:400,
       message: "New password and confirm password do not match"
     });
   }
@@ -166,6 +168,7 @@ exports.changePassword = async (req, res) => {
 
     if (userResult.rows.length === 0) {
       return res.status(404).json({
+        statusCode:404,
         message: "User not found"
       });
     }
@@ -177,6 +180,7 @@ exports.changePassword = async (req, res) => {
 
     if (!isMatch) {
       return res.status(401).json({
+        statusCode:401,
         message: "Current password is incorrect"
       });
     }
@@ -193,12 +197,14 @@ exports.changePassword = async (req, res) => {
 
     // 6️⃣ Success response
     res.status(200).json({
+      statusCode:200,
       message: "Password updated successfully"
     });
 
   } catch (error) {
     console.error(error);
     res.status(500).json({
+      statusCode:500,
       message: "Internal server error"
     });
   }
@@ -210,7 +216,10 @@ exports.getTutorBankDetails = async (req, res) => {
   const { user_id } = req.body; // or req.user.user_id (JWT)
 
   if (!user_id) {
-    return res.status(400).json({ message: "user_id is required" });
+    return res.status(400).json({ 
+      statusCode:400,
+      message: "user_id is required" 
+    });
   }
 
   try {
@@ -230,18 +239,20 @@ exports.getTutorBankDetails = async (req, res) => {
 
     if (result.rows.length === 0) {
       return res.status(404).json({
+        statusCode:404,
         message: "Tutor details not found"
       });
     }
 
     res.status(200).json({
-      status: true,
+      statusCode:200,
       data: result.rows[0]
     });
 
   } catch (error) {
     console.error(error);
     res.status(500).json({
+      statusCode:500,
       message: "Internal server error"
     });
   }
@@ -314,8 +325,9 @@ exports.updateTutorBankDetails = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    
     res.status(500).json({
+      statusCode:500,
       message: "Internal server error"
     });
   }

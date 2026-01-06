@@ -6,6 +6,7 @@ exports.addfeedback = async (req, res) => {
 
     if (!student_id || !tutor_id || !rating) {
       return res.status(400).json({
+        statusCode:400,
         message: "student_id, tutor_id and rating are required"
       });
     }
@@ -20,6 +21,7 @@ exports.addfeedback = async (req, res) => {
       studentCheck.rows[0].role !== 'student'
     ) {
       return res.status(400).json({
+        statusCode:400,
         message: "Invalid student_id"
       });
     }
@@ -34,6 +36,7 @@ exports.addfeedback = async (req, res) => {
       tutorCheck.rows[0].role !== 'tutor'
     ) {
       return res.status(400).json({
+        statusCode:400,
         message: "Invalid tutor_id"
       });
     }
@@ -42,14 +45,16 @@ exports.addfeedback = async (req, res) => {
       [ student_id, tutor_id, course_id || null, rating, enjoy_most || null, review || null ]
     );
 
-    return res.status(201).json({
+    return res.status(200).json({
+      statusCode:200,
       message: "Feedback added successfully",
       data: result.rows[0]
     });
 
   } catch (error) {
-    console.error("ADD FEEDBACK ERROR 🔴:", error);
+ 
     return res.status(500).json({
+      statusCode:500,
       message: "Internal server error"
     });
   }
@@ -61,6 +66,7 @@ exports.deleteFeedback = async (req, res) => {
 
     if (!feedback_id) {
       return res.status(400).json({
+        statusCode:400,
         message: "feedback_id is required"
       });
     }
@@ -71,6 +77,7 @@ exports.deleteFeedback = async (req, res) => {
 
     if (check.rows.length === 0) {
       return res.status(404).json({
+        statusCode:404,
         message: "Feedback not found"
       });
     }
@@ -80,12 +87,14 @@ exports.deleteFeedback = async (req, res) => {
     );
 
     return res.status(200).json({
+      statusCode:200,
       message: "Feedback deleted successfully"
     });
 
   } catch (error) {
-    console.error("DELETE FEEDBACK ERROR 🔴:", error);
+     
     return res.status(500).json({
+      statusCode:500,
       message: "Internal server error"
     });
   }
@@ -97,12 +106,14 @@ exports.updateFeedback = async (req, res) => {
 
     if (!feedback_id) {
       return res.status(400).json({
+        statusCode:400,
         message: "feedback_id is required"
       });
     }
 
     if (rating === undefined && enjoy_most === undefined && review === undefined) {
       return res.status(400).json({
+        statusCode:400,
         message: "At least one field (rating, enjoy_most, review) is required to update"
       });
     }
@@ -113,18 +124,21 @@ exports.updateFeedback = async (req, res) => {
 
     if (result.rows.length === 0) {
       return res.status(404).json({
+        statusCode:404,
         message: "Feedback not found"
       });
     }
 
     return res.status(200).json({
+      statusCode:200,
       message: "Feedback updated successfully",
       data: result.rows[0]
     });
 
   } catch (error) {
-    console.error("UPDATE FEEDBACK ERROR 🔴:", error);
+   
     return res.status(500).json({
+      statusCode:'500',
       message: "Internal server error"
     });
   }
