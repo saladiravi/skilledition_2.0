@@ -334,3 +334,141 @@ exports.updateTutorBankDetails = async (req, res) => {
     });
   }
 };
+
+
+exports.getProfile = async (req, res) => {
+  const { user_id } = req.body;
+
+  if (!user_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "user_id is required"
+    });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT 
+        tt.profile_pic,
+        tu.full_name,
+        tt.highest_qualification,
+        tt.professional_bio,
+        tt.subject_to_teach,
+        tt.phone_number
+      FROM tbl_user AS tu
+      JOIN tbl_tutor AS tt ON tu.user_id = tt.user_id
+      WHERE tu.user_id = $1
+      `,
+      [user_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Profile not found"
+      });
+    }
+
+    const profile = result.rows[0];
+
+    // Generate signed URL if profile pic exists
+    if (profile.profile_pic) {
+      profile.profile_pic = await getSignedVideoUrl(profile.profile_pic);
+    }
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Fetched successfully",
+      data: profile
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
+
+
+
+exports.updateProfile = async (req, res) => {
+  const {
+    user_id,
+    full_name,
+    highest_qualification,
+    professional_bio,
+    subject_to_teach
+  } = req.body;
+
+  if (!user_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "user_id is required"
+    });
+  }
+
+  try {
+    let profile_pic_key = null;
+
+    // Upload profile picture to S3 (if provided)
+    if (req.files?.profile_pic?.length > 0) {
+      profile_pic_key = await uploadToS3(
+        req.files.profile_pic[0],
+        "users/profile_pics"
+      );
+    }
+
+    /* -------------------- Update tbl_user -------------------- */
+    if (full_name) {
+      await pool.query(
+        `UPDATE tbl_user SET full_name = $1 WHERE user_id = $2`,
+        [full_name, user_id]
+      );
+    }
+
+    /* -------------------- Update tbl_tutor -------------------- */
+    const query = `
+      UPDATE tbl_tutor
+      SET 
+        highest_qualification = COALESCE($1, highest_qualification),
+        professional_bio = COALESCE($2, professional_bio),
+        subject_to_teach = COALESCE($3, subject_to_teach),
+        profile_pic = COALESCE($4, profile_pic)
+      WHERE user_id = $5
+      RETURNING user_id, profile_pic;
+    `;
+
+    const values = [
+      highest_qualification,
+      professional_bio,
+      subject_to_teach,
+      profile_pic_key,
+      user_id
+    ];
+
+    const result = await pool.query(query, values);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Tutor not found"
+      });
+    }
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Profile updated successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
