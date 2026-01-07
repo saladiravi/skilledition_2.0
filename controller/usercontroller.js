@@ -1,6 +1,7 @@
 const pool =require('../config/db');
 const bcrypt=require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { uploadToS3, getSignedVideoUrl } = require('../utils/s3upload');
 require("dotenv").config();
 
 const jwr_secret = process.env.JWT_SECRET;
