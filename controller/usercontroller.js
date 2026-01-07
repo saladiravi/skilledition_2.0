@@ -439,10 +439,9 @@ exports.updateProfile = async (req, res) => {
         professional_bio = COALESCE($2, professional_bio),
         subject_to_teach = COALESCE($3, subject_to_teach),
         profile_pic = COALESCE($4, profile_pic),
-        phone_number = COALESCE($4, phone_number),
-        
-      WHERE user_id = $5
-      RETURNING user_id, profile_pic;
+        phone_number = COALESCE($5, phone_number)
+      WHERE user_id = $6
+      RETURNING user_id, profile_pic, phone_number;
     `;
 
     const values = [
@@ -465,8 +464,8 @@ exports.updateProfile = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Profile updated successfully",
-      data: result.rows[0]
+      message: "Profile updated successfully"
+    
     });
 
   } catch (error) {
