@@ -133,6 +133,7 @@ exports.getuser=async(req,res)=>{
       })
   }catch(error){
     return res.status(500).json({
+      message:500,
       statusCode:'Internal Server Error'
     })
   }
@@ -246,6 +247,7 @@ exports.getTutorBankDetails = async (req, res) => {
 
     res.status(200).json({
       statusCode:200,
+      message:'Fetched Sucessfully',
       data: result.rows[0]
     });
 
