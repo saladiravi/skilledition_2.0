@@ -401,7 +401,8 @@ exports.updateProfile = async (req, res) => {
     full_name,
     highest_qualification,
     professional_bio,
-    subject_to_teach
+    subject_to_teach,
+    phone_number
   } = req.body;
 
   if (!user_id) {
@@ -437,7 +438,9 @@ exports.updateProfile = async (req, res) => {
         highest_qualification = COALESCE($1, highest_qualification),
         professional_bio = COALESCE($2, professional_bio),
         subject_to_teach = COALESCE($3, subject_to_teach),
-        profile_pic = COALESCE($4, profile_pic)
+        profile_pic = COALESCE($4, profile_pic),
+        phone_number = COALESCE($4, phone_number),
+        
       WHERE user_id = $5
       RETURNING user_id, profile_pic;
     `;
@@ -447,6 +450,7 @@ exports.updateProfile = async (req, res) => {
       professional_bio,
       subject_to_teach,
       profile_pic_key,
+      phone_number,
       user_id
     ];
 
