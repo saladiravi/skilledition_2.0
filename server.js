@@ -9,6 +9,7 @@ const tutor=require('./routes/tutorroutes');
 const studentcourse=require('./routes/studentcourseroutes')
 const studentassignment=require('./routes/studentassignmentroutes');
 const feedbacks =require('./routes/feedbackroutes');
+const announcement=require('./routes/announcementroutes');
 
 const app = express();
 
@@ -24,7 +25,7 @@ app.use('/tutor',tutor);
 app.use('/studentcourse',studentcourse);
 app.use('/studentassignment',studentassignment);
 app.use('/feedbacks',feedbacks);
-
+app.use('/announcement',announcement);
 
 
 app.listen(5000, () => {
