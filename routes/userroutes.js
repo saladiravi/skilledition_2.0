@@ -11,8 +11,8 @@ router.post('/adduser', userController.addUser);
 router.post('/loginuser',userController.loginUser);
 router.post('/getuser',userController.getuser);
 router.post('/tutorchangePassword', verifyToken, allowRoles("admin", "student", "tutor"),userController.changePassword);
-router.post('/tutorgetTutorBankDetail', verifyToken, allowRoles("admin", "student", "tutor"),userController.getTutorBankDetails)
-router.post('/tutorupdatetutorbankdetails', verifyToken, allowRoles("admin", "student", "tutor"),userController.updateTutorBankDetails);
+router.post('/getTutorBankDetail', verifyToken, allowRoles("admin", "student", "tutor"),userController.getTutorBankDetails)
+router.post('/updatetutorbankdetails', verifyToken, allowRoles("admin", "student", "tutor"),userController.updateTutorBankDetails);
 
 router.post('/tutorgetprofile', verifyToken, allowRoles("admin", "student", "tutor"),userController.getProfile)
 
