@@ -532,6 +532,107 @@ exports.getTutorAssignmentDetails = async (req, res) => {
 };
 
 
+// exports.addAssignmentWithQuestions = async (req, res) => {
+//   const {
+//     course_id,
+//     module_id,
+//     assignment_title,
+//     assignment_type,
+//     total_questions,
+//     total_marks,
+//     pass_percentage,
+//     questions // array of questions
+//   } = req.body;
+
+//   if (!course_id  || !assignment_title || !total_questions) {
+//     return res.status(400).json({
+//       statusCode: 400,
+//       message: "Missing required fields"
+//     });
+//   }
+
+//   if (!questions || !Array.isArray(questions)) {
+//     return res.status(400).json({
+//       statusCode: 400,
+//       message: "Questions array is required"
+//     });
+//   }
+
+//   const client = await pool.connect(); // transaction
+//   try {
+//     await client.query("BEGIN");
+
+//     // 1️⃣ Check if course exists
+//     const existCourse = await client.query(
+//       `SELECT course_id FROM tbl_course WHERE course_id=$1`,
+//       [course_id]
+//     );
+//     if (existCourse.rows.length === 0) {
+//       await client.query("ROLLBACK");
+//       return res.status(404).json({
+//         statusCode: 404,
+//         message: "Course not found"
+//       });
+//     }
+
+//     // 2️⃣ Validate total_questions match
+//     if (questions.length !== total_questions) {
+//       await client.query("ROLLBACK");
+//       return res.status(400).json({
+//         statusCode: 400,
+//         message: `You must add exactly ${total_questions} questions. You sent ${questions.length}.`
+//       });
+//     }
+
+//     // 3️⃣ Insert assignment
+//     const assignmentRes = await client.query(
+//       `INSERT INTO tbl_assignment 
+//         (course_id, module_id, assignment_title, assignment_type, total_questions, total_marks, pass_percentage)
+//        VALUES ($1,$2,$3,$4,$5,$6,$7)
+//        RETURNING assignment_id`,
+//       [course_id, module_id, assignment_title, assignment_type, total_questions, total_marks, pass_percentage]
+//     );
+
+//     const assignment_id = assignmentRes.rows[0].assignment_id;
+
+//     // 4️⃣ Insert questions
+//     const assignmentStatus = questions[0].status; // assuming all same status
+//     for (const q of questions) {
+//       await client.query(
+//         `INSERT INTO tbl_questions 
+//           (question, a, b, c, d, answer, assignment_id)
+//          VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+//         [q.question, q.a, q.b, q.c, q.d, q.answer, assignment_id]
+//       );
+//     }
+
+//     // 5️⃣ Update assignment status
+
+
+//     await client.query("COMMIT");
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: "Assignment and questions added successfully",
+//       assignment_id,
+//       total_questions: questions.length
+//     });
+
+//   } catch (error) {
+//     await client.query("ROLLBACK");
+     
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error"
+//     });
+//   } finally {
+//     client.release();
+//   }
+// };
+
+
+
+
 exports.addAssignmentWithQuestions = async (req, res) => {
   const {
     course_id,
@@ -541,73 +642,97 @@ exports.addAssignmentWithQuestions = async (req, res) => {
     total_questions,
     total_marks,
     pass_percentage,
-    questions // array of questions
+    questions
   } = req.body;
 
-  if (!course_id  || !assignment_title || !total_questions) {
+  // 🔹 Type conversion (VERY IMPORTANT)
+  const courseId = Number(course_id);
+  const moduleId = module_id ? Number(module_id) : null;
+  const totalQuestions = Number(total_questions);
+  const totalMarks = total_marks ? Number(total_marks) : null;
+
+  // 🔹 Basic validations
+  if (!courseId || !assignment_title || !totalQuestions) {
     return res.status(400).json({
       statusCode: 400,
-      message: "Missing required fields"
+      message: "Missing or invalid required fields"
     });
   }
 
-  if (!questions || !Array.isArray(questions)) {
+  if (!Array.isArray(questions) || questions.length === 0) {
     return res.status(400).json({
       statusCode: 400,
       message: "Questions array is required"
     });
   }
 
-  const client = await pool.connect(); // transaction
+  if (questions.length !== totalQuestions) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: `You must add exactly ${totalQuestions} questions. You sent ${questions.length}.`
+    });
+  }
+
+  const client = await pool.connect();
+
   try {
     await client.query("BEGIN");
 
-    // 1️⃣ Check if course exists
-    const existCourse = await client.query(
-      `SELECT course_id FROM tbl_course WHERE course_id=$1`,
-      [course_id]
+    // 1️⃣ Validate course exists
+    const courseCheck = await client.query(
+      `SELECT course_id FROM tbl_course WHERE course_id = $1`,
+      [courseId]
     );
-    if (existCourse.rows.length === 0) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({
-        statusCode: 404,
-        message: "Course not found"
-      });
+
+    if (courseCheck.rows.length === 0) {
+      throw new Error("Course not found");
     }
 
-    // 2️⃣ Validate total_questions match
-    if (questions.length !== total_questions) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({
-        statusCode: 400,
-        message: `You must add exactly ${total_questions} questions. You sent ${questions.length}.`
-      });
-    }
-
-    // 3️⃣ Insert assignment
+    // 2️⃣ Insert assignment (default status = Pending)
     const assignmentRes = await client.query(
-      `INSERT INTO tbl_assignment 
-        (course_id, module_id, assignment_title, assignment_type, total_questions, total_marks, pass_percentage)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `INSERT INTO tbl_assignment
+       (course_id, module_id, assignment_title, assignment_type,
+        total_questions, total_marks, pass_percentage, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'Pending')
        RETURNING assignment_id`,
-      [course_id, module_id, assignment_title, assignment_type, total_questions, total_marks, pass_percentage]
+      [
+        courseId,
+        moduleId,
+        assignment_title,
+        assignment_type,
+        totalQuestions,
+        totalMarks,
+        pass_percentage
+      ]
     );
 
     const assignment_id = assignmentRes.rows[0].assignment_id;
 
-    // 4️⃣ Insert questions
-    const assignmentStatus = questions[0].status; // assuming all same status
+    // 3️⃣ Insert questions (default status = Pending)
     for (const q of questions) {
+      if (!q.question || !q.a || !q.b || !q.c || !q.d || !q.answer) {
+        throw new Error("Each question must contain question, options, and answer");
+      }
+
+      if (!['a', 'b', 'c', 'd'].includes(q.answer)) {
+        throw new Error("Answer must be one of a, b, c, d");
+      }
+
       await client.query(
-        `INSERT INTO tbl_questions 
-          (question, a, b, c, d, answer, assignment_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [q.question, q.a, q.b, q.c, q.d, q.answer, assignment_id]
+        `INSERT INTO tbl_questions
+         (question, a, b, c, d, answer, assignment_id, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'Pending')`,
+        [
+          q.question,
+          q.a,
+          q.b,
+          q.c,
+          q.d,
+          q.answer,
+          assignment_id
+        ]
       );
     }
-
-    // 5️⃣ Update assignment status
-
 
     await client.query("COMMIT");
 
@@ -615,17 +740,207 @@ exports.addAssignmentWithQuestions = async (req, res) => {
       statusCode: 200,
       message: "Assignment and questions added successfully",
       assignment_id,
-      total_questions: questions.length
+      total_questions: totalQuestions
     });
 
   } catch (error) {
     await client.query("ROLLBACK");
-     
+  
+
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: error.message
     });
   } finally {
     client.release();
   }
+};
+
+
+exports.rejectQuestion = async (req, res) => {
+    const { assignment_id, questions } = req.body;
+
+    if (
+        !assignment_id ||
+        !Array.isArray(questions) ||
+        questions.length === 0
+    ) {
+        return res.status(400).json({
+            message: "assignment_id and questions array are required"
+        });
+    }
+
+    const client = await pool.connect();
+
+
+    try {
+        await client.query("BEGIN");
+
+        // 1️⃣ Reject each question
+        for (const q of questions) {
+            if (!q.question_id || !q.reason) {
+                throw new Error("Each question must have question_id and reason");
+            }
+
+            await client.query(
+                `UPDATE tbl_questions
+         SET status = 'Rejected',
+             reason = $1
+         WHERE question_id = $2
+           AND assignment_id = $3`,
+                [q.reason, q.question_id, assignment_id]
+            );
+        }
+
+        // 2️⃣ Recalculate assignment status
+        const statusResult = await client.query(
+            `SELECT
+         COUNT(*) FILTER (WHERE status = 'Rejected') AS rejected,
+         COUNT(*) FILTER (WHERE status = 'Approved') AS approved,
+         COUNT(*) AS total
+       FROM tbl_questions
+       WHERE assignment_id = $1`,
+            [assignment_id]
+        );
+
+        const { rejected, approved, total } = statusResult.rows[0];
+
+        let assignmentStatus = "Pending";
+
+        if (rejected > 0) {
+            assignmentStatus = "Rejected";
+        } else if (approved == total) {
+            assignmentStatus = "Approved";
+        }
+
+        // 3️⃣ Update assignment
+        await client.query(
+            `UPDATE tbl_assignment
+       SET status = $1
+       WHERE assignment_id = $2`,
+            [assignmentStatus, assignment_id]
+        );
+
+        await client.query("COMMIT");
+
+        res.status(200).json({
+            message: "Questions rejected successfully",
+            assignmentStatus
+        });
+
+    } catch (error) {
+        await client.query("ROLLBACK");
+        console.error(error.message);
+
+        res.status(500).json({
+            message: error.message || "Internal Server Error"
+        });
+    } finally {
+        client.release();
+    }
+};
+
+
+exports.getRejectedQuestions = async (req, res) => {
+    const { assignment_id } = req.body;
+
+    try {
+        const result = await pool.query(
+            `SELECT *
+       FROM tbl_questions
+       WHERE assignment_id = $1
+         AND status = 'Rejected'`,
+            [assignment_id]
+        );
+
+        res.status(200).json({
+            statusCode: 200,
+            rejectedQuestions: result.rows
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            statusCode: 500,
+            message: "Internal Server Error"
+        });
+    }
+};
+
+
+exports.updateRejectedQuestions = async (req, res) => {
+    const { assignment_id, questions } = req.body;
+
+    if (!assignment_id || !Array.isArray(questions)) {
+        return res.status(400).json({
+            statusCode: 400,
+            message: "assignment_id and questions are required"
+        });
+    }
+
+    const client = await pool.connect();
+
+    try {
+        await client.query("BEGIN");
+
+        for (const q of questions) {
+            const result = await client.query(
+                `UPDATE tbl_questions
+         SET question = $1,
+             a = $2,
+             b = $3,
+             c = $4,
+             d = $5,
+             answer = $6,
+             status = 'Pending',
+             reason = NULL
+         WHERE question_id = $7
+           AND assignment_id = $8
+           AND status = 'Rejected'`,
+                [
+                    q.question,
+                    q.a,
+                    q.b,
+                    q.c,
+                    q.d,
+                    q.answer,
+                    q.question_id,
+                    assignment_id
+                ]
+            );
+
+            // ❌ Prevent update if not rejected
+            if (result.rowCount === 0) {
+                throw new Error(
+                    `Question ${q.question_id} is not rejected or cannot be updated`
+                );
+            }
+        }
+
+        // Assignment goes back to Pending
+        await client.query(
+            `UPDATE tbl_assignment
+       SET status = 'Pending'
+       WHERE assignment_id = $1`,
+            [assignment_id]
+        );
+
+        await client.query("COMMIT");
+
+        res.status(200).json({
+            statusCode: 200,
+            message: "Rejected questions updated and sent for re-approval"
+        });
+
+    } catch (error) {
+        await client.query("ROLLBACK");
+
+
+        res.status(400).json({
+            statusCode: 400,
+            message: error.message
+        });
+    } finally {
+        client.release();
+    }
 };
