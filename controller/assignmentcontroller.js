@@ -530,3 +530,102 @@ exports.getTutorAssignmentDetails = async (req, res) => {
     });
   }
 };
+
+
+exports.addAssignmentWithQuestions = async (req, res) => {
+  const {
+    course_id,
+    module_id,
+    assignment_title,
+    assignment_type,
+    total_questions,
+    total_marks,
+    pass_percentage,
+    questions // array of questions
+  } = req.body;
+
+  if (!course_id  || !assignment_title || !total_questions) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "Missing required fields"
+    });
+  }
+
+  if (!questions || !Array.isArray(questions)) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "Questions array is required"
+    });
+  }
+
+  const client = await pool.connect(); // transaction
+  try {
+    await client.query("BEGIN");
+
+    // 1️⃣ Check if course exists
+    const existCourse = await client.query(
+      `SELECT course_id FROM tbl_course WHERE course_id=$1`,
+      [course_id]
+    );
+    if (existCourse.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Course not found"
+      });
+    }
+
+    // 2️⃣ Validate total_questions match
+    if (questions.length !== total_questions) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        statusCode: 400,
+        message: `You must add exactly ${total_questions} questions. You sent ${questions.length}.`
+      });
+    }
+
+    // 3️⃣ Insert assignment
+    const assignmentRes = await client.query(
+      `INSERT INTO tbl_assignment 
+        (course_id, module_id, assignment_title, assignment_type, total_questions, total_marks, pass_percentage)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       RETURNING assignment_id`,
+      [course_id, module_id, assignment_title, assignment_type, total_questions, total_marks, pass_percentage]
+    );
+
+    const assignment_id = assignmentRes.rows[0].assignment_id;
+
+    // 4️⃣ Insert questions
+    const assignmentStatus = questions[0].status; // assuming all same status
+    for (const q of questions) {
+      await client.query(
+        `INSERT INTO tbl_questions 
+          (question, a, b, c, d, answer, assignment_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [q.question, q.a, q.b, q.c, q.d, q.answer, assignment_id]
+      );
+    }
+
+    // 5️⃣ Update assignment status
+
+
+    await client.query("COMMIT");
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Assignment and questions added successfully",
+      assignment_id,
+      total_questions: questions.length
+    });
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+     
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  } finally {
+    client.release();
+  }
+};

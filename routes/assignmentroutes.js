@@ -14,5 +14,8 @@ router.post('/getassignmentdetails',verifyToken, allowRoles("admin","student","t
 
 router.post('/getTutorAssignmentDetails',verifyToken, allowRoles("admin","student","tutor"),assignment.getTutorAssignmentDetails)
 
+router.post('/addAssignmentWithQuestions',verifyToken, allowRoles("admin","student","tutor"),assignment.addAssignmentWithQuestions);
+
+
 
 module.exports=router;
