@@ -844,18 +844,88 @@ exports.rejectQuestion = async (req, res) => {
 exports.getRejectedQuestions = async (req, res) => {
     const { assignment_id } = req.body;
 
+    if (!assignment_id) {
+        return res.status(400).json({
+            statusCode: 400,
+            message: "assignment_id is required"
+        });
+    }
+
     try {
-        const result = await pool.query(
-            `SELECT *
-       FROM tbl_questions
-       WHERE assignment_id = $1
-         AND status = 'Rejected'`,
-            [assignment_id]
-        );
+        const query = `
+            SELECT
+                -- Assignment details
+                a.assignment_id,
+                a.assignment_title,
+                a.assignment_type,
+                a.total_questions,
+                a.total_marks,
+                a.pass_percentage,
+                a.status AS assignment_status,
+                a.assignment_date,
+                a.reason AS assignment_reason,
+
+                -- Question details
+                q.question_id,
+                q.question,
+                q.a,
+                q.b,
+                q.c,
+                q.d,
+                q.answer,
+                q.status AS question_status,
+                q.reason AS question_reason
+            FROM tbl_assignment a
+            LEFT JOIN tbl_questions q
+                ON a.assignment_id = q.assignment_id
+            WHERE a.assignment_id = $1
+              AND q.status = 'Rejected'
+        `;
+
+        const result = await pool.query(query, [assignment_id]);
+
+        if (result.rows.length === 0) {
+            return res.status(200).json({
+                statusCode: 200,
+                message: "No rejected questions found for this assignment",
+                assignment: null,
+                rejectedQuestions: []
+            });
+        }
+
+        // Assignment details (same for all rows)
+        const assignment = {
+            assignment_id: result.rows[0].assignment_id,
+            course_id: result.rows[0].course_id,
+            module_id: result.rows[0].module_id,
+            assignment_title: result.rows[0].assignment_title,
+            assignment_type: result.rows[0].assignment_type,
+            total_questions: result.rows[0].total_questions,
+            total_marks: result.rows[0].total_marks,
+            pass_percentage: result.rows[0].pass_percentage,
+            status: result.rows[0].assignment_status,
+            assignment_date: result.rows[0].assignment_date,
+            reason: result.rows[0].assignment_reason
+        };
+
+        // Rejected questions
+        const rejectedQuestions = result.rows.map(row => ({
+            question_id: row.question_id,
+            question: row.question,
+            a: row.a,
+            b: row.b,
+            c: row.c,
+            d: row.d,
+            answer: row.answer,
+            status: row.question_status,
+            reason: row.question_reason
+        }));
 
         res.status(200).json({
             statusCode: 200,
-            rejectedQuestions: result.rows
+            message:'Fetched Sucessfully',
+            assignment,
+            rejectedQuestions
         });
 
     } catch (error) {
