@@ -863,7 +863,6 @@ exports.getRejectedQuestions = async (req, res) => {
                 a.pass_percentage,
                 a.status AS assignment_status,
                 a.assignment_date,
-                a.reason AS assignment_reason,
 
                 -- Question details
                 q.question_id,
@@ -893,19 +892,16 @@ exports.getRejectedQuestions = async (req, res) => {
             });
         }
 
-        // Assignment details (same for all rows)
+        // Assignment details
         const assignment = {
             assignment_id: result.rows[0].assignment_id,
-            course_id: result.rows[0].course_id,
-            module_id: result.rows[0].module_id,
             assignment_title: result.rows[0].assignment_title,
             assignment_type: result.rows[0].assignment_type,
             total_questions: result.rows[0].total_questions,
             total_marks: result.rows[0].total_marks,
             pass_percentage: result.rows[0].pass_percentage,
             status: result.rows[0].assignment_status,
-            assignment_date: result.rows[0].assignment_date,
-            reason: result.rows[0].assignment_reason
+            assignment_date: result.rows[0].assignment_date
         };
 
         // Rejected questions
@@ -923,7 +919,7 @@ exports.getRejectedQuestions = async (req, res) => {
 
         res.status(200).json({
             statusCode: 200,
-            message:'Fetched Sucessfully',
+            message: "Fetched Successfully",
             assignment,
             rejectedQuestions
         });
@@ -936,6 +932,7 @@ exports.getRejectedQuestions = async (req, res) => {
         });
     }
 };
+
 
 
 exports.updateRejectedQuestions = async (req, res) => {
