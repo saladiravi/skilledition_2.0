@@ -315,7 +315,8 @@ exports.getAssignmentById = async (req, res) => {
         const questionData = await pool.query(
             `SELECT question_id, question, a, b, c, d, answer 
              FROM tbl_questions 
-             WHERE assignment_id = $1`,
+             WHERE assignment_id = $1
+             ORDER BY question_id ASC`,
             [assignment_id]
         );
 
