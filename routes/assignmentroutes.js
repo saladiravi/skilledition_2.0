@@ -18,6 +18,8 @@ router.post('/addAssignmentWithQuestions',verifyToken, allowRoles("admin","stude
 router.post('/updaterejectquestions',verifyToken, allowRoles("admin","student","tutor"),assignment.rejectQuestion);
 router.post('/getRejectedQuestions',verifyToken, allowRoles("admin","student","tutor"),assignment.getRejectedQuestions);
 router.post('/updateRejectedQuestions',verifyToken, allowRoles("admin","student","tutor"),assignment.updateRejectedQuestions);
+router.post('/deleteAssignment',verifyToken, allowRoles("admin","student","tutor"),assignment.deleteAssignmentIfPending);
+
 
 
 

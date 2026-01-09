@@ -1012,3 +1012,61 @@ exports.updateRejectedQuestions = async (req, res) => {
         client.release();
     }
 };
+
+
+exports.deleteAssignmentIfPending = async (req, res) => {
+    const { assignment_id } = req.body;
+
+    if (!assignment_id) {
+        return res.status(400).json({
+            statusCode: 400,
+            message: "assignment_id is required"
+        });
+    }
+
+    try {
+        // Check assignment exists and status
+        const assignmentResult = await pool.query(
+            `SELECT status FROM tbl_assignment WHERE assignment_id = $1`,
+            [assignment_id]
+        );
+
+        if (assignmentResult.rows.length === 0) {
+            return res.status(404).json({
+                statusCode: 404,
+                message: "Assignment not found"
+            });
+        }
+
+        if (assignmentResult.rows[0].status !== 'Pending') {
+            return res.status(400).json({
+                statusCode: 400,
+                message: "Only Pending assignments can be deleted"
+            });
+        }
+
+        // Delete questions first (FK safety)
+        await pool.query(
+            `DELETE FROM tbl_questions WHERE assignment_id = $1`,
+            [assignment_id]
+        );
+
+        // Delete assignment
+        await pool.query(
+            `DELETE FROM tbl_assignment WHERE assignment_id = $1`,
+            [assignment_id]
+        );
+
+        return res.status(200).json({
+            statusCode: 200,
+            message: "Assignment deleted successfully"
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            statusCode: 500,
+            message: "Internal Server Error"
+        });
+    }
+};
