@@ -38,8 +38,8 @@ router.post('/getonboardstatus', verifyToken, allowRoles("admin", "student", "tu
 
 // admin API's
 
-router.get('/getAllTutors',tutorcontroller.getAllTutors);
-router.post('/getTutorById',tutorcontroller.getTutorById);
+router.get('/getAllTutors',verifyToken, allowRoles("admin", "student", "tutor"),tutorcontroller.getAllTutors);
+router.post('/getTutorById',verifyToken, allowRoles("admin", "student", "tutor"),tutorcontroller.getTutorById);
 
 module.exports = router;
 
