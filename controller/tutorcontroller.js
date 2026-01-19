@@ -1321,3 +1321,138 @@ exports.onboardnotification = async (req, res) => {
 }
 
 
+
+
+// admin API's
+
+exports.getAllTutors = async (req, res) => {
+    try {
+        const query = `
+            SELECT
+                t.tutor_id,
+                CONCAT(t.first_name, ' ', t.last_name) AS tutor_name,
+                t.years_of_experience,
+                t.highest_qualification,
+                t.country,
+                t.level,
+                t.phone_number,
+                u.status,
+                u.created_at AS submitted_on
+            FROM tbl_tutor t
+            JOIN tbl_user u 
+                ON u.user_id = t.user_id
+            WHERE u.role = 'tutor'
+            ORDER BY u.created_at DESC
+        `;
+
+        const { rows } = await pool.query(query);
+
+        res.status(200).json({
+            statusCode: 200,
+            message: "Tutors fetched successfully",
+            data: rows
+        });
+
+    } catch (error) {
+        console.error("error:", error);
+        res.status(500).json({
+            statusCode: 500,
+            message: "Internal server error"
+        });
+    }
+};
+
+
+exports.getTutorById = async (req, res) => {
+    const { tutor_id } = req.body;
+
+    try {
+        const tutorQuery = `
+            SELECT
+                u.user_id,
+                u.full_name,
+                u.email,
+                u.phone_number,
+                u.status,
+                u.created_at,
+                t.*
+            FROM tbl_user u
+            JOIN tbl_tutor t 
+                ON t.user_id = u.user_id
+            WHERE t.tutor_id = $1
+            AND u.role = 'tutor'
+        `;
+
+        const tutorResult = await pool.query(tutorQuery, [tutor_id]);
+
+        if (tutorResult.rows.length === 0) {
+            return res.status(404).json({
+                statusCode: 404,
+                message: "Tutor not found"
+            });
+        }
+
+        const tutor = tutorResult.rows[0];
+
+        /* 🔹 PROFILE PIC SIGNED URL */
+        if (tutor.profile_pic) {
+            tutor.profile_pic = await getSignedVideoUrl(tutor.profile_pic);
+        }
+
+        /* 🔹 EDUCATION */
+        const educationResult = await pool.query(
+            `SELECT * FROM tbl_tutor_education WHERE tutor_id = $1`,
+            [tutor_id]
+        );
+
+        /* 🔹 CERTIFICATES + SIGNED FILE */
+        const certificatesResult = await pool.query(
+            `SELECT * FROM tbl_tutor_certificates WHERE tutor_id = $1`,
+            [tutor_id]
+        );
+
+        const certificates = await Promise.all(
+            certificatesResult.rows.map(async (cert) => {
+                if (cert.certificate_file) {
+                    cert.certificate_file =
+                        await getSignedVideoUrl(cert.certificate_file);
+                }
+                return cert;
+            })
+        );
+
+        /* 🔹 DEMO VIDEOS + SIGNED VIDEO FILE */
+        const demoVideosResult = await pool.query(
+            `SELECT * FROM tbl_demo_videos WHERE tutor_id = $1`,
+            [tutor_id]
+        );
+
+        const demoVideos = await Promise.all(
+            demoVideosResult.rows.map(async (video) => {
+                if (video.video_file) {
+                    video.video_file =
+                        await getSignedVideoUrl(video.video_file);
+                }
+                return video;
+            })
+        );
+
+        return res.status(200).json({
+            statusCode: 200,
+            message: "Tutor details fetched successfully",
+            data: {
+                tutor,
+                education: educationResult.rows,
+                certificates,
+                demo_videos: demoVideos
+            }
+        });
+
+    } catch (error) {
+        console.error("getTutorById error:", error);
+        return res.status(500).json({
+            statusCode: 500,
+            message: "Internal server error"
+        });
+    }
+};

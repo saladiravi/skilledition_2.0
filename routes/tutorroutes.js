@@ -36,6 +36,10 @@ router.post('/updatestatus', verifyToken, allowRoles("admin", "student", "tutor"
 router.post('/getonboardstatus', verifyToken, allowRoles("admin", "student", "tutor"), tutorcontroller.getonboardstatus);
 
 
+// admin API's
+
+router.get('/getAllTutors',tutorcontroller.getAllTutors);
+router.post('/getTutorById',tutorcontroller.getTutorById);
 
 module.exports = router;
 
