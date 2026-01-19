@@ -21,5 +21,7 @@ router.post('/tutorupdateprofile',  verifyToken, allowRoles("admin", "student", 
   { name: 'profile_pic', maxCount: 10 },
 ]), userController.updateProfile);
 
+router.post('/adminlogin',userController.adminloginUser);
+
 
 module.exports = router;

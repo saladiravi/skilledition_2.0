@@ -61,7 +61,8 @@ exports.loginUser = async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT * FROM tbl_user WHERE email=$1`,
+      `SELECT * FROM tbl_user WHERE email=$1
+      AND role IN ('student', 'tutor')`,
       [email]
     );
 
@@ -112,7 +113,72 @@ exports.loginUser = async (req, res) => {
   }
 };
 
+exports.adminloginUser = async (req, res) => {
+  const { email, password } = req.body;
 
+  if (!email || !password) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: 'Email and password are required'
+    });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT * FROM tbl_user WHERE email=$1
+      AND role='admin'`,
+      [email]
+    );
+
+    // FIX: Check if user exists
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'User not found'
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Compare passwords
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        statusCode: 401,
+        message: 'Invalid password'
+      });
+    }
+
+    // FIX: Correct JWT payload
+    const token = jwt.sign(
+      {
+        id: user.user_id,
+        email: user.email,
+        role: user.role
+      },
+      jwr_secret,
+      { expiresIn: '24h'}
+    );
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: 'Login successfully',
+      token,
+     user: {
+        user_id: user.user_id,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: 'Internal server error'
+    });
+  }
+};
 
 
 exports.getuser=async(req,res)=>{
