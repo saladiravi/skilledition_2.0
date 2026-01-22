@@ -1456,3 +1456,158 @@ exports.getTutorById = async (req, res) => {
         });
     }
 };
+
+
+
+exports.getAllTutorbystatus = async (req, res) => {
+  const { status } = req.body;
+
+  try {
+    let query = '';
+    let values = [status];
+
+    
+    if (status === 'rejected') {
+      query = `
+        SELECT
+          t.tutor_id,
+          CONCAT(t.first_name, ' ', t.last_name) AS tutor_name,
+          t.subject_to_teach,
+          t.status,
+          u.email,
+          TO_CHAR(t.rejected_at, 'Mon DD, YYYY, HH12:MI AM') AS rejected_date,
+          t.reject_reason,
+          t.professional_bio AS description
+        FROM tbl_tutor t
+        JOIN tbl_user u ON u.user_id = t.user_id
+        WHERE t.status = $1
+      `;
+    } 
+   
+    else {
+      query = `
+        SELECT
+          t.tutor_id,
+          CONCAT(t.first_name, ' ', t.last_name) AS tutor_name,
+          u.email,
+          t.years_of_experience AS experience,
+          COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
+          COUNT(DISTINCT te.tutor_education_id) AS education,
+          TO_CHAR(u.created_at, 'DD/MM/YYYY, HH12:MI AM') AS submitted_on,
+          t.country,
+          MAX(tdv.plan_type) AS plan_type,
+          MAX(tdv.royalty_percentage) AS royalty_percentage,
+          MAX(tdv.price) AS price,
+          MAX(tdv.short_bio) AS short_bio
+        FROM tbl_tutor t
+        JOIN tbl_user u ON u.user_id = t.user_id
+        LEFT JOIN tbl_tutor_certificates tc ON tc.tutor_id = t.tutor_id
+        LEFT JOIN tbl_tutor_education te ON te.tutor_id = t.tutor_id
+        LEFT JOIN tbl_demo_videos tdv ON tdv.tutor_id = t.tutor_id
+        WHERE u.role = 'tutor'
+          AND t.status = $1
+        GROUP BY 
+          t.tutor_id,
+          u.email,
+          u.created_at
+        ORDER BY u.created_at DESC
+      `;
+    }
+
+    const { rows } = await pool.query(query, values);
+
+    res.status(200).json({
+      statusCode: 200,
+      message: "Tutors fetched successfully",
+      data: rows
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error"
+    });
+  }
+};
+
+
+exports.updateTutorStatus = async (req, res) => {
+  const { tutor_id, status, reject_reason } = req.body;
+
+  try {
+    // basic validation
+    if (!tutor_id || !status) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "tutor_id and status are required"
+      });
+    }
+
+    let query = '';
+    let values = [];
+
+    // 🟢 APPROVE
+    if (status === 'approved') {
+      query = `
+        UPDATE tbl_tutor
+        SET 
+          status = $1
+        WHERE tutor_id = $2
+        RETURNING tutor_id, status
+      `;
+      values = [status, tutor_id];
+    }
+
+    // 🔴 REJECT
+    else if (status === 'rejected') {
+      if (!reject_reason) {
+        return res.status(400).json({
+          statusCode: 400,
+          message: "reject_reason is required when rejecting tutor"
+        });
+      }
+
+      query = `
+        UPDATE tbl_tutor
+        SET 
+          status = $1,
+          reject_reason = $2,
+          rejected_at = NOW()
+        WHERE tutor_id = $3
+        RETURNING tutor_id, status, reject_reason, rejected_at
+      `;
+      values = [status, reject_reason, tutor_id];
+    }
+
+    // ❌ Invalid status
+    else {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid status value"
+      });
+    }
+
+    const { rows } = await pool.query(query, values);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Tutor not found"
+      });
+    }
+
+    res.status(200).json({
+      statusCode: 200,
+      message: `Tutor ${status} successfully`,
+      data: rows[0]
+    });
+
+  } catch (error) {
+    console.error("error:", error);
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error"
+    });
+  }
+};
