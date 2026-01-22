@@ -27,7 +27,9 @@ router.post('/updatetutoreducation', verifyToken, allowRoles("admin", "student",
 router.post('/adddemovideos', verifyToken, allowRoles("admin", "student", "tutor"), uploads.fields([{ name: "video_file", maxCount: 20 }]), tutorcontroller.addDemoVideo);
 router.post('/updateDemovideo', verifyToken, allowRoles("admin", "student", "tutor"), uploads.fields([{ name: "video_file", maxCount: 20 }]), tutorcontroller.updateDemoVideo);
 router.post('/updatedemovideodescription', verifyToken, allowRoles("admin", "student", "tutor"), tutorcontroller.updateDemoVideoProfileDetails);
-router.post('/addpaymentplan', verifyToken, allowRoles("admin", "student", "tutor"), uploads.none(), tutorcontroller.addpaymentplan);
+router.post('/addpaymentplan', verifyToken, allowRoles("admin", "student", "tutor"), tutorcontroller.addpaymentplan);
+router.post('/updatepaymentplan', verifyToken, allowRoles("admin", "student", "tutor"),tutorcontroller.updatePaymentPlan);
+
 router.post('/tutoronboardnotification',verifyToken, allowRoles("admin", "student", "tutor"),tutorcontroller.onboardnotification);
 
  
