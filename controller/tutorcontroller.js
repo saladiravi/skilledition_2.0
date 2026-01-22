@@ -1047,66 +1047,133 @@ exports.updateDemoVideoProfileDetails = async (req, res) => {
 };
 
 
-exports.updateDemoVideoPlanDetails = async (req, res) => {
+// exports.updateDemoVideoPlanDetails = async (req, res) => {
+//   const {
+//     demo_video_id,
+//     plan_type,
+//     royalty_percentage,
+//     price,
+//     bank_upi_data
+//   } = req.body;
+
+//   if (!demo_video_id) {
+//     return res.status(400).json({
+//       statusCode: 400,
+//       message: "demo_video_id is required"
+//     });
+//   }
+
+//   try {
+//     const query = `
+//       UPDATE tbl_demo_videos
+//       SET
+//         plan_type = $1,
+//         royalty_percentage = $2,
+//         price = $3,
+//         bank_upi_data = $4
+      
+//       WHERE demo_video_id = $5
+//       RETURNING demo_video_id
+//     `;
+
+//     const values = [
+//       plan_type || null,
+//       royalty_percentage || null,
+//       price || null,
+//       bank_upi_data || null,
+//       demo_video_id
+//     ];
+
+//     const result = await pool.query(query, values);
+
+//     if (result.rowCount === 0) {
+//       return res.status(404).json({
+//         statusCode: 404,
+//         message: "Demo video not found"
+//       });
+//     }
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: "Plan details updated successfully"
+//     });
+
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error"
+//     });
+//   }
+// };
+
+exports.addpaymentplan = async (req, res) => {
   const {
-    demo_video_id,
+    tutor_id,
+    demo_id,
     plan_type,
     royalty_percentage,
     price,
-    bank_upi_data
+    upi_id
   } = req.body;
 
-  if (!demo_video_id) {
-    return res.status(400).json({
-      statusCode: 400,
-      message: "demo_video_id is required"
-    });
-  }
-
   try {
-    const query = `
-      UPDATE tbl_demo_videos
-      SET
-        plan_type = $1,
-        royalty_percentage = $2,
-        price = $3,
-        bank_upi_data = $4
-      
-      WHERE demo_video_id = $5
-      RETURNING demo_video_id
-    `;
-
-    const values = [
-      plan_type || null,
-      royalty_percentage || null,
-      price || null,
-      bank_upi_data || null,
-      demo_video_id
-    ];
-
-    const result = await pool.query(query, values);
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({
-        statusCode: 404,
-        message: "Demo video not found"
+    // 1️⃣ Validation
+    if (!tutor_id || !demo_id || !plan_type || !price) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: 'Missing required fields'
       });
+    }
+
+    if (plan_type === 'ROYALTY' && !royalty_percentage) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: 'Royalty percentage is required for royalty plan'
+      });
+    }
+
+    // 2️⃣ Insert payment plan
+    await pool.query(
+      `
+      INSERT INTO tbl_tutor_payment_plan
+      (tutor_id, demo_id, plan_type, royalty_percentage, price)
+      VALUES ($1, $2, $3, $4, $5)
+      `,
+      [
+        tutor_id,
+        demo_id,
+        plan_type,
+        plan_type === 'ROYALTY' ? royalty_percentage : null,
+        price
+      ]
+    );
+
+    // 3️⃣ Update tutor UPI ID
+    if (upi_id) {
+      await pool.query(
+        `
+        UPDATE tbl_tutor
+        SET upi_id = $1
+        WHERE tutor_id = $2
+        `,
+        [upi_id, tutor_id]
+      );
     }
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Plan details updated successfully"
+      message: 'Payment plan added successfully'
     });
 
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: 'Internal Server Error'
     });
   }
 };
-
 
 // exports.updatestatus = async (req, res) => {
 //   const { demo_video_id, status, demo_video_reject_reason } = req.body;
