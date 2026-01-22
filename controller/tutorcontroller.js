@@ -814,11 +814,23 @@ exports.getTutorOnboarding = async (req, res) => {
 
     // 4️⃣ Demo video
     const demoVideoRes = await pool.query(
-      `SELECT *
-       FROM tbl_demo_videos
-       WHERE tutor_id = $1`,
-      [tutor_id]
-    );
+      ` SELECT
+          demo_video_id,
+          tutor_id,
+          video_title,
+          video_description,
+          video_file,
+          short_bio,
+          teaching_style,
+          student_can_expect,
+          status,
+          demo_video_created_at,
+          demo_video_reject_reason
+        FROM tbl_demo_videos
+        WHERE tutor_id = $1
+        `,
+        [tutor_id]
+      );
 
     let demo_video = null;
     if (demoVideoRes.rows.length > 0) {
@@ -827,6 +839,27 @@ exports.getTutorOnboarding = async (req, res) => {
         demo_video.video_file_url = await getSignedVideoUrl(demo_video.video_file);
       }
     }
+  const paymentPlanRes = await pool.query(
+       `
+      SELECT
+        p.payment_plan_id,
+        p.demo_id,
+        p.plan_type,
+        p.price,
+        p.royalty_percentage,
+        p.status,
+        t.upi_id
+      FROM tbl_tutor_payment_plan p
+      JOIN tbl_tutor t ON t.tutor_id = p.tutor_id
+      WHERE p.tutor_id = $1
+      ORDER BY p.payment_plan_id DESC
+      LIMIT 1
+      `,
+      [tutor_id]
+    );
+
+    const payment_plan =
+      paymentPlanRes.rows.length > 0 ? paymentPlanRes.rows[0] : null;
 
     return res.status(200).json({
       statusCode: 200,
@@ -836,7 +869,8 @@ exports.getTutorOnboarding = async (req, res) => {
         tutor_details: tutor,
         education: educationRes.rows,
         certificates,
-        demo_video
+        demo_video,
+        payment_plan
       }
     });
 
