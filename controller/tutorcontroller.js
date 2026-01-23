@@ -1474,7 +1474,7 @@ exports.onboardnotification = async (req, res) => {
       SET status = $1
       WHERE tutor_id = $2
       `,
-      [status, sender_id]
+      [status, type_id]
     );
 
     // Optional safety check
@@ -1490,7 +1490,7 @@ exports.onboardnotification = async (req, res) => {
       `
       UPDATE tbl_user
       SET status = $1
-      WHERE tutor_id = $2
+      WHERE user_id = $2
       `,
       [status, sender_id]
     );
