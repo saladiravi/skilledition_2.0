@@ -780,7 +780,7 @@ exports.getTutorOnboarding = async (req, res) => {
         professional_background,
         achievements,
         user_id,
-        level,
+        level
       FROM tbl_tutor
       WHERE user_id = $1
       `,
