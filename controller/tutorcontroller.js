@@ -841,9 +841,7 @@ exports.getTutorOnboarding = async (req, res) => {
           short_bio,
           teaching_style,
           student_can_expect,
-          status,
           demo_video_created_at,
-          demo_video_reject_reason
         FROM tbl_demo_videos
         WHERE tutor_id = $1
         `,
@@ -1652,7 +1650,7 @@ exports.getAllTutorbystatus = async (req, res) => {
     let query = '';
     let values = [status];
 
-    
+
     if (status === 'rejected') {
       query = `
         SELECT
@@ -1668,8 +1666,8 @@ exports.getAllTutorbystatus = async (req, res) => {
         JOIN tbl_user u ON u.user_id = t.user_id
         WHERE t.status = $1
       `;
-    } 
-   
+    }
+
     else {
       query = `
         SELECT
@@ -1683,13 +1681,13 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.country,
           MAX(tdv.plan_type) AS plan_type,
           MAX(tdv.royalty_percentage) AS royalty_percentage,
-          MAX(tdv.price) AS price,
-          MAX(tdv.short_bio) AS short_bio
+          MAX(tdv.price) AS price
+          
         FROM tbl_tutor t
         JOIN tbl_user u ON u.user_id = t.user_id
         LEFT JOIN tbl_tutor_certificates tc ON tc.tutor_id = t.tutor_id
         LEFT JOIN tbl_tutor_education te ON te.tutor_id = t.tutor_id
-        LEFT JOIN tbl_demo_videos tdv ON tdv.tutor_id = t.tutor_id
+        LEFT JOIN tbl_tutor_payment_plan tdv ON tdv.tutor_id = t.tutor_id
         WHERE u.role = 'tutor'
           AND t.status = $1
         GROUP BY 
