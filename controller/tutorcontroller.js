@@ -765,7 +765,25 @@ exports.getTutorOnboarding = async (req, res) => {
   try {
     // 1️⃣ Get tutor basic details
     const tutorRes = await pool.query(
-      `SELECT * FROM tbl_tutor WHERE user_id = $1`,
+       `
+     SELECT
+        tutor_id,
+        first_name,
+        last_name,
+        email,
+        country,
+        subject_to_teach,
+        speak_language,
+        phone_number,
+        profile_pic,
+        years_of_experience,
+        professional_background,
+        achievements,
+        user_id,
+        level,
+      FROM tbl_tutor
+      WHERE user_id = $1
+      `,
       [user_id]
     );
 
@@ -1343,41 +1361,52 @@ exports.updatestatus = async (req, res) => {
 };
 
 exports.getonboardstatus = async (req, res) => {
-  const { tutor_id } = req.body
-  if (!tutor_id) {
+  const { user_id } = req.body;
+
+  if (!user_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: 'Missing required Field'
-    })
+      message: 'Missing required field: user_id'
+    });
   }
+
   try {
     const result = await pool.query(
-      `SELECT 
-        tdv.status,
-        tdv.demo_video_reject_reason,
+      `
+      SELECT 
+        tt.status,
+        tt.reject_reason,
         tu.full_name
-      FROM tbl_demo_videos AS tdv
+      FROM tbl_user AS tu
       JOIN tbl_tutor AS tt
-        ON tdv.tutor_id = tt.tutor_id
-      JOIN tbl_user AS tu
-        ON tt.user_id = tu.user_id
-      WHERE tdv.tutor_id = $1;
-        `,
-      [tutor_id]
+        ON tu.user_id = tt.user_id
+      WHERE tu.user_id = $1
+        AND tu.role = 'tutor';
+      `,
+      [user_id]
     );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Tutor not found or user is not a tutor'
+      });
+    }
+
     return res.status(200).json({
       statusCode: 200,
-      message: 'Fetched Sucessfully',
-      status: result.rows
-    })
+      message: 'Fetched successfully',
+      data: result.rows[0]
+    });
+
   } catch (error) {
-    console.log(error)
+    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: 'Internal Server Error'
-    })
+    });
   }
-}
+};
 
 exports.onboardnotification = async (req, res) => {
   const { sender_id, type, type_id, message } = req.body
