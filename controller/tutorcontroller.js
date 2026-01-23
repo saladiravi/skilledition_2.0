@@ -1125,7 +1125,18 @@ exports.addpaymentplan = async (req, res) => {
         message: 'Royalty percentage is required for royalty plan'
       });
     }
+    
+     const tutorCheck = await pool.query(
+      `SELECT tutor_id FROM tbl_tutor WHERE tutor_id = $1`,
+      [tutor_id]
+    );
 
+    if (tutorCheck.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Tutor not found'
+      });
+    }
     // 2️⃣ Insert payment plan
     await pool.query(
       `
