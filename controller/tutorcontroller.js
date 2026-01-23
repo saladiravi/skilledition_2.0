@@ -861,7 +861,6 @@ exports.getTutorOnboarding = async (req, res) => {
        `
       SELECT
         p.payment_plan_id,
-        p.demo_id,
         p.plan_type,
         p.price,
         p.royalty_percentage,
@@ -1125,7 +1124,7 @@ exports.addpaymentplan = async (req, res) => {
         message: 'Royalty percentage is required for royalty plan'
       });
     }
-    
+
      const tutorCheck = await pool.query(
       `SELECT tutor_id FROM tbl_tutor WHERE tutor_id = $1`,
       [tutor_id]
@@ -1419,30 +1418,98 @@ exports.getonboardstatus = async (req, res) => {
   }
 };
 
-exports.onboardnotification = async (req, res) => {
-  const { sender_id, type, type_id, message } = req.body
-  try {
-    const result = await pool.query(`INSERT INTO tbl_notifications (sender_id,type,receiver_id,type_id,message)
-    VALUES($1,$2,$3,$4,$5) RETURNING * `, [sender_id, type, '1', type_id, message])
+// exports.onboardnotification = async (req, res) => {
+//   const { sender_id, type, type_id, message } = req.body
+//   try {
+//     const result = await pool.query(`INSERT INTO tbl_notifications (sender_id,type,receiver_id,type_id,message)
+//     VALUES($1,$2,$3,$4,$5) RETURNING * `, [sender_id, type, '1', type_id, message])
 
-    return res.status(200).json({
-      statusCode: 200,
-      message: 'Review Submited Sucessfully'
-    })
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: 'Review Submited Sucessfully'
+//     })
 
-  } catch (error) {
-    console.log(error)
-    return res.status(500).json({
-      statusCode: 500,
-      message: 'Internal Server Error'
-    })
-  }
-}
+//   } catch (error) {
+//     console.log(error)
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: 'Internal Server Error'
+//     })
+//   }
+// }
 
 
 
 
 // admin API's
+
+
+
+exports.onboardnotification = async (req, res) => {
+  const { sender_id, type, type_id, message, status } = req.body;
+
+  try {
+    // 1️⃣ Validation
+    if (!sender_id || !type || !type_id || !message || !status) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: 'Missing required fields'
+      });
+    }
+
+    // 2️⃣ Insert notification
+    await pool.query(
+      `
+      INSERT INTO tbl_notifications 
+      (sender_id, type, receiver_id, type_id, message)
+      VALUES ($1, $2, $3, $4, $5)
+      `,
+      [sender_id, type, '1', type_id, message]
+    );
+
+    // 3️⃣ Update tutor status
+    const tutorUpdate = await pool.query(
+      `
+      UPDATE tbl_tutor
+      SET status = $1
+      WHERE tutor_id = $2
+      `,
+      [status, sender_id]
+    );
+
+    // Optional safety check
+    if (tutorUpdate.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Tutor not found'
+      });
+    }
+
+    // 4️⃣ Update user status
+    await pool.query(
+      `
+      UPDATE tbl_user
+      SET status = $1
+      WHERE tutor_id = $2
+      `,
+      [status, sender_id]
+    );
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: 'Notification sent and status updated successfully'
+    });
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+
 
 exports.getAllTutors = async (req, res) => {
     try {
