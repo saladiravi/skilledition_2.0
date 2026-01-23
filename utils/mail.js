@@ -28,6 +28,7 @@ exports.sendContactMail = async (data) => {
         Course: ${data.course}
         Level: ${data.learning_level}
         Heard About: ${data.hear_about}
+        role:${data.role}
         `
     });
 };
