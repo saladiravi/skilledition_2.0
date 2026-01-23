@@ -841,7 +841,7 @@ exports.getTutorOnboarding = async (req, res) => {
           short_bio,
           teaching_style,
           student_can_expect,
-          demo_video_created_at,
+          demo_video_created_at
         FROM tbl_demo_videos
         WHERE tutor_id = $1
         `,
