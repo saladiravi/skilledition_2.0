@@ -1660,64 +1660,111 @@ exports.getTutorById = async (req, res) => {
 exports.getAllTutorbystatus = async (req, res) => {
   const { status } = req.body;
 
+  if (!status) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "status is required"
+    });
+  }
+
   try {
     let query = '';
     let values = [status];
 
-
-    if (status === 'rejected') {
+    // 🔴 REJECTED
+    if (status === 'Rejected') {
       query = `
         SELECT
           t.tutor_id,
           u.full_name,
+          u.email,
           t.subject_to_teach,
           t.status,
-          u.email,
           TO_CHAR(t.rejected_at, 'Mon DD, YYYY, HH12:MI AM') AS rejected_date,
           t.reject_reason,
           t.professional_bio AS description
         FROM tbl_tutor t
         JOIN tbl_user u ON u.user_id = t.user_id
         WHERE t.status = $1
+        ORDER BY t.rejected_at DESC
       `;
     }
 
-    else {
+    // 🟡 PENDING
+    else if (status === 'Pending') {
       query = `
-       SELECT
-        t.tutor_id,
-        u.full_name,
-        u.email,
-        t.years_of_experience AS experience,
-        t.subject_to_teach,
-        t.status,
-        COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
-        COUNT(DISTINCT te.tutor_education_id) AS education,
-        TO_CHAR(u.created_at, 'DD/MM/YYYY, HH12:MI AM') AS submitted_on,
-        t.country,
-        MAX(tdv.plan_type) AS plan_type,
-        MAX(tdv.royalty_percentage) AS royalty_percentage,
-        MAX(tdv.price) AS price,
-        MAX(tdvs.short_bio) AS short_bio
-      FROM tbl_tutor t
-      JOIN tbl_user u ON u.user_id = t.user_id
-      LEFT JOIN tbl_tutor_certificates tc ON tc.tutor_id = t.tutor_id
-      LEFT JOIN tbl_tutor_education te ON te.tutor_id = t.tutor_id
-      LEFT JOIN tbl_tutor_payment_plan tdv ON tdv.tutor_id = t.tutor_id
-      LEFT JOIN tbl_demo_videos tdvs ON tdvs.tutor_id = t.tutor_id
-      WHERE u.role = 'tutor'
-        AND t.status = $1
-      GROUP BY 
-        t.tutor_id,
-        u.email,
-        u.full_name,
-        t.years_of_experience,
-        t.subject_to_teach,
-        t.status,
-        t.country,
-        u.created_at
-      ORDER BY u.created_at ASC;
-   `;
+        SELECT
+          t.tutor_id,
+          u.full_name,
+          u.email,
+          t.years_of_experience AS experience,
+          t.subject_to_teach,
+          t.status,
+          COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
+          COUNT(DISTINCT te.tutor_education_id) AS education,
+          TO_CHAR(u.created_at, 'DD/MM/YYYY, HH12:MI AM') AS submitted_on,
+          t.country
+        FROM tbl_tutor t
+        JOIN tbl_user u ON u.user_id = t.user_id
+        LEFT JOIN tbl_tutor_certificates tc ON tc.tutor_id = t.tutor_id
+        LEFT JOIN tbl_tutor_education te ON te.tutor_id = t.tutor_id
+        WHERE u.role = 'tutor'
+          AND t.status = $1
+        GROUP BY 
+          t.tutor_id,
+          u.full_name,
+          u.email,
+          t.years_of_experience,
+          t.subject_to_teach,
+          t.status,
+          t.country,
+          u.created_at
+        ORDER BY u.created_at ASC
+      `;
+    }
+
+    // 🟢 PUBLISHED
+    else if (status === 'Published') {
+      query = `
+        SELECT
+          t.tutor_id,
+          u.full_name,
+          u.email,
+          t.years_of_experience AS experience,
+          t.subject_to_teach,
+          t.status,
+          COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
+          COUNT(DISTINCT te.tutor_education_id) AS education,
+          t.country,
+          MAX(tp.plan_type) AS plan_type,
+          MAX(tp.royalty_percentage) AS royalty_percentage,
+          MAX(tp.price) AS price,
+          MAX(dv.short_bio) AS short_bio
+        FROM tbl_tutor t
+        JOIN tbl_user u ON u.user_id = t.user_id
+        LEFT JOIN tbl_tutor_certificates tc ON tc.tutor_id = t.tutor_id
+        LEFT JOIN tbl_tutor_education te ON te.tutor_id = t.tutor_id
+        LEFT JOIN tbl_tutor_payment_plan tp ON tp.tutor_id = t.tutor_id
+        LEFT JOIN tbl_demo_videos dv ON dv.tutor_id = t.tutor_id
+        WHERE u.role = 'tutor'
+          AND t.status = $1
+        GROUP BY 
+          t.tutor_id,
+          u.full_name,
+          u.email,
+          t.years_of_experience,
+          t.subject_to_teach,
+          t.status,
+          t.country
+      `;
+    }
+
+    // ❌ INVALID STATUS
+    else {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid status value"
+      });
     }
 
     const { rows } = await pool.query(query, values);
@@ -1736,6 +1783,7 @@ exports.getAllTutorbystatus = async (req, res) => {
     });
   }
 };
+
 
 
 // exports.updateTutorStatus = async (req, res) => {
