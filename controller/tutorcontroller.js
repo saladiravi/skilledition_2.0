@@ -1516,7 +1516,7 @@ exports.getAllTutors = async (req, res) => {
     const query = `
             SELECT
                 t.tutor_id,
-                CONCAT(t.first_name, ' ', t.last_name) AS tutor_name,
+                u.full_name,
                 t.years_of_experience,
                 t.highest_qualification,
                 t.country,
@@ -1528,7 +1528,7 @@ exports.getAllTutors = async (req, res) => {
             JOIN tbl_user u 
                 ON u.user_id = t.user_id
             WHERE u.role = 'tutor'
-            ORDER BY u.created_at DESC
+            ORDER BY u.created_at ASC
         `;
 
     const { rows } = await pool.query(query);
