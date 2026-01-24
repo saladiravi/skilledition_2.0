@@ -1622,18 +1622,18 @@ exports.getTutorById = async (req, res) => {
         return video;
       })
     );
-const paymentPlanResult = await pool.query(
-  `SELECT 
-      payment_plan_id,
-      plan_type,
-      price,
-      royalty_percentage,
-      created_at,
-      tutor_id
-   FROM tbl_tutor_payment_plan
-   WHERE tutor_id = $1`,
-  [tutor_id]
-);
+    const paymentPlanResult = await pool.query(
+      `SELECT 
+            payment_plan_id,
+            plan_type,
+            price,
+            royalty_percentage,
+            created_at,
+            tutor_id
+        FROM tbl_tutor_payment_plan
+        WHERE tutor_id = $1`,
+      [tutor_id]
+    );
     return res.status(200).json({
       statusCode: 200,
       message: "Tutor details fetched successfully",
@@ -1716,7 +1716,7 @@ exports.getAllTutorbystatus = async (req, res) => {
         t.status,
         t.country,
         u.created_at
-      ORDER BY u.created_at DESC;
+      ORDER BY u.created_at ASC;
    `;
     }
 
