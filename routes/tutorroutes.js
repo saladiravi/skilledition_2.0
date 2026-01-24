@@ -43,7 +43,7 @@ router.post('/getonboardstatus', verifyToken, allowRoles("admin", "student", "tu
 router.get('/getAllTutors',verifyToken, allowRoles("admin", "student", "tutor"),tutorcontroller.getAllTutors);
 router.post('/getTutorById',verifyToken, allowRoles("admin", "student", "tutor"),tutorcontroller.getTutorById);
 router.post('/gettutordetailsbystatus',verifyToken,allowRoles("admin", "student", "tutor"),tutorcontroller.getAllTutorbystatus);
-router.post('/updateTutorStatus',allowRoles("admin", "student", "tutor"),tutorcontroller.updateTutorStatus);
+router.post('/updateTutorStatus',verifyToken,allowRoles("admin", "student", "tutor"),tutorcontroller.updateTutorStatus);
 
 
 
