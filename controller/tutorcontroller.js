@@ -427,8 +427,11 @@ exports.updateTutorCertificates = async (req, res) => {
     }
 
     const certificateList = JSON.parse(certificates);
-    const files = req.files?.certificate_file || [];
-
+    // const files = req.files?.certificate_file || [];
+    const filesMap = {};
+    (req.files || []).forEach(file => {
+      filesMap[file.fieldname] = file;
+    });
     // 1️⃣ Fetch existing IDs from DB
     const existing = await client.query(
       `SELECT tutor_certificate_id
@@ -473,11 +476,10 @@ exports.updateTutorCertificates = async (req, res) => {
       } = cert;
 
       let certificateKey = null;
-      if (files[i]) {
-        certificateKey = await uploadToS3(
-          files[i],
-          "tutors/certificates"
-        );
+
+      const file = filesMap[cert.file_key];
+      if (file) {
+        certificateKey = await uploadToS3(file, "tutors/certificates");
       }
 
       // UPDATE
@@ -765,7 +767,7 @@ exports.getTutorOnboarding = async (req, res) => {
   try {
     // 1️⃣ Get tutor basic details
     const tutorRes = await pool.query(
-       `
+      `
      SELECT
         tutor_id,
         first_name,
@@ -845,8 +847,8 @@ exports.getTutorOnboarding = async (req, res) => {
         FROM tbl_demo_videos
         WHERE tutor_id = $1
         `,
-        [tutor_id]
-      );
+      [tutor_id]
+    );
 
     let demo_video = null;
     if (demoVideoRes.rows.length > 0) {
@@ -855,8 +857,8 @@ exports.getTutorOnboarding = async (req, res) => {
         demo_video.video_file_url = await getSignedVideoUrl(demo_video.video_file);
       }
     }
-  const paymentPlanRes = await pool.query(
-       `
+    const paymentPlanRes = await pool.query(
+      `
       SELECT
         p.payment_plan_id,
         p.plan_type,
@@ -1096,7 +1098,7 @@ exports.updateDemoVideoProfileDetails = async (req, res) => {
 };
 
 
- 
+
 exports.addpaymentplan = async (req, res) => {
   const {
     tutor_id,
@@ -1123,7 +1125,7 @@ exports.addpaymentplan = async (req, res) => {
       });
     }
 
-     const tutorCheck = await pool.query(
+    const tutorCheck = await pool.query(
       `SELECT tutor_id FROM tbl_tutor WHERE tutor_id = $1`,
       [tutor_id]
     );
@@ -1176,7 +1178,7 @@ exports.addpaymentplan = async (req, res) => {
   }
 };
 
- exports.updatePaymentPlan = async (req, res) => {
+exports.updatePaymentPlan = async (req, res) => {
   const {
     payment_plan_id,   // REQUIRED to update
     tutor_id,
@@ -1510,8 +1512,8 @@ exports.onboardnotification = async (req, res) => {
 
 
 exports.getAllTutors = async (req, res) => {
-    try {
-        const query = `
+  try {
+    const query = `
             SELECT
                 t.tutor_id,
                 CONCAT(t.first_name, ' ', t.last_name) AS tutor_name,
@@ -1529,29 +1531,29 @@ exports.getAllTutors = async (req, res) => {
             ORDER BY u.created_at DESC
         `;
 
-        const { rows } = await pool.query(query);
+    const { rows } = await pool.query(query);
 
-        res.status(200).json({
-            statusCode: 200,
-            message: "Tutors fetched successfully",
-            data: rows
-        });
+    res.status(200).json({
+      statusCode: 200,
+      message: "Tutors fetched successfully",
+      data: rows
+    });
 
-    } catch (error) {
-        console.error("error:", error);
-        res.status(500).json({
-            statusCode: 500,
-            message: "Internal server error"
-        });
-    }
+  } catch (error) {
+    console.error("error:", error);
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error"
+    });
+  }
 };
 
 
 exports.getTutorById = async (req, res) => {
-    const { tutor_id } = req.body;
+  const { tutor_id } = req.body;
 
-    try {
-        const tutorQuery = `
+  try {
+    const tutorQuery = `
             SELECT
                 u.user_id,
                 u.full_name,
@@ -1567,78 +1569,78 @@ exports.getTutorById = async (req, res) => {
             AND u.role = 'tutor'
         `;
 
-        const tutorResult = await pool.query(tutorQuery, [tutor_id]);
+    const tutorResult = await pool.query(tutorQuery, [tutor_id]);
 
-        if (tutorResult.rows.length === 0) {
-            return res.status(404).json({
-                statusCode: 404,
-                message: "Tutor not found"
-            });
-        }
-
-        const tutor = tutorResult.rows[0];
-
-        /* 🔹 PROFILE PIC SIGNED URL */
-        if (tutor.profile_pic) {
-            tutor.profile_pic = await getSignedVideoUrl(tutor.profile_pic);
-        }
-
-        /* 🔹 EDUCATION */
-        const educationResult = await pool.query(
-            `SELECT * FROM tbl_tutor_education WHERE tutor_id = $1`,
-            [tutor_id]
-        );
-
-        /* 🔹 CERTIFICATES + SIGNED FILE */
-        const certificatesResult = await pool.query(
-            `SELECT * FROM tbl_tutor_certificates WHERE tutor_id = $1`,
-            [tutor_id]
-        );
-
-        const certificates = await Promise.all(
-            certificatesResult.rows.map(async (cert) => {
-                if (cert.certificate_file) {
-                    cert.certificate_file =
-                        await getSignedVideoUrl(cert.certificate_file);
-                }
-                return cert;
-            })
-        );
-
-        /* 🔹 DEMO VIDEOS + SIGNED VIDEO FILE */
-        const demoVideosResult = await pool.query(
-            `SELECT * FROM tbl_demo_videos WHERE tutor_id = $1`,
-            [tutor_id]
-        );
-
-        const demoVideos = await Promise.all(
-            demoVideosResult.rows.map(async (video) => {
-                if (video.video_file) {
-                    video.video_file =
-                        await getSignedVideoUrl(video.video_file);
-                }
-                return video;
-            })
-        );
-
-        return res.status(200).json({
-            statusCode: 200,
-            message: "Tutor details fetched successfully",
-            data: {
-                tutor,
-                education: educationResult.rows,
-                certificates,
-                demo_videos: demoVideos
-            }
-        });
-
-    } catch (error) {
-        console.error("getTutorById error:", error);
-        return res.status(500).json({
-            statusCode: 500,
-            message: "Internal server error"
-        });
+    if (tutorResult.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Tutor not found"
+      });
     }
+
+    const tutor = tutorResult.rows[0];
+
+    /* 🔹 PROFILE PIC SIGNED URL */
+    if (tutor.profile_pic) {
+      tutor.profile_pic = await getSignedVideoUrl(tutor.profile_pic);
+    }
+
+    /* 🔹 EDUCATION */
+    const educationResult = await pool.query(
+      `SELECT * FROM tbl_tutor_education WHERE tutor_id = $1`,
+      [tutor_id]
+    );
+
+    /* 🔹 CERTIFICATES + SIGNED FILE */
+    const certificatesResult = await pool.query(
+      `SELECT * FROM tbl_tutor_certificates WHERE tutor_id = $1`,
+      [tutor_id]
+    );
+
+    const certificates = await Promise.all(
+      certificatesResult.rows.map(async (cert) => {
+        if (cert.certificate_file) {
+          cert.certificate_file =
+            await getSignedVideoUrl(cert.certificate_file);
+        }
+        return cert;
+      })
+    );
+
+    /* 🔹 DEMO VIDEOS + SIGNED VIDEO FILE */
+    const demoVideosResult = await pool.query(
+      `SELECT * FROM tbl_demo_videos WHERE tutor_id = $1`,
+      [tutor_id]
+    );
+
+    const demoVideos = await Promise.all(
+      demoVideosResult.rows.map(async (video) => {
+        if (video.video_file) {
+          video.video_file =
+            await getSignedVideoUrl(video.video_file);
+        }
+        return video;
+      })
+    );
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Tutor details fetched successfully",
+      data: {
+        tutor,
+        education: educationResult.rows,
+        certificates,
+        demo_videos: demoVideos
+      }
+    });
+
+  } catch (error) {
+    console.error("getTutorById error:", error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error"
+    });
+  }
 };
 
 
