@@ -1742,7 +1742,7 @@ exports.updateTutorStatus = async (req, res) => {
     let values = [];
 
     // 🟢 APPROVE
-    if (status === 'approved') {
+    if (status === 'Published') {
       query = `
         UPDATE tbl_tutor
         SET 
@@ -1754,7 +1754,7 @@ exports.updateTutorStatus = async (req, res) => {
     }
 
     // 🔴 REJECT
-    else if (status === 'rejected') {
+    else if (status === 'Rejected') {
       if (!reject_reason) {
         return res.status(400).json({
           statusCode: 400,
