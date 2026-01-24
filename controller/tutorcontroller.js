@@ -1738,31 +1738,116 @@ exports.getAllTutorbystatus = async (req, res) => {
 };
 
 
+// exports.updateTutorStatus = async (req, res) => {
+//   const { tutor_id, status, reject_reason } = req.body;
+
+//   try {
+//     // basic validation
+//     if (!tutor_id || !status) {
+//       return res.status(400).json({
+//         statusCode: 400,
+//         message: "tutor_id and status are required"
+//       });
+//     }
+
+//     let query = '';
+//     let values = [];
+
+//     // 🟢 APPROVE
+//     if (status === 'Published') {
+//       query = `
+//         UPDATE tbl_tutor
+//         SET 
+//           status = $1
+//         WHERE tutor_id = $2
+//         RETURNING tutor_id, status
+//       `;
+//       values = [status, tutor_id];
+//     }
+
+//     // 🔴 REJECT
+//     else if (status === 'Rejected') {
+//       if (!reject_reason) {
+//         return res.status(400).json({
+//           statusCode: 400,
+//           message: "reject_reason is required when rejecting tutor"
+//         });
+//       }
+
+//       query = `
+//         UPDATE tbl_tutor
+//         SET 
+//           status = $1,
+//           reject_reason = $2,
+//           rejected_at = NOW()
+//         WHERE tutor_id = $3
+//         RETURNING tutor_id, status, reject_reason, rejected_at
+//       `;
+//       values = [status, reject_reason, tutor_id];
+//     }
+
+//     // ❌ Invalid status
+//     else {
+//       return res.status(400).json({
+//         statusCode: 400,
+//         message: "Invalid status value"
+//       });
+//     }
+
+//     const { rows } = await pool.query(query, values);
+
+//     if (rows.length === 0) {
+//       return res.status(404).json({
+//         statusCode: 404,
+//         message: "Tutor not found"
+//       });
+//     }
+
+//     res.status(200).json({
+//       statusCode: 200,
+//       message: `Tutor ${status} successfully`,
+//       data: rows[0]
+//     });
+
+//   } catch (error) {
+//     console.error("error:", error);
+//     res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal server error"
+//     });
+//   }
+// };
+
+
+
+
 exports.updateTutorStatus = async (req, res) => {
   const { tutor_id, status, reject_reason } = req.body;
 
-  try {
-    // basic validation
-    if (!tutor_id || !status) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "tutor_id and status are required"
-      });
-    }
+  if (!tutor_id || !status) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "tutor_id and status are required"
+    });
+  }
 
-    let query = '';
-    let values = [];
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    let tutorQuery = '';
+    let tutorValues = [];
 
     // 🟢 APPROVE
     if (status === 'Published') {
-      query = `
+      tutorQuery = `
         UPDATE tbl_tutor
-        SET 
-          status = $1
+        SET status = $1
         WHERE tutor_id = $2
-        RETURNING tutor_id, status
+        RETURNING tutor_id, user_id, status
       `;
-      values = [status, tutor_id];
+      tutorValues = [status, tutor_id];
     }
 
     // 🔴 REJECT
@@ -1774,19 +1859,17 @@ exports.updateTutorStatus = async (req, res) => {
         });
       }
 
-      query = `
+      tutorQuery = `
         UPDATE tbl_tutor
         SET 
           status = $1,
           reject_reason = $2,
           rejected_at = NOW()
         WHERE tutor_id = $3
-        RETURNING tutor_id, status, reject_reason, rejected_at
+        RETURNING tutor_id, user_id, status
       `;
-      values = [status, reject_reason, tutor_id];
-    }
-
-    // ❌ Invalid status
+      tutorValues = [status, reject_reason, tutor_id];
+    } 
     else {
       return res.status(400).json({
         statusCode: 400,
@@ -1794,26 +1877,46 @@ exports.updateTutorStatus = async (req, res) => {
       });
     }
 
-    const { rows } = await pool.query(query, values);
+    // 1️⃣ Update tutor
+    const tutorResult = await client.query(tutorQuery, tutorValues);
 
-    if (rows.length === 0) {
+    if (tutorResult.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({
         statusCode: 404,
         message: "Tutor not found"
       });
     }
 
+    const { user_id } = tutorResult.rows[0];
+
+    // 2️⃣ Update user status automatically
+    await client.query(
+      `
+      UPDATE tbl_user
+      SET status = $1
+      WHERE user_id = $2
+      `,
+      [status, user_id]
+    );
+
+    await client.query('COMMIT');
+
     res.status(200).json({
       statusCode: 200,
       message: `Tutor ${status} successfully`,
-      data: rows[0]
+      data: tutorResult.rows[0]
     });
 
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error("error:", error);
+
     res.status(500).json({
       statusCode: 500,
       message: "Internal server error"
     });
+  } finally {
+    client.release();
   }
 };
