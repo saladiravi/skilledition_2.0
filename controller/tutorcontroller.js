@@ -1879,7 +1879,7 @@ exports.updateTutorStatus = async (req, res) => {
     let tutorValues = [];
 
     // 🟢 APPROVE
-    if (status === 'Published') {
+    if (status === 'Published' || status==='Pending') {
       tutorQuery = `
         UPDATE tbl_tutor
         SET status = $1
