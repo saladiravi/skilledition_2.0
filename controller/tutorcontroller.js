@@ -1658,21 +1658,25 @@ exports.getTutorById = async (req, res) => {
 
 
 exports.getAllTutorbystatus = async (req, res) => {
-  const { status } = req.body;
-
-  if (!status) {
-    return res.status(400).json({
-      statusCode: 400,
-      message: "status is required"
-    });
-  }
-
   try {
+    let { status } = req.body;
+
+    // ✅ Clean & Validate status
+    status = status?.trim();
+
+    if (!status) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "status is required"
+      });
+    }
+
     let query = '';
     let values = [status];
 
     // 🔴 REJECTED
     if (status === 'Rejected') {
+
       query = `
         SELECT
           t.tutor_id,
@@ -1683,15 +1687,20 @@ exports.getAllTutorbystatus = async (req, res) => {
           TO_CHAR(t.rejected_at, 'Mon DD, YYYY, HH12:MI AM') AS rejected_date,
           t.reject_reason,
           t.professional_bio AS description
+
         FROM tbl_tutor t
         JOIN tbl_user u ON u.user_id = t.user_id
+
         WHERE t.status = $1
+
         ORDER BY t.rejected_at DESC
       `;
+
     }
 
     // 🟡 PENDING
     else if (status === 'Pending') {
+
       query = `
         SELECT
           t.tutor_id,
@@ -1701,22 +1710,38 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.subject_to_teach,
           t.status,
           t.submitted_at,
+
           COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
           COUNT(DISTINCT te.tutor_education_id) AS education,
-          MAX(tp.plan_type) AS plan_type,
-          MAX(tp.royalty_percentage) AS royalty_percentage,
-          MAX(tp.price) AS price,
-          MAX(dv.short_bio) AS short_bio,
+
+          tp.plan_type,
+          tp.royalty_percentage,
+          tp.price,
+          dv.short_bio,
+
           TO_CHAR(u.created_at, 'DD/MM/YYYY, HH12:MI AM') AS submitted_on,
           t.country
+
         FROM tbl_tutor t
-        JOIN tbl_user u ON u.user_id = t.user_id
-        LEFT JOIN tbl_tutor_certificates tc ON tc.tutor_id = t.tutor_id
-        LEFT JOIN tbl_tutor_payment_plan tp ON tp.tutor_id = t.tutor_id
-        LEFT JOIN tbl_tutor_education te ON te.tutor_id = t.tutor_id
-        LEFT JOIN tbl_demo_videos dv ON dv.tutor_id = t.tutor_id
+        JOIN tbl_user u 
+          ON u.user_id = t.user_id
+
+        LEFT JOIN tbl_tutor_certificates tc 
+          ON tc.tutor_id = t.tutor_id
+
+        LEFT JOIN tbl_tutor_education te 
+          ON te.tutor_id = t.tutor_id
+
+        LEFT JOIN tbl_demo_videos dv 
+          ON dv.tutor_id = t.tutor_id
+
+        LEFT JOIN tbl_tutor_payment_plan tp 
+          ON tp.demo_id = dv.demo_video_id
+         AND tp.status = 'Active'
+
         WHERE u.role = 'tutor'
           AND t.status = $1
+
         GROUP BY 
           t.tutor_id,
           u.full_name,
@@ -1726,13 +1751,21 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.status,
           t.country,
           u.created_at,
-          t.submitted_at
+          t.submitted_at,
+
+          tp.plan_type,
+          tp.royalty_percentage,
+          tp.price,
+          dv.short_bio
+
         ORDER BY u.created_at ASC
       `;
+
     }
 
     // 🟢 PUBLISHED
     else if (status === 'Published') {
+
       query = `
         SELECT
           t.tutor_id,
@@ -1742,21 +1775,37 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.subject_to_teach,
           t.status,
           t.submitted_at,
+
           COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
           COUNT(DISTINCT te.tutor_education_id) AS education,
-          t.country,
-          MAX(tp.plan_type) AS plan_type,
-          MAX(tp.royalty_percentage) AS royalty_percentage,
-          MAX(tp.price) AS price,
-          MAX(dv.short_bio) AS short_bio
+
+          tp.plan_type,
+          tp.royalty_percentage,
+          tp.price,
+          dv.short_bio,
+
+          t.country
+
         FROM tbl_tutor t
-        JOIN tbl_user u ON u.user_id = t.user_id
-        LEFT JOIN tbl_tutor_certificates tc ON tc.tutor_id = t.tutor_id
-        LEFT JOIN tbl_tutor_education te ON te.tutor_id = t.tutor_id
-        LEFT JOIN tbl_tutor_payment_plan tp ON tp.tutor_id = t.tutor_id
-        LEFT JOIN tbl_demo_videos dv ON dv.tutor_id = t.tutor_id
+        JOIN tbl_user u 
+          ON u.user_id = t.user_id
+
+        LEFT JOIN tbl_tutor_certificates tc 
+          ON tc.tutor_id = t.tutor_id
+
+        LEFT JOIN tbl_tutor_education te 
+          ON te.tutor_id = t.tutor_id
+
+        LEFT JOIN tbl_demo_videos dv 
+          ON dv.tutor_id = t.tutor_id
+
+        LEFT JOIN tbl_tutor_payment_plan tp 
+          ON tp.demo_id = dv.demo_video_id
+         AND tp.status = 'Active'
+
         WHERE u.role = 'tutor'
           AND t.status = $1
+
         GROUP BY 
           t.tutor_id,
           u.full_name,
@@ -1765,8 +1814,14 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.subject_to_teach,
           t.status,
           t.country,
-          submitted_at
+          t.submitted_at,
+
+          tp.plan_type,
+          tp.royalty_percentage,
+          tp.price,
+          dv.short_bio
       `;
+
     }
 
     // ❌ INVALID STATUS
@@ -1777,22 +1832,27 @@ exports.getAllTutorbystatus = async (req, res) => {
       });
     }
 
+    // ✅ Execute Query
     const { rows } = await pool.query(query, values);
 
-    res.status(200).json({
+    return res.status(200).json({
       statusCode: 200,
       message: "Tutors fetched successfully",
       data: rows
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
+
+    console.error("getAllTutorbystatus Error:", error);
+
+    return res.status(500).json({
       statusCode: 500,
       message: "Internal server error"
     });
+
   }
 };
+
 
 
 
