@@ -1706,6 +1706,7 @@ exports.getAllTutorbystatus = async (req, res) => {
           MAX(tp.plan_type) AS plan_type,
           MAX(tp.royalty_percentage) AS royalty_percentage,
           MAX(tp.price) AS price,
+          MAX(dv.short_bio) AS short_bio
           TO_CHAR(u.created_at, 'DD/MM/YYYY, HH12:MI AM') AS submitted_on,
           t.country
         FROM tbl_tutor t
@@ -1713,6 +1714,7 @@ exports.getAllTutorbystatus = async (req, res) => {
         LEFT JOIN tbl_tutor_certificates tc ON tc.tutor_id = t.tutor_id
         LEFT JOIN tbl_tutor_payment_plan tp ON tp.tutor_id = t.tutor_id
         LEFT JOIN tbl_tutor_education te ON te.tutor_id = t.tutor_id
+        LEFT JOIN tbl_demo_videos dv ON dv.tutor_id = t.tutor_id
         WHERE u.role = 'tutor'
           AND t.status = $1
         GROUP BY 
