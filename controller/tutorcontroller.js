@@ -1706,7 +1706,7 @@ exports.getAllTutorbystatus = async (req, res) => {
           MAX(tp.plan_type) AS plan_type,
           MAX(tp.royalty_percentage) AS royalty_percentage,
           MAX(tp.price) AS price,
-          MAX(dv.short_bio) AS short_bio
+          MAX(dv.short_bio) AS short_bio,
           TO_CHAR(u.created_at, 'DD/MM/YYYY, HH12:MI AM') AS submitted_on,
           t.country
         FROM tbl_tutor t
