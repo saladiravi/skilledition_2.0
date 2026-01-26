@@ -1738,7 +1738,7 @@ exports.getAllTutorbystatus = async (req, res) => {
 
         LEFT JOIN tbl_tutor_payment_plan tp 
           ON tp.demo_id = dv.demo_video_id
-         AND tp.status = 'Active'
+        
 
         WHERE u.role = 'tutor'
           AND t.status = $1
@@ -1802,7 +1802,7 @@ exports.getAllTutorbystatus = async (req, res) => {
 
         LEFT JOIN tbl_tutor_payment_plan tp 
           ON tp.demo_id = dv.demo_video_id
-         AND tp.status = 'Active'
+          
 
         WHERE u.role = 'tutor'
           AND t.status = $1
@@ -1856,86 +1856,6 @@ exports.getAllTutorbystatus = async (req, res) => {
 
 
 
-
-// exports.updateTutorStatus = async (req, res) => {
-//   const { tutor_id, status, reject_reason } = req.body;
-
-//   try {
-//     // basic validation
-//     if (!tutor_id || !status) {
-//       return res.status(400).json({
-//         statusCode: 400,
-//         message: "tutor_id and status are required"
-//       });
-//     }
-
-//     let query = '';
-//     let values = [];
-
-//     // 🟢 APPROVE
-//     if (status === 'Published') {
-//       query = `
-//         UPDATE tbl_tutor
-//         SET 
-//           status = $1
-//         WHERE tutor_id = $2
-//         RETURNING tutor_id, status
-//       `;
-//       values = [status, tutor_id];
-//     }
-
-//     // 🔴 REJECT
-//     else if (status === 'Rejected') {
-//       if (!reject_reason) {
-//         return res.status(400).json({
-//           statusCode: 400,
-//           message: "reject_reason is required when rejecting tutor"
-//         });
-//       }
-
-//       query = `
-//         UPDATE tbl_tutor
-//         SET 
-//           status = $1,
-//           reject_reason = $2,
-//           rejected_at = NOW()
-//         WHERE tutor_id = $3
-//         RETURNING tutor_id, status, reject_reason, rejected_at
-//       `;
-//       values = [status, reject_reason, tutor_id];
-//     }
-
-//     // ❌ Invalid status
-//     else {
-//       return res.status(400).json({
-//         statusCode: 400,
-//         message: "Invalid status value"
-//       });
-//     }
-
-//     const { rows } = await pool.query(query, values);
-
-//     if (rows.length === 0) {
-//       return res.status(404).json({
-//         statusCode: 404,
-//         message: "Tutor not found"
-//       });
-//     }
-
-//     res.status(200).json({
-//       statusCode: 200,
-//       message: `Tutor ${status} successfully`,
-//       data: rows[0]
-//     });
-
-//   } catch (error) {
-//     console.error("error:", error);
-//     res.status(500).json({
-//       statusCode: 500,
-//       message: "Internal server error"
-//     });
-//   }
-// };
 
 
 
