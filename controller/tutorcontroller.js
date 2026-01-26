@@ -1882,7 +1882,8 @@ exports.updateTutorStatus = async (req, res) => {
     if (status === 'Published' || status==='Pending') {
       tutorQuery = `
         UPDATE tbl_tutor
-        SET status = $1
+        SET status = $1,
+        submitted_at = NOW()
         WHERE tutor_id = $2
         RETURNING tutor_id, user_id, status
       `;
