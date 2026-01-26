@@ -1700,13 +1700,18 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.years_of_experience AS experience,
           t.subject_to_teach,
           t.status,
+          t.submitted_at,
           COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
           COUNT(DISTINCT te.tutor_education_id) AS education,
+          MAX(tp.plan_type) AS plan_type,
+          MAX(tp.royalty_percentage) AS royalty_percentage,
+          MAX(tp.price) AS price,
           TO_CHAR(u.created_at, 'DD/MM/YYYY, HH12:MI AM') AS submitted_on,
           t.country
         FROM tbl_tutor t
         JOIN tbl_user u ON u.user_id = t.user_id
         LEFT JOIN tbl_tutor_certificates tc ON tc.tutor_id = t.tutor_id
+        LEFT JOIN tbl_tutor_payment_plan tp ON tp.tutor_id = t.tutor_id
         LEFT JOIN tbl_tutor_education te ON te.tutor_id = t.tutor_id
         WHERE u.role = 'tutor'
           AND t.status = $1
@@ -1718,7 +1723,8 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.subject_to_teach,
           t.status,
           t.country,
-          u.created_at
+          u.created_at,
+          t.submitted_at
         ORDER BY u.created_at ASC
       `;
     }
@@ -1733,6 +1739,7 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.years_of_experience AS experience,
           t.subject_to_teach,
           t.status,
+          t.submitted_at,
           COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
           COUNT(DISTINCT te.tutor_education_id) AS education,
           t.country,
@@ -1755,7 +1762,8 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.years_of_experience,
           t.subject_to_teach,
           t.status,
-          t.country
+          t.country,
+          submitted_at
       `;
     }
 
