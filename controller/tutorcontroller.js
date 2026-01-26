@@ -1686,7 +1686,7 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.status,
           TO_CHAR(t.rejected_at, 'Mon DD, YYYY, HH12:MI AM') AS rejected_date,
           t.reject_reason,
-          t.professional_bio AS description
+          t.short_bio
 
         FROM tbl_tutor t
         JOIN tbl_user u ON u.user_id = t.user_id
