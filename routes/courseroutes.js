@@ -38,6 +38,7 @@ router.post('/getTutorCoursesWithModules',verifyToken,allowRoles("admin","studen
 // admin api's
 
 router.get('/getAdminCourseList',verifyToken,allowRoles("admin","student","tutor"),Course.getAdminCourseList);
+router.post('/getadmintotalcourse',verifyToken,allowRoles("admin","student","tutor"),Course.getadmintotalcourse);
 
 
 module.exports = router;
