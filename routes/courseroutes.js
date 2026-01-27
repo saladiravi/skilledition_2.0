@@ -35,4 +35,9 @@ router.post('/deletecourse',verifyToken,allowRoles("admin","student","tutor"),Co
 router.post('/deletemodule',verifyToken,allowRoles("admin","student","tutor"),Course.deleteModule);
 router.post('/getTutorCoursesWithModules',verifyToken,allowRoles("admin","student","tutor"),Course.getTutorCoursesWithModules);
 
+// admin api's
+
+router.get('/getAdminCourseList',verifyToken,allowRoles("admin","student","tutor"),Course.getAdminCourseList);
+
+
 module.exports = router;

@@ -1497,3 +1497,79 @@ exports.getTutorCoursesWithModules = async (req, res) => {
     });
   }
 };
+
+
+
+
+// admin API's
+
+
+exports.getAdminCourseList = async (req, res) => {
+  try {
+
+    const query = `
+      SELECT
+        tc.course_id,
+
+        tc.course_title AS course,
+
+        COUNT(DISTINCT tm.module_id) AS modules,
+
+        tcg.category_name AS category,
+
+        tu.full_name AS tutor,
+
+        tc.level,
+
+        COUNT(DISTINCT tsc.student_id) AS students,
+
+        tc.status
+
+      FROM tbl_course tc
+
+      -- Category
+      JOIN tbl_category tcg
+        ON tc.category_id = tcg.category_id
+
+      -- Tutor
+      JOIN tbl_user tu
+        ON tc.tutor_id = tu.user_id
+       AND tu.role = 'tutor'
+
+      -- Modules
+      LEFT JOIN tbl_module tm
+        ON tc.course_id = tm.course_id
+
+      -- Students
+      LEFT JOIN tbl_student_course tsc
+        ON tc.course_id = tsc.course_id
+
+      GROUP BY
+        tc.course_id,
+        tc.course_title,
+        tcg.category_name,
+        tu.full_name,
+        tc.level,
+        tc.status
+
+      ORDER BY tc.course_id DESC
+    `;
+
+    const { rows } = await pool.query(query);
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Course list fetched successfully",
+      data: rows
+    });
+
+  } catch (error) {
+
+    console.error("getAdminCourseList Error:", error);
+
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error"
+    });
+  }
+};
