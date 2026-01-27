@@ -415,18 +415,26 @@ exports.getProfile = async (req, res) => {
 
   try {
     const result = await pool.query(
-      `
-      SELECT 
-        tt.profile_pic,
-        tu.full_name,
-        tt.highest_qualification,
-        tt.professional_bio,
-        tt.subject_to_teach,
-        tt.phone_number
-      FROM tbl_user AS tu
-      JOIN tbl_tutor AS tt ON tu.user_id = tt.user_id
-      WHERE tu.user_id = $1
-      `,
+        `
+        SELECT 
+          tt.profile_pic,
+          tu.full_name,
+          te.degree,
+          tt.professional_background,
+          tt.subject_to_teach,
+          tt.phone_number
+        FROM tbl_user AS tu
+        JOIN tbl_tutor AS tt 
+          ON tu.user_id = tt.user_id
+        JOIN tbl_education AS te 
+          ON tt.tutor_id = te.tutor_id
+        WHERE tu.user_id = $1
+          AND te.year_of_passout = (
+            SELECT MAX(year_of_passout)
+            FROM tbl_education
+            WHERE tutor_id = tt.tutor_id
+          )
+        `,
       [user_id]
     );
 
@@ -465,8 +473,7 @@ exports.updateProfile = async (req, res) => {
   const {
     user_id,
     full_name,
-    highest_qualification,
-    professional_bio,
+    professional_background,
     subject_to_teach,
     phone_number
   } = req.body;
@@ -501,18 +508,18 @@ exports.updateProfile = async (req, res) => {
     const query = `
       UPDATE tbl_tutor
       SET 
-        highest_qualification = COALESCE($1, highest_qualification),
-        professional_bio = COALESCE($2, professional_bio),
-        subject_to_teach = COALESCE($3, subject_to_teach),
-        profile_pic = COALESCE($4, profile_pic),
-        phone_number = COALESCE($5, phone_number)
-      WHERE user_id = $6
+       
+        professional_background = COALESCE($1, professional_background),
+        subject_to_teach = COALESCE($2, subject_to_teach),
+        profile_pic = COALESCE($3, profile_pic),
+        phone_number = COALESCE($4, phone_number)
+      WHERE user_id = $5
       RETURNING user_id, profile_pic, phone_number;
     `;
 
     const values = [
-      highest_qualification,
-      professional_bio,
+     
+      professional_background,
       subject_to_teach,
       profile_pic_key,
       phone_number,
