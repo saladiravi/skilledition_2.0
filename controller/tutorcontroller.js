@@ -1668,7 +1668,7 @@ exports.getAllTutorbystatus = async (req, res) => {
   try {
     let { status } = req.body;
 
-    // ✅ Clean & Validate status
+    // Clean & Validate status
     status = status?.trim();
 
     if (!status) {
@@ -1697,8 +1697,8 @@ exports.getAllTutorbystatus = async (req, res) => {
 
         FROM tbl_tutor t
         JOIN tbl_user u ON u.user_id = t.user_id
-          LEFT JOIN tbl_demo_videos dv 
-          ON dv.tutor_id = t.tutor_id
+        LEFT JOIN tbl_demo_videos dv ON dv.tutor_id = t.tutor_id
+
         WHERE t.status = $1
 
         ORDER BY t.rejected_at DESC
@@ -1730,26 +1730,17 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.country
 
         FROM tbl_tutor t
-        JOIN tbl_user u 
-          ON u.user_id = t.user_id
+        JOIN tbl_user u ON u.user_id = t.user_id
 
-        LEFT JOIN tbl_tutor_certificates tc 
-          ON tc.tutor_id = t.tutor_id
-
-        LEFT JOIN tbl_tutor_education te 
-          ON te.tutor_id = t.tutor_id
-
-        LEFT JOIN tbl_demo_videos dv 
-          ON dv.tutor_id = t.tutor_id
-
-        LEFT JOIN tbl_tutor_payment_plan tp 
-          ON tp.demo_id = dv.demo_video_id
-        
+        LEFT JOIN tbl_tutor_certificates tc ON tc.tutor_id = t.tutor_id
+        LEFT JOIN tbl_tutor_education te ON te.tutor_id = t.tutor_id
+        LEFT JOIN tbl_demo_videos dv ON dv.tutor_id = t.tutor_id
+        LEFT JOIN tbl_tutor_payment_plan tp ON tp.demo_id = dv.demo_video_id
 
         WHERE u.role = 'tutor'
           AND t.status = $1
 
-        GROUP BY 
+        GROUP BY
           t.tutor_id,
           u.full_name,
           u.email,
@@ -1758,13 +1749,12 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.status,
           t.country,
           t.submitted_at,
-
           tp.plan_type,
           tp.royalty_percentage,
           tp.price,
           dv.short_bio
 
-        ORDER BY t.submitted_at ASC
+        ORDER BY t.submitted_at DESC
       `;
 
     }
@@ -1780,11 +1770,12 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.years_of_experience AS experience,
           t.subject_to_teach,
           t.status,
-          
 
           COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
           COUNT(DISTINCT te.tutor_education_id) AS education,
+
           TO_CHAR(t.submitted_at, 'DD/MM/YYYY, HH12:MI AM') AS submitted_at,
+
           tp.plan_type,
           tp.royalty_percentage,
           tp.price,
@@ -1793,26 +1784,17 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.country
 
         FROM tbl_tutor t
-        JOIN tbl_user u 
-          ON u.user_id = t.user_id
+        JOIN tbl_user u ON u.user_id = t.user_id
 
-        LEFT JOIN tbl_tutor_certificates tc 
-          ON tc.tutor_id = t.tutor_id
-
-        LEFT JOIN tbl_tutor_education te 
-          ON te.tutor_id = t.tutor_id
-
-        LEFT JOIN tbl_demo_videos dv 
-          ON dv.tutor_id = t.tutor_id
-
-        LEFT JOIN tbl_tutor_payment_plan tp 
-          ON tp.demo_id = dv.demo_video_id
-          
+        LEFT JOIN tbl_tutor_certificates tc ON tc.tutor_id = t.tutor_id
+        LEFT JOIN tbl_tutor_education te ON te.tutor_id = t.tutor_id
+        LEFT JOIN tbl_demo_videos dv ON dv.tutor_id = t.tutor_id
+        LEFT JOIN tbl_tutor_payment_plan tp ON tp.demo_id = dv.demo_video_id
 
         WHERE u.role = 'tutor'
           AND t.status = $1
 
-        GROUP BY 
+        GROUP BY
           t.tutor_id,
           u.full_name,
           u.email,
@@ -1821,12 +1803,12 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.status,
           t.country,
           t.submitted_at,
-
           tp.plan_type,
           tp.royalty_percentage,
           tp.price,
           dv.short_bio
-          ORDER BY t.submitted_at DESC;
+
+        ORDER BY t.submitted_at DESC
       `;
 
     }
@@ -1839,7 +1821,7 @@ exports.getAllTutorbystatus = async (req, res) => {
       });
     }
 
-    // ✅ Execute Query
+    // Execute Query
     const { rows } = await pool.query(query, values);
 
     return res.status(200).json({
@@ -1859,6 +1841,7 @@ exports.getAllTutorbystatus = async (req, res) => {
 
   }
 };
+
 
 
 
