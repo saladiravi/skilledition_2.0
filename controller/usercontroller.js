@@ -426,12 +426,12 @@ exports.getProfile = async (req, res) => {
         FROM tbl_user AS tu
         JOIN tbl_tutor AS tt 
           ON tu.user_id = tt.user_id
-        JOIN tbl_education AS te 
+        JOIN tbl_tutor_education AS te 
           ON tt.tutor_id = te.tutor_id
         WHERE tu.user_id = $1
           AND te.year_of_passout = (
             SELECT MAX(year_of_passout)
-            FROM tbl_education
+            FROM tbl_tutor_education
             WHERE tutor_id = tt.tutor_id
           )
         `,
