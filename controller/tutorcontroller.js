@@ -1764,7 +1764,7 @@ exports.getAllTutorbystatus = async (req, res) => {
           tp.price,
           dv.short_bio
 
-        ORDER BY u.submitted_at ASC
+        ORDER BY t.submitted_at ASC
       `;
 
     }
