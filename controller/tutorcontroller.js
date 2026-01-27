@@ -1527,12 +1527,12 @@ exports.getAllTutors = async (req, res) => {
         FROM tbl_tutor t
         JOIN tbl_user u 
             ON u.user_id = t.user_id
-        JOIN tbl_education te 
+        JOIN tbl_tutor_education te 
             ON t.tutor_id = te.tutor_id
         WHERE u.role = 'tutor'
           AND te.year_of_passout = (
               SELECT MAX(year_of_passout)
-              FROM tbl_education
+              FROM tbl_tutor_education
               WHERE tutor_id = t.tutor_id
           )
          ORDER BY t.tutor_id ASC
