@@ -1514,22 +1514,29 @@ exports.onboardnotification = async (req, res) => {
 exports.getAllTutors = async (req, res) => {
   try {
     const query = `
-            SELECT
-                t.tutor_id,
-                u.full_name,
-                t.years_of_experience,
-                t.highest_qualification,
-                t.country,
-                t.level,
-                t.phone_number,
-                u.status,
-                u.created_at AS submitted_on
-            FROM tbl_tutor t
-            JOIN tbl_user u 
-                ON u.user_id = t.user_id
-            WHERE u.role = 'tutor'
-            ORDER BY u.created_at ASC
-        `;
+        SELECT
+            t.tutor_id,
+            u.full_name,
+            t.years_of_experience,
+            te.degree,
+            t.country,
+            t.level,
+            t.phone_number,
+            u.status
+            
+        FROM tbl_tutor t
+        JOIN tbl_user u 
+            ON u.user_id = t.user_id
+        JOIN tbl_education te 
+            ON t.tutor_id = te.tutor_id
+        WHERE u.role = 'tutor'
+          AND te.year_of_passout = (
+              SELECT MAX(year_of_passout)
+              FROM tbl_education
+              WHERE tutor_id = t.tutor_id
+          )
+         ORDER BY t.tutor_id ASC
+      `;
 
     const { rows } = await pool.query(query);
 
@@ -1710,7 +1717,6 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.years_of_experience AS experience,
           t.subject_to_teach,
           t.status,
-          t.submitted_at,
 
           COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
           COUNT(DISTINCT te.tutor_education_id) AS education,
@@ -1720,7 +1726,7 @@ exports.getAllTutorbystatus = async (req, res) => {
           tp.price,
           dv.short_bio,
 
-          TO_CHAR(u.created_at, 'DD/MM/YYYY, HH12:MI AM') AS submitted_on,
+          TO_CHAR(t.submitted_at, 'DD/MM/YYYY, HH12:MI AM') AS submitted_at,
           t.country
 
         FROM tbl_tutor t
@@ -1751,7 +1757,6 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.subject_to_teach,
           t.status,
           t.country,
-          u.created_at,
           t.submitted_at,
 
           tp.plan_type,
@@ -1759,7 +1764,7 @@ exports.getAllTutorbystatus = async (req, res) => {
           tp.price,
           dv.short_bio
 
-        ORDER BY u.created_at ASC
+        ORDER BY u.submitted_at ASC
       `;
 
     }
@@ -1775,11 +1780,11 @@ exports.getAllTutorbystatus = async (req, res) => {
           t.years_of_experience AS experience,
           t.subject_to_teach,
           t.status,
-          t.submitted_at,
+          
 
           COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
           COUNT(DISTINCT te.tutor_education_id) AS education,
-
+          TO_CHAR(t.submitted_at, 'DD/MM/YYYY, HH12:MI AM') AS submitted_at,
           tp.plan_type,
           tp.royalty_percentage,
           tp.price,
@@ -1821,6 +1826,7 @@ exports.getAllTutorbystatus = async (req, res) => {
           tp.royalty_percentage,
           tp.price,
           dv.short_bio
+          ORDER BY t.submitted_at DESC;
       `;
 
     }
