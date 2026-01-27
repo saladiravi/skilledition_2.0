@@ -1742,3 +1742,62 @@ exports.getadmintotalcourse = async (req, res) => {
     });
   }
 };
+
+
+exports.getModuleVideoById = async (req, res) => {
+
+  const { module_video_id } = req.body;
+
+  try {
+
+    if (!module_video_id) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "module_video_id is required"
+      });
+    }
+
+    const query = `
+      SELECT
+        module_video_id,
+        module_id,
+        video,
+        video_title,
+        status,
+        reason,
+        video_duration,
+        module_video_created_at
+      FROM tbl_module_videos
+      WHERE module_video_id = $1
+    `;
+
+    const { rows } = await pool.query(query, [module_video_id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Video not found"
+      });
+    }
+
+    const videoData = rows[0];
+
+    // Generate signed URL
+    const signedUrl = await getSignedVideoUrl(videoData.video);
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Video fetched successfully",
+      data: {
+        ...videoData,
+        video_url: signedUrl
+      }
+    });
+
+  } catch (error) {
+     return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
