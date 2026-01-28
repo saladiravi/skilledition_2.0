@@ -1552,7 +1552,7 @@ exports.getAdminCourseList = async (req, res) => {
         tc.level,
         tc.status
 
-      ORDER BY tc.course_id DESC
+      ORDER BY tc.course_id ASC
     `;
 
     const { rows } = await pool.query(query);
