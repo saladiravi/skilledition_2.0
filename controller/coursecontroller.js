@@ -1575,96 +1575,291 @@ exports.getAdminCourseList = async (req, res) => {
 };
 
 
+// exports.getadmintotalcourse = async (req, res) => {
+
+//   const { status } = req.body; // Pending / Approved / Rejected
+
+//   try {
+
+//     const query = `
+     
+//   SELECT
+
+//     -- COURSE
+//     tc.course_id,
+//     tc.course_title,
+//     tc.course_description,
+//     tc.duration,
+//     tc.level,
+//     tc.status AS course_status,
+
+//     -- CATEGORY
+//     tcg.category_name,
+
+//     -- TUTOR
+//     tut.full_name AS tutor_name,
+
+//     -- MODULE
+//     tm.module_id,
+//     tm.module_title,
+
+//     -- VIDEO
+//     tmv.module_video_id,
+//     tmv.video_title,
+//     tmv.status AS video_status,
+
+//     -- STUDENTS
+//     COUNT(DISTINCT tsc.student_id) AS enrolled_count,
+
+//     -- TOTAL MODULES (FROM SUBQUERY)
+//     COALESCE(mc.total_modules, 0) AS total_modules
+
+
+//   FROM tbl_course tc
+
+
+//   -- CATEGORY
+//   JOIN tbl_category tcg
+//     ON tc.category_id = tcg.category_id
+
+
+//   -- TUTOR
+//   JOIN tbl_user tut
+//     ON tc.tutor_id = tut.user_id
+//    AND tut.role = 'tutor'
+
+
+//   -- MODULE
+//   LEFT JOIN tbl_module tm
+//     ON tc.course_id = tm.course_id
+
+
+//   -- VIDEOS
+//   LEFT JOIN tbl_module_videos tmv
+//     ON tm.module_id = tmv.module_id
+
+
+//   -- STUDENTS
+//   LEFT JOIN tbl_student_course tsc
+//     ON tc.course_id = tsc.course_id
+
+
+//   -- MODULE COUNT SUBQUERY
+//   LEFT JOIN (
+//     SELECT
+//       course_id,
+//       COUNT(DISTINCT module_id) AS total_modules
+//     FROM tbl_module
+//     GROUP BY course_id
+//   ) mc ON mc.course_id = tc.course_id
+
+
+//   WHERE tc.status = $1
+
+
+//   GROUP BY
+//     tc.course_id,
+//     tcg.category_name,
+//     tut.full_name,
+//     tm.module_id,
+//     tmv.module_video_id,
+//     mc.total_modules
+// `;
+
+//     const { rows } = await pool.query(query, [status]);
+
+//     const courses = {};
+
+//     // ---------- FORMAT RESPONSE ----------
+//     for (const row of rows) {
+
+//       // COURSE
+//       if (!courses[row.course_id]) {
+
+//         courses[row.course_id] = {
+//           course_id: row.course_id,
+//           course_title: row.course_title,
+//           status: row.course_status,
+
+//           description: row.course_description,
+//           category: row.category_name,
+//           level: row.level,
+//           duration: row.duration,
+
+//           tutor: row.tutor_name,
+
+//           total_modules: Number(row.total_modules),
+//           enrolled_students: Number(row.enrolled_count),
+
+//           modules: []
+//         };
+//       }
+
+//       const course = courses[row.course_id];
+
+//       // MODULE
+//       let module = course.modules.find(
+//         m => m.module_id === row.module_id
+//       );
+
+//       if (!module && row.module_id) {
+
+//         module = {
+//           module_id: row.module_id,
+//           module_title: row.module_title,
+//           videos: []
+//         };
+
+//         course.modules.push(module);
+//       }
+
+//       // VIDEO
+//       if (row.module_video_id && module) {
+
+//         module.videos.push({
+//           module_video_id: row.module_video_id,
+//           video_title: row.video_title,
+//           status: row.video_status
+//         });
+//       }
+//     }
+
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: "Admin courses fetched successfully",
+//       data: Object.values(courses)
+//     });
+
+
+//   } catch (error) {
+
+//     console.error("getadmintotalcourse Error:", error);
+
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error"
+//     });
+//   }
+// };
+
+
+
 exports.getadmintotalcourse = async (req, res) => {
 
-  const { status } = req.body; // Pending / Approved / Rejected
+  const { status } = req.body;
 
   try {
 
     const query = `
      
-  SELECT
+      SELECT
 
-    -- COURSE
-    tc.course_id,
-    tc.course_title,
-    tc.course_description,
-    tc.duration,
-    tc.level,
-    tc.status AS course_status,
+        -- COURSE
+        tc.course_id,
+        tc.course_title,
+        tc.course_description,
+        tc.duration,
+        tc.level,
+        tc.status AS course_status,
 
-    -- CATEGORY
-    tcg.category_name,
+        -- CATEGORY
+        tcg.category_name,
 
-    -- TUTOR
-    tut.full_name AS tutor_name,
+        -- TUTOR
+        tut.full_name AS tutor_name,
 
-    -- MODULE
-    tm.module_id,
-    tm.module_title,
+        -- MODULE
+        tm.module_id,
+        tm.module_title,
+        ms.module_status,
 
-    -- VIDEO
-    tmv.module_video_id,
-    tmv.video_title,
-    tmv.status AS video_status,
+        -- VIDEO
+        tmv.module_video_id,
+        tmv.video_title,
+        tmv.status AS video_status,
 
-    -- STUDENTS
-    COUNT(DISTINCT tsc.student_id) AS enrolled_count,
+        -- STUDENTS
+        COUNT(DISTINCT tsc.student_id) AS enrolled_count,
 
-    -- TOTAL MODULES (FROM SUBQUERY)
-    COALESCE(mc.total_modules, 0) AS total_modules
-
-
-  FROM tbl_course tc
+        -- TOTAL MODULES
+        COALESCE(mc.total_modules, 0) AS total_modules
 
 
-  -- CATEGORY
-  JOIN tbl_category tcg
-    ON tc.category_id = tcg.category_id
+      FROM tbl_course tc
 
 
-  -- TUTOR
-  JOIN tbl_user tut
-    ON tc.tutor_id = tut.user_id
-   AND tut.role = 'tutor'
+      -- CATEGORY
+      JOIN tbl_category tcg
+        ON tc.category_id = tcg.category_id
 
 
-  -- MODULE
-  LEFT JOIN tbl_module tm
-    ON tc.course_id = tm.course_id
+      -- TUTOR
+      JOIN tbl_user tut
+        ON tc.tutor_id = tut.user_id
+       AND tut.role = 'tutor'
 
 
-  -- VIDEOS
-  LEFT JOIN tbl_module_videos tmv
-    ON tm.module_id = tmv.module_id
+      -- MODULE
+      LEFT JOIN tbl_module tm
+        ON tc.course_id = tm.course_id
 
 
-  -- STUDENTS
-  LEFT JOIN tbl_student_course tsc
-    ON tc.course_id = tsc.course_id
+      -- VIDEOS
+      LEFT JOIN tbl_module_videos tmv
+        ON tm.module_id = tmv.module_id
 
 
-  -- MODULE COUNT SUBQUERY
-  LEFT JOIN (
-    SELECT
-      course_id,
-      COUNT(DISTINCT module_id) AS total_modules
-    FROM tbl_module
-    GROUP BY course_id
-  ) mc ON mc.course_id = tc.course_id
+      -- STUDENTS
+      LEFT JOIN tbl_student_course tsc
+        ON tc.course_id = tsc.course_id
 
 
-  WHERE tc.status = $1
+      -- MODULE COUNT
+      LEFT JOIN (
+        SELECT
+          course_id,
+          COUNT(DISTINCT module_id) AS total_modules
+        FROM tbl_module
+        GROUP BY course_id
+      ) mc ON mc.course_id = tc.course_id
 
 
-  GROUP BY
-    tc.course_id,
-    tcg.category_name,
-    tut.full_name,
-    tm.module_id,
-    tmv.module_video_id,
-    mc.total_modules
-`;
+      -- MODULE STATUS FROM VIDEOS
+      LEFT JOIN (
+        SELECT
+          module_id,
+          CASE
+            WHEN COUNT(*) FILTER (WHERE LOWER(status) = 'pending') > 0 THEN 'Pending'
+            WHEN COUNT(*) FILTER (WHERE LOWER(status) = 'reject') = COUNT(*) THEN 'Reject'
+            ELSE 'Published'
+          END AS module_status
+        FROM tbl_module_videos
+        GROUP BY module_id
+      ) ms ON ms.module_id = tm.module_id
+
+
+      WHERE tc.status = $1
+
+
+      GROUP BY
+        tc.course_id,
+        tc.course_title,
+        tc.course_description,
+        tc.duration,
+        tc.level,
+        tc.status,
+        tcg.category_name,
+        tut.full_name,
+        tm.module_id,
+        tm.module_title,
+        ms.module_status,
+        tmv.module_video_id,
+        tmv.video_title,
+        tmv.status,
+        mc.total_modules
+    `;
+
 
     const { rows } = await pool.query(query, [status]);
 
@@ -1707,6 +1902,7 @@ exports.getadmintotalcourse = async (req, res) => {
         module = {
           module_id: row.module_id,
           module_title: row.module_title,
+          status: row.module_status || "Pending", // default
           videos: []
         };
 
@@ -1742,7 +1938,6 @@ exports.getadmintotalcourse = async (req, res) => {
     });
   }
 };
-
 
 exports.getModuleVideoById = async (req, res) => {
 
