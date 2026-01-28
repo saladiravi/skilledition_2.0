@@ -1827,16 +1827,26 @@ exports.getadmintotalcourse = async (req, res) => {
 
       -- MODULE STATUS FROM VIDEOS
       LEFT JOIN (
-        SELECT
-          module_id,
-          CASE
-            WHEN COUNT(*) FILTER (WHERE LOWER(status) = 'Pending') > 0 THEN 'Pending'
-            WHEN COUNT(*) FILTER (WHERE LOWER(status) = 'Rejected') = COUNT(*) THEN 'Rejected'
-            ELSE 'Published'
-          END AS module_status
-        FROM tbl_module_videos
-        GROUP BY module_id
-      ) ms ON ms.module_id = tm.module_id
+          SELECT
+            module_id,
+            CASE
+
+              WHEN COUNT(*) FILTER (WHERE status = 'Rejected') > 0
+                THEN 'Rejected'
+
+              WHEN COUNT(*) FILTER (WHERE status = 'Pending') = COUNT(*)
+                THEN 'Pending'
+
+              WHEN COUNT(*) FILTER (WHERE status = 'Published') = COUNT(*)
+                THEN 'Published'
+
+              ELSE 'Pending'
+            END AS module_status
+
+          FROM tbl_module_videos
+          GROUP BY module_id
+        ) ms ON ms.module_id = tm.module_id
+
 
 
       WHERE tc.status = $1
