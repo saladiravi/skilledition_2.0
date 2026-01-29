@@ -1822,7 +1822,7 @@ exports.getadmintotalcourse = async (req, res) => {
   ) mc ON mc.course_id = tc.course_id
 
 
-  WHERE tmv.status = $1
+  WHERE LOWER(tmv.status) = LOWER($1)
 
 
   GROUP BY
