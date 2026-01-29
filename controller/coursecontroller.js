@@ -1752,123 +1752,94 @@ exports.getadmintotalcourse = async (req, res) => {
   try {
 
     const query = `
-     
-      SELECT
+  SELECT
 
-        -- COURSE
-        tc.course_id,
-        tc.course_title,
-        tc.course_description,
-        tc.duration,
-        tc.level,
-        tc.status AS course_status,
+    -- COURSE
+    tc.course_id,
+    tc.course_title,
+    tc.course_description,
+    tc.duration,
+    tc.level,
 
-        -- CATEGORY
-        tcg.category_name,
+    -- CATEGORY
+    tcg.category_name,
 
-        -- TUTOR
-        tut.full_name AS tutor_name,
+    -- TUTOR
+    tut.full_name AS tutor_name,
 
-        -- MODULE
-        tm.module_id,
-        tm.module_title,
-        ms.module_status,
+    -- MODULE
+    tm.module_id,
+    tm.module_title,
 
-        -- VIDEO
-        tmv.module_video_id,
-        tmv.video_title,
-        tmv.status AS video_status,
+    -- VIDEO
+    tmv.module_video_id,
+    tmv.video_title,
+    tmv.status AS video_status,
 
-        -- STUDENTS
-        COUNT(DISTINCT tsc.student_id) AS enrolled_count,
+    -- STUDENTS
+    COUNT(DISTINCT tsc.student_id) AS enrolled_count,
 
-        -- TOTAL MODULES
-        COALESCE(mc.total_modules, 0) AS total_modules
+    -- TOTAL MODULES
+    COALESCE(mc.total_modules, 0) AS total_modules
 
 
-      FROM tbl_course tc
+  FROM tbl_course tc
 
 
-      -- CATEGORY
-      JOIN tbl_category tcg
-        ON tc.category_id = tcg.category_id
+  -- CATEGORY
+  JOIN tbl_category tcg
+    ON tc.category_id = tcg.category_id
 
 
-      -- TUTOR
-      JOIN tbl_user tut
-        ON tc.tutor_id = tut.user_id
-       AND tut.role = 'tutor'
+  -- TUTOR
+  JOIN tbl_user tut
+    ON tc.tutor_id = tut.user_id
+   AND tut.role = 'tutor'
 
 
-      -- MODULE
-      LEFT JOIN tbl_module tm
-        ON tc.course_id = tm.course_id
+  -- MODULE
+  JOIN tbl_module tm
+    ON tc.course_id = tm.course_id
 
 
-      -- VIDEOS
-      LEFT JOIN tbl_module_videos tmv
-        ON tm.module_id = tmv.module_id
+  -- VIDEOS (ONLY REQUIRED STATUS)
+  JOIN tbl_module_videos tmv
+    ON tm.module_id = tmv.module_id
 
 
-      -- STUDENTS
-      LEFT JOIN tbl_student_course tsc
-        ON tc.course_id = tsc.course_id
+  -- STUDENTS
+  LEFT JOIN tbl_student_course tsc
+    ON tc.course_id = tsc.course_id
 
 
-      -- MODULE COUNT
-      LEFT JOIN (
-        SELECT
-          course_id,
-          COUNT(DISTINCT module_id) AS total_modules
-        FROM tbl_module
-        GROUP BY course_id
-      ) mc ON mc.course_id = tc.course_id
+  -- MODULE COUNT
+  LEFT JOIN (
+    SELECT
+      course_id,
+      COUNT(DISTINCT module_id) AS total_modules
+    FROM tbl_module
+    GROUP BY course_id
+  ) mc ON mc.course_id = tc.course_id
 
 
-      -- MODULE STATUS FROM VIDEOS
-      LEFT JOIN (
-          SELECT
-            module_id,
-            CASE
-
-              WHEN COUNT(*) FILTER (WHERE status = 'Rejected') > 0
-                THEN 'Rejected'
-
-              WHEN COUNT(*) FILTER (WHERE status = 'Pending') = COUNT(*)
-                THEN 'Pending'
-
-              WHEN COUNT(*) FILTER (WHERE status = 'Published') = COUNT(*)
-                THEN 'Published'
-
-              ELSE 'Pending'
-            END AS module_status
-
-          FROM tbl_module_videos
-          GROUP BY module_id
-        ) ms ON ms.module_id = tm.module_id
+  WHERE LOWER(tmv.status) = LOWER($1)
 
 
-
-      WHERE tc.status = $1
-
-
-      GROUP BY
-        tc.course_id,
-        tc.course_title,
-        tc.course_description,
-        tc.duration,
-        tc.level,
-        tc.status,
-        tcg.category_name,
-        tut.full_name,
-        tm.module_id,
-        tm.module_title,
-        ms.module_status,
-        tmv.module_video_id,
-        tmv.video_title,
-        tmv.status,
-        mc.total_modules
-    `;
+  GROUP BY
+    tc.course_id,
+    tc.course_title,
+    tc.course_description,
+    tc.duration,
+    tc.level,
+    tcg.category_name,
+    tut.full_name,
+    tm.module_id,
+    tm.module_title,
+    tmv.module_video_id,
+    tmv.video_title,
+    tmv.status,
+    mc.total_modules
+`;
 
 
     const { rows } = await pool.query(query, [status]);
