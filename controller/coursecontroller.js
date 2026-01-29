@@ -1751,131 +1751,124 @@ exports.getadmintotalcourse = async (req, res) => {
 
   try {
 
-      const query = `
-  SELECT
+    const query = `
+     
+      SELECT
 
-    -- COURSE
-    tc.course_id,
-    tc.course_title,
-    tc.course_description,
-    tc.duration,
-    tc.level,
+        -- COURSE
+        tc.course_id,
+        tc.course_title,
+        tc.course_description,
+        tc.duration,
+        tc.level,
+        tc.status AS course_status,
 
-    cs.course_status, -- FROM VIDEOS
+        -- CATEGORY
+        tcg.category_name,
 
-    -- CATEGORY
-    tcg.category_name,
+        -- TUTOR
+        tut.full_name AS tutor_name,
 
-    -- TUTOR
-    tut.full_name AS tutor_name,
+        -- MODULE
+        tm.module_id,
+        tm.module_title,
+        ms.module_status,
 
-    -- MODULE
-    tm.module_id,
-    tm.module_title,
-    ms.module_status,
+        -- VIDEO
+        tmv.module_video_id,
+        tmv.video_title,
+        tmv.status AS video_status,
 
-    -- VIDEO
-    tmv.module_video_id,
-    tmv.video_title,
-    tmv.status AS video_status,
+        -- STUDENTS
+        COUNT(DISTINCT tsc.student_id) AS enrolled_count,
 
-    -- STUDENTS
-    COUNT(DISTINCT tsc.student_id) AS enrolled_count,
-
-    -- TOTAL MODULES
-    COALESCE(mc.total_modules, 0) AS total_modules
-
-
-  FROM tbl_course tc
+        -- TOTAL MODULES
+        COALESCE(mc.total_modules, 0) AS total_modules
 
 
-  -- CATEGORY
-  JOIN tbl_category tcg
-    ON tc.category_id = tcg.category_id
+      FROM tbl_course tc
 
 
-  -- TUTOR
-  JOIN tbl_user tut
-    ON tc.tutor_id = tut.user_id
-   AND tut.role = 'tutor'
+      -- CATEGORY
+      JOIN tbl_category tcg
+        ON tc.category_id = tcg.category_id
 
 
-  -- MODULE
-  LEFT JOIN tbl_module tm
-    ON tc.course_id = tm.course_id
+      -- TUTOR
+      JOIN tbl_user tut
+        ON tc.tutor_id = tut.user_id
+       AND tut.role = 'tutor'
 
 
-  -- VIDEOS
-  LEFT JOIN tbl_module_videos tmv
-    ON tm.module_id = tmv.module_id
+      -- MODULE
+      LEFT JOIN tbl_module tm
+        ON tc.course_id = tm.course_id
 
 
-  -- STUDENTS
-  LEFT JOIN tbl_student_course tsc
-    ON tc.course_id = tsc.course_id
+      -- VIDEOS
+      LEFT JOIN tbl_module_videos tmv
+        ON tm.module_id = tmv.module_id
 
 
-  -- MODULE COUNT
-  LEFT JOIN (
-    SELECT
-      course_id,
-      COUNT(DISTINCT module_id) AS total_modules
-    FROM tbl_module
-    GROUP BY course_id
-  ) mc ON mc.course_id = tc.course_id
+      -- STUDENTS
+      LEFT JOIN tbl_student_course tsc
+        ON tc.course_id = tsc.course_id
 
 
-  -- MODULE STATUS
-  LEFT JOIN (
-    SELECT
-      module_id,
-      CASE
-        WHEN COUNT(*) FILTER (WHERE LOWER(status) = 'pending') > 0 THEN 'Pending'
-        WHEN COUNT(*) FILTER (WHERE LOWER(status) = 'reject') = COUNT(*) THEN 'Reject'
-        ELSE 'Published'
-      END AS module_status
-    FROM tbl_module_videos
-    GROUP BY module_id
-  ) ms ON ms.module_id = tm.module_id
+      -- MODULE COUNT
+      LEFT JOIN (
+        SELECT
+          course_id,
+          COUNT(DISTINCT module_id) AS total_modules
+        FROM tbl_module
+        GROUP BY course_id
+      ) mc ON mc.course_id = tc.course_id
 
 
-  -- COURSE STATUS FROM VIDEOS
-  LEFT JOIN (
-    SELECT
-      m.course_id,
+      -- MODULE STATUS FROM VIDEOS
+      LEFT JOIN (
+          SELECT
+            module_id,
+            CASE
 
-      CASE
-        WHEN COUNT(*) FILTER (WHERE LOWER(v.status) = 'pending') > 0 THEN 'Pending'
-        WHEN COUNT(*) FILTER (WHERE LOWER(v.status) = 'reject') = COUNT(*) THEN 'Reject'
-        ELSE 'Published'
-      END AS course_status
+              WHEN COUNT(*) FILTER (WHERE status = 'Rejected') > 0
+                THEN 'Rejected'
 
-    FROM tbl_module_videos v
-    JOIN tbl_module m ON v.module_id = m.module_id
-    GROUP BY m.course_id
-  ) cs ON cs.course_id = tc.course_id
+              WHEN COUNT(*) FILTER (WHERE status = 'Pending') = COUNT(*)
+                THEN 'Pending'
+
+              WHEN COUNT(*) FILTER (WHERE status = 'Published') = COUNT(*)
+                THEN 'Published'
+
+              ELSE 'Pending'
+            END AS module_status
+
+          FROM tbl_module_videos
+          GROUP BY module_id
+        ) ms ON ms.module_id = tm.module_id
 
 
-  WHERE cs.course_status = $1
+
+      WHERE tc.status = $1
 
 
-  GROUP BY
-    tc.course_id,
-    tc.course_title,
-    tc.course_description,
-    tc.duration,
-    tc.level,
-    cs.course_status,
-    tcg.category_name,
-    tut.full_name,
-    tm.module_id,
-    tm.module_title,
-    ms.module_status,
-    tmv.module_video_id,
-    tmv.video_title,
-    tmv.status,
-    mc.total_modules
-`;
+      GROUP BY
+        tc.course_id,
+        tc.course_title,
+        tc.course_description,
+        tc.duration,
+        tc.level,
+        tc.status,
+        tcg.category_name,
+        tut.full_name,
+        tm.module_id,
+        tm.module_title,
+        ms.module_status,
+        tmv.module_video_id,
+        tmv.video_title,
+        tmv.status,
+        mc.total_modules
+    `;
 
 
     const { rows } = await pool.query(query, [status]);
