@@ -2217,6 +2217,48 @@ exports.getadmintotalcourse = async (req, res) => {
     });
   }
 };
+
+
+exports.updateadminassignmentstatus = async (req, res) => {
+  const { assignment_id, status, reason } = req.body;
+
+  if (!assignment_id || !status) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "assignment_id and status are required"
+    });
+  }
+
+  try {
+
+    const updateResult = await pool.query(
+      `UPDATE tbl_assignment
+             SET status = $1, reason = $2
+             WHERE assignment_id = $3`,
+      [status, reason, assignment_id]
+    );
+
+    if (updateResult.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Assignment not found"
+      });
+    }
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Status updated successfully"
+    });
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
+
 exports.getModuleVideoById = async (req, res) => {
 
   const { module_video_id } = req.body;
