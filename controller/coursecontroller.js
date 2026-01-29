@@ -1760,6 +1760,7 @@ exports.getadmintotalcourse = async (req, res) => {
     tc.course_description,
     tc.duration,
     tc.level,
+    tc.status,
 
     -- CATEGORY
     tcg.category_name,
@@ -1831,6 +1832,7 @@ exports.getadmintotalcourse = async (req, res) => {
     tc.course_description,
     tc.duration,
     tc.level,
+    tc.status,
     tcg.category_name,
     tut.full_name,
     tm.module_id,
@@ -1855,7 +1857,7 @@ exports.getadmintotalcourse = async (req, res) => {
         courses[row.course_id] = {
           course_id: row.course_id,
           course_title: row.course_title,
-          status: row.course_status,
+          status: row.status,
 
           description: row.course_description,
           category: row.category_name,
