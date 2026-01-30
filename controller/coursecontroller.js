@@ -1744,7 +1744,6 @@ exports.getAdminCourseList = async (req, res) => {
 // };
 
 
-
 // exports.getadmintotalcourse = async (req, res) => {
 
 //   const { status } = req.body;
@@ -1752,112 +1751,165 @@ exports.getAdminCourseList = async (req, res) => {
 //   try {
 
 //     const query = `
-//   SELECT
 
-//     -- COURSE
-//     tc.course_id,
-//     tc.course_title,
-//     tc.course_description,
-//     tc.duration,
-//     tc.level,
-//     tc.status,
+//       SELECT
 
-//     -- CATEGORY
-//     tcg.category_name,
+//         -- COURSE
+//         tc.course_id,
+//         tc.course_title,
+//         tc.course_description,
+//         tc.duration,
+//         tc.level,
+//         tc.status AS course_status,
 
-//     -- TUTOR
-//     tut.full_name AS tutor_name,
+//         -- CATEGORY
+//         tcg.category_name,
 
-//     -- MODULE
-//     tm.module_id,
-//     tm.module_title,
+//         -- TUTOR
+//         tut.full_name AS tutor_name,
 
-//     -- VIDEO
-//     tmv.module_video_id,
-//     tmv.video_title,
-//     tmv.status AS video_status,
+//         -- MODULE
+//         tm.module_id,
+//         tm.module_title,
 
-//     -- STUDENTS
-//     COUNT(DISTINCT tsc.student_id) AS enrolled_count,
+//         -- VIDEO
+//         tmv.module_video_id,
+//         tmv.video_title,
+//         tmv.status AS video_status,
 
-//     -- TOTAL MODULES
-//     COALESCE(mc.total_modules, 0) AS total_modules
+//         -- ASSIGNMENT
+//         ta.assignment_id,
+//         ta.assignment_title,
+//         ta.assignment_type,
+//         ta.total_questions,
+//         ta.total_marks,
+//         ta.pass_percentage,
+//         ta.status AS assignment_status,
+//         ta.assignment_date,
+//         ta.reason AS assignment_reason,
 
+//         -- QUESTION
+//         tq.question_id,
+//         tq.question,
+//         tq.a,
+//         tq.b,
+//         tq.c,
+//         tq.d,
+//         tq.answer,
 
-//   FROM tbl_course tc
+//         -- STUDENTS
+//         COUNT(DISTINCT tsc.student_id) AS enrolled_count,
 
-
-//   -- CATEGORY
-//   JOIN tbl_category tcg
-//     ON tc.category_id = tcg.category_id
-
-
-//   -- TUTOR
-//   JOIN tbl_user tut
-//     ON tc.tutor_id = tut.user_id
-//    AND tut.role = 'tutor'
-
-
-//   -- MODULE
-//   JOIN tbl_module tm
-//     ON tc.course_id = tm.course_id
-
-
-//   -- VIDEOS (ONLY REQUIRED STATUS)
-//   JOIN tbl_module_videos tmv
-//     ON tm.module_id = tmv.module_id
+//         -- TOTAL MODULES
+//         COALESCE(mc.total_modules, 0) AS total_modules
 
 
-//   -- STUDENTS
-//   LEFT JOIN tbl_student_course tsc
-//     ON tc.course_id = tsc.course_id
+//       FROM tbl_course tc
 
 
-//   -- MODULE COUNT
-//   LEFT JOIN (
-//     SELECT
-//       course_id,
-//       COUNT(DISTINCT module_id) AS total_modules
-//     FROM tbl_module
-//     GROUP BY course_id
-//   ) mc ON mc.course_id = tc.course_id
+//       -- CATEGORY
+//       JOIN tbl_category tcg
+//         ON tc.category_id = tcg.category_id
 
 
-//    WHERE  tmv.status= $1
+//       -- TUTOR
+//       JOIN tbl_user tut
+//         ON tc.tutor_id = tut.user_id
+//        AND tut.role = 'tutor'
 
 
-//   GROUP BY
-//     tc.course_id,
-//     tc.course_title,
-//     tc.course_description,
-//     tc.duration,
-//     tc.level,
-//     tc.status,
-//     tcg.category_name,
-//     tut.full_name,
-//     tm.module_id,
-//     tm.module_title,
-//     tmv.module_video_id,
-//     tmv.video_title,
-//     tmv.status,
-//     mc.total_modules
-// `;
+//       -- MODULE
+//       JOIN tbl_module tm
+//         ON tc.course_id = tm.course_id
+
+
+//       -- VIDEOS (FILTER BY STATUS)
+//       LEFT JOIN tbl_module_videos tmv
+//         ON tm.module_id = tmv.module_id
+//        AND tmv.status = $1
+
+
+//       -- ASSIGNMENT (FILTER BY STATUS)
+//       LEFT JOIN tbl_assignment ta
+//         ON tm.module_id = ta.module_id
+//        AND ta.status = $1
+
+
+//       -- QUESTIONS (NO STATUS FILTER)
+//       LEFT JOIN tbl_questions tq
+//         ON ta.assignment_id = tq.assignment_id
+
+
+//       -- STUDENTS
+//       LEFT JOIN tbl_student_course tsc
+//         ON tc.course_id = tsc.course_id
+
+
+//       -- MODULE COUNT
+//       LEFT JOIN (
+//         SELECT
+//           course_id,
+//           COUNT(DISTINCT module_id) AS total_modules
+//         FROM tbl_module
+//         GROUP BY course_id
+//       ) mc ON mc.course_id = tc.course_id
+
+
+//       GROUP BY
+//         tc.course_id,
+//         tc.course_title,
+//         tc.course_description,
+//         tc.duration,
+//         tc.level,
+//         tc.status,
+//         tcg.category_name,
+//         tut.full_name,
+
+//         tm.module_id,
+//         tm.module_title,
+
+//         tmv.module_video_id,
+//         tmv.video_title,
+//         tmv.status,
+
+//         ta.assignment_id,
+//         ta.assignment_title,
+//         ta.assignment_type,
+//         ta.total_questions,
+//         ta.total_marks,
+//         ta.pass_percentage,
+//         ta.status,
+//         ta.assignment_date,
+//         ta.reason,
+
+//         tq.question_id,
+//         tq.question,
+//         tq.a,
+//         tq.b,
+//         tq.c,
+//         tq.d,
+//         tq.answer,
+
+//         mc.total_modules
+//     `;
 
 
 //     const { rows } = await pool.query(query, [status]);
 
 //     const courses = {};
 
+
 //     // ---------- FORMAT RESPONSE ----------
 //     for (const row of rows) {
 
-//       // COURSE
+//       /* ---------- COURSE ---------- */
 //       if (!courses[row.course_id]) {
 
 //         courses[row.course_id] = {
+
 //           course_id: row.course_id,
 //           course_title: row.course_title,
-//           status: row.status,
+//           status: row.course_status,
 
 //           description: row.course_description,
 //           category: row.category_name,
@@ -1873,41 +1925,104 @@ exports.getAdminCourseList = async (req, res) => {
 //         };
 //       }
 
+
 //       const course = courses[row.course_id];
 
-//       // MODULE
+
+//       /* ---------- MODULE ---------- */
 //       let module = course.modules.find(
 //         m => m.module_id === row.module_id
 //       );
 
+
 //       if (!module && row.module_id) {
 
 //         module = {
+
 //           module_id: row.module_id,
 //           module_title: row.module_title,
-//           status: row.module_status || "Pending", // default
-//           videos: []
+//           status: "Pending",
+
+//           videos: [],
+//           assignments: [] // ✅ IMPORTANT
 //         };
 
 //         course.modules.push(module);
 //       }
 
-//       // VIDEO
+
+//       /* ---------- VIDEO ---------- */
 //       if (row.module_video_id && module) {
 
 //         module.videos.push({
+
 //           module_video_id: row.module_video_id,
 //           video_title: row.video_title,
 //           status: row.video_status
 //         });
 //       }
+
+
+//       /* ---------- ASSIGNMENT ---------- */
+//       if (row.assignment_id && module) {
+
+//         let assignment = module.assignments.find(
+//           a => a.assignment_id === row.assignment_id
+//         );
+
+
+//         if (!assignment) {
+
+//           assignment = {
+
+//             assignment_id: row.assignment_id,
+//             title: row.assignment_title,
+//             type: row.assignment_type,
+
+//             total_questions: row.total_questions,
+//             total_marks: row.total_marks,
+//             pass_percentage: row.pass_percentage,
+
+//             status: row.assignment_status,
+//             date: row.assignment_date,
+//             reason: row.assignment_reason,
+
+//             questions: []
+//           };
+
+//           module.assignments.push(assignment);
+//         }
+
+
+//         /* ---------- QUESTION ---------- */
+//         if (row.question_id) {
+
+//           assignment.questions.push({
+
+//             question_id: row.question_id,
+//             question: row.question,
+
+//             options: {
+//               a: row.a,
+//               b: row.b,
+//               c: row.c,
+//               d: row.d
+//             },
+
+//             answer: row.answer
+//           });
+//         }
+//       }
+
 //     }
 
 
 //     return res.status(200).json({
+
 //       statusCode: 200,
 //       message: "Admin courses fetched successfully",
 //       data: Object.values(courses)
+
 //     });
 
 
@@ -1916,16 +2031,24 @@ exports.getAdminCourseList = async (req, res) => {
 //     console.error("getadmintotalcourse Error:", error);
 
 //     return res.status(500).json({
+
 //       statusCode: 500,
 //       message: "Internal Server Error"
+
 //     });
 //   }
 // };
 
-
 exports.getadmintotalcourse = async (req, res) => {
 
   const { status } = req.body;
+
+  if (!status) {
+    return res.status(401).json({
+      statusCode: 401,
+      message: 'Missing Required Field'
+    })
+  }
 
   try {
 
@@ -1967,14 +2090,7 @@ exports.getadmintotalcourse = async (req, res) => {
         ta.assignment_date,
         ta.reason AS assignment_reason,
 
-        -- QUESTION
-        tq.question_id,
-        tq.question,
-        tq.a,
-        tq.b,
-        tq.c,
-        tq.d,
-        tq.answer,
+      
 
         -- STUDENTS
         COUNT(DISTINCT tsc.student_id) AS enrolled_count,
@@ -2013,12 +2129,7 @@ exports.getadmintotalcourse = async (req, res) => {
         ON tm.module_id = ta.module_id
        AND ta.status = $1
 
-
-      -- QUESTIONS (NO STATUS FILTER)
-      LEFT JOIN tbl_questions tq
-        ON ta.assignment_id = tq.assignment_id
-
-
+ 
       -- STUDENTS
       LEFT JOIN tbl_student_course tsc
         ON tc.course_id = tsc.course_id
@@ -2061,13 +2172,7 @@ exports.getadmintotalcourse = async (req, res) => {
         ta.assignment_date,
         ta.reason,
 
-        tq.question_id,
-        tq.question,
-        tq.a,
-        tq.b,
-        tq.c,
-        tq.d,
-        tq.answer,
+  
 
         mc.total_modules
     `;
@@ -2143,18 +2248,22 @@ exports.getadmintotalcourse = async (req, res) => {
 
 
       /* ---------- ASSIGNMENT ---------- */
+   /* ---------- ASSIGNMENT ---------- */
       if (row.assignment_id && module) {
 
         let assignment = module.assignments.find(
           a => a.assignment_id === row.assignment_id
         );
 
-
         if (!assignment) {
 
           assignment = {
-
             assignment_id: row.assignment_id,
+
+            // ✅ Module Info inside assignment
+            module_id: row.module_id,
+            module_title: row.module_title,
+
             title: row.assignment_title,
             type: row.assignment_type,
 
@@ -2165,33 +2274,12 @@ exports.getadmintotalcourse = async (req, res) => {
             status: row.assignment_status,
             date: row.assignment_date,
             reason: row.assignment_reason,
-
-            questions: []
           };
 
           module.assignments.push(assignment);
         }
-
-
-        /* ---------- QUESTION ---------- */
-        if (row.question_id) {
-
-          assignment.questions.push({
-
-            question_id: row.question_id,
-            question: row.question,
-
-            options: {
-              a: row.a,
-              b: row.b,
-              c: row.c,
-              d: row.d
-            },
-
-            answer: row.answer
-          });
-        }
       }
+
 
     }
 
@@ -2217,7 +2305,6 @@ exports.getadmintotalcourse = async (req, res) => {
     });
   }
 };
-
 
 exports.updateadminassignmentstatus = async (req, res) => {
   const { assignment_id, status, reason } = req.body;
