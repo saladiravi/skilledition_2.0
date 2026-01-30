@@ -604,6 +604,7 @@ exports.getcoursemoduleById = async (req, res) => {
 
 
 exports.updatestatus = async (req, res) => {
+
   const { module_video_id, status, reason } = req.body;
 
   if (!module_video_id || !status) {
@@ -615,12 +616,15 @@ exports.updatestatus = async (req, res) => {
 
   try {
 
+    // ✅ Update video and get module_id
     const updateResult = await pool.query(
       `UPDATE tbl_module_videos
-             SET status = $1, reason = $2
-             WHERE module_video_id = $3`,
+       SET status = $1, reason = $2
+       WHERE module_video_id = $3
+       RETURNING module_id`,
       [status, reason, module_video_id]
     );
+
 
     if (updateResult.rowCount === 0) {
       return res.status(404).json({
@@ -629,19 +633,51 @@ exports.updatestatus = async (req, res) => {
       });
     }
 
+
+    const module_id = updateResult.rows[0].module_id;
+
+
+    // ✅ Get course_id from module
+    const courseResult = await pool.query(
+      `SELECT course_id
+       FROM tbl_module
+       WHERE module_id = $1`,
+      [module_id]
+    );
+
+
+    if (courseResult.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Course not found"
+      });
+    }
+
+
+    const course_id = courseResult.rows[0].course_id;
+
+
+    // ✅ Auto check & update course status
+    await updateCourseStatusIfReady(course_id);
+
+
     return res.status(200).json({
       statusCode: 200,
-      message: "Status updated successfully"
+      message: "Video status updated successfully"
     });
 
+
   } catch (error) {
-    console.log(error);
+
+    console.log("updatestatus Error:", error);
+
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
     });
   }
 };
+
 
 
 // exports.gettotalcourse = async (req, res) => {
@@ -2316,6 +2352,7 @@ exports.getadmintotalcourse = async (req, res) => {
 };
 
 exports.updateadminassignmentstatus = async (req, res) => {
+
   const { assignment_id, status, reason } = req.body;
 
   if (!assignment_id || !status) {
@@ -2327,12 +2364,15 @@ exports.updateadminassignmentstatus = async (req, res) => {
 
   try {
 
+    // Update assignment
     const updateResult = await pool.query(
       `UPDATE tbl_assignment
-             SET status = $1, reason = $2
-             WHERE assignment_id = $3`,
+       SET status = $1, reason = $2
+       WHERE assignment_id = $3
+       RETURNING module_id`,
       [status, reason, assignment_id]
     );
+
 
     if (updateResult.rowCount === 0) {
       return res.status(404).json({
@@ -2341,17 +2381,95 @@ exports.updateadminassignmentstatus = async (req, res) => {
       });
     }
 
+
+    const module_id = updateResult.rows[0].module_id;
+
+
+    // Get course_id
+    const courseResult = await pool.query(
+      `SELECT course_id FROM tbl_module WHERE module_id = $1`,
+      [module_id]
+    );
+
+    const course_id = courseResult.rows[0].course_id;
+
+
+    // ✅ Auto update course
+    await updateCourseStatusIfReady(course_id);
+
+
     return res.status(200).json({
       statusCode: 200,
-      message: "Status updated successfully"
+      message: "Assignment status updated successfully"
     });
 
+
   } catch (error) {
+
     console.log(error);
+
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
     });
+  }
+};
+
+
+
+
+const updateCourseStatusIfReady = async (course_id) => {
+
+  const result = await pool.query(`
+
+    SELECT
+
+      COUNT(DISTINCT CASE
+        WHEN tmv.status != 'Published' THEN tmv.module_video_id
+      END) AS pending_videos,
+
+      COUNT(DISTINCT CASE
+        WHEN ta.status != 'Published' THEN ta.assignment_id
+      END) AS pending_assignments
+
+    FROM tbl_course tc
+
+    JOIN tbl_module tm
+      ON tc.course_id = tm.course_id
+
+    LEFT JOIN tbl_module_videos tmv
+      ON tm.module_id = tmv.module_id
+
+    LEFT JOIN tbl_assignment ta
+      ON tm.module_id = ta.module_id
+
+    WHERE tc.course_id = $1
+
+  `, [course_id]);
+
+
+  const { pending_videos, pending_assignments } = result.rows[0];
+
+
+  // ✅ If all approved → Publish course
+  if (pending_videos == 0 && pending_assignments == 0) {
+
+    await pool.query(
+      `UPDATE tbl_course
+       SET status = 'Published'
+       WHERE course_id = $1`,
+      [course_id]
+    );
+
+  } else {
+
+    // Optional: keep Pending if something not approved
+    await pool.query(
+      `UPDATE tbl_course
+       SET status = 'Pending'
+       WHERE course_id = $1`,
+      [course_id]
+    );
   }
 };
 
