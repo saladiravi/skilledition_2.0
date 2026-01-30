@@ -2284,13 +2284,22 @@ exports.getadmintotalcourse = async (req, res) => {
     }
 
 
-    return res.status(200).json({
+      const result = Object.values(courses);
 
+    if (result.length === 0) {
+      return res.status(200).json({
+        statusCode: 200,
+        message: "No courses found",
+        data: []
+      });
+    }
+
+    return res.status(200).json({
       statusCode: 200,
       message: "Admin courses fetched successfully",
-      data: Object.values(courses)
-
+      data: result
     });
+
 
 
   } catch (error) {
