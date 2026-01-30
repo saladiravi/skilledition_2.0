@@ -393,7 +393,7 @@ exports.addModulesWithVideos = async (req, res) => {
         await client.query(
           `INSERT INTO tbl_module_videos
            (module_id, video, video_title, video_duration, status)
-           VALUES ($1, $2, $3, $4, 'pending')`,
+           VALUES ($1, $2, $3, $4, 'Pending')`,
           [module_id, videoUrl, videoTitle, formattedDuration]
         );
 
@@ -693,7 +693,7 @@ exports.updatestatus = async (req, res) => {
 
 //       LEFT JOIN tbl_module_videos tmv
 //         ON tm.module_id = tmv.module_id
-//        AND tmv.status IN ('pending', 'published', 'rejected')
+//        AND tmv.status IN ('Pending', 'Published', 'Rejected')
 
 //       LEFT JOIN tbl_student_course tsc
 //         ON tc.course_id = tsc.course_id
@@ -845,7 +845,7 @@ exports.gettotalcourse = async (req, res) => {
 
       LEFT JOIN tbl_module_videos tmv
         ON tm.module_id = tmv.module_id
-       AND tmv.status IN ('pending', 'published', 'rejected')
+       AND tmv.status IN ('Pending', 'Published', 'Rejected')
 
       LEFT JOIN tbl_student_course tsc
         ON tc.course_id = tsc.course_id
@@ -943,7 +943,7 @@ exports.gettotalcourse = async (req, res) => {
     for (const course of Object.values(coursesMap)) {
       for (const module of course.modules) {
         const rejectedVideos = module.videos.filter(
-          v => v.status === 'rejected'
+          v => v.status === 'Rejected'
         );
 
         if (rejectedVideos.length > 0) {
@@ -1082,7 +1082,7 @@ exports.updateModuleVideos = async (req, res) => {
         FROM tbl_module_videos
         WHERE module_video_id = $1
           AND module_id = $2
-          AND status IN ('rejected', 'pending')
+          AND status IN ('Rejected', 'Pending')
         `,
         [mvId, module_id]
       );
@@ -1102,7 +1102,7 @@ exports.updateModuleVideos = async (req, res) => {
           video = $1,
           video_title = $2,
           video_duration = $3,
-          status = 'pending',
+          status = 'Pending',
           reason = NULL,
           module_video_created_at = NOW()
         WHERE module_video_id = $4
