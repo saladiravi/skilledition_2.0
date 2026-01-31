@@ -2462,35 +2462,36 @@ exports.getadmintotalcourse = async (req, res) => {
       ) mc ON mc.course_id = tc.course_id
 
 
-      GROUP BY
-        tc.course_id,
-        tc.course_title,
-        tc.course_description,
-        tc.duration,
-        tc.level,
-        tc.status,
-        tcg.category_name,
-        tut.full_name,
+     GROUP BY
+  tc.course_id,
+  tc.course_title,
+  tc.course_description,
+  tc.duration,
+  tc.level,
+  tc.status,
+  tcg.category_name,
+  tut.full_name,
 
-        tm.module_id,
-        tm.module_title,
-        tm.status,
+  tm.module_id,
+  tm.module_title,
+  tm.status,
 
-        tmv.module_video_id,
-        tmv.video_title,
-        tmv.status,
+  tmv.module_video_id,
+  tmv.video_title,
+  tmv.status,
 
-        ta.assignment_id,
-        ta.assignment_title,
-        ta.assignment_type,
-        ta.total_questions,
-        ta.total_marks,
-        ta.pass_percentage,
-        ta.status,
-        ta.assignment_date,
-        ta.reason,
+  ta.assignment_id,
+  ta.assignment_title,
+  ta.assignment_type,
+  ta.total_questions,
+  ta.total_marks,
+  ta.pass_percentage,
+  ta.status,
+  ta.assignment_date,
+  ta.reason,
 
-        mc.total_modules
+  mc.total_modules
+
     `;
 
 
