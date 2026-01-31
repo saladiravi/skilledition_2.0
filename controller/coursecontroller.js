@@ -2255,17 +2255,21 @@ exports.getadmintotalcourse = async (req, res) => {
       );
 
 
-      if (!module && row.module_id) {
+          if (
+          !module &&
+          row.module_id &&
+          (row.module_video_id || row.assignment_id)
+        ) {
 
-        module = {
+          module = {
 
-          module_id: row.module_id,
-          module_title: row.module_title,
-          status:  row.video_status,
+            module_id: row.module_id,
+            module_title: row.module_title,
+            status: row.video_status,
 
-          videos: [],
-          assignments: [] // ✅ IMPORTANT
-        };
+            videos: [],
+            assignments: []
+          };
 
         course.modules.push(module);
       }
