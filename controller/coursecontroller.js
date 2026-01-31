@@ -2180,7 +2180,7 @@ exports.getadmintotalcourse = async (req, res) => {
         GROUP BY course_id
       ) mc ON mc.course_id = tc.course_id
 
-    WHERE tc.status = $1
+    
       GROUP BY
         tc.course_id,
         tc.course_title,
