@@ -2075,287 +2075,6 @@ exports.getAdminCourseList = async (req, res) => {
 //   }
 // };
 
-// exports.getadmintotalcourse = async (req, res) => {
-
-//   const { status } = req.body;
-
-//   if (!status) {
-//     return res.status(401).json({
-//       statusCode: 401,
-//       message: 'Missing Required Field'
-//     })
-//   }
-
-//   try {
-
-//     const query = `
-
-//       SELECT
-
-//         -- COURSE
-//         tc.course_id,
-//         tc.course_title,
-//         tc.course_description,
-//         tc.duration,
-//         tc.level,
-//         tc.status AS course_status,
-
-//         -- CATEGORY
-//         tcg.category_name,
-
-//         -- TUTOR
-//         tut.full_name AS tutor_name,
-
-//         -- MODULE
-//         tm.module_id,
-//         tm.module_title,
-
-//         -- VIDEO
-//         tmv.module_video_id,
-//         tmv.video_title,
-//         tmv.status AS video_status,
-
-//         -- ASSIGNMENT
-//         ta.assignment_id,
-//         ta.assignment_title,
-//         ta.assignment_type,
-//         ta.total_questions,
-//         ta.total_marks,
-//         ta.pass_percentage,
-//         ta.status AS assignment_status,
-//         ta.assignment_date,
-//         ta.reason AS assignment_reason,
-
-      
-
-//         -- STUDENTS
-//         COUNT(DISTINCT tsc.student_id) AS enrolled_count,
-
-//         -- TOTAL MODULES
-//         COALESCE(mc.total_modules, 0) AS total_modules
-
-
-//       FROM tbl_course tc
-
-
-//       -- CATEGORY
-//       JOIN tbl_category tcg
-//         ON tc.category_id = tcg.category_id
-
-
-//       -- TUTOR
-//       JOIN tbl_user tut
-//         ON tc.tutor_id = tut.user_id
-//        AND tut.role = 'tutor'
-
-
-//       -- MODULE
-//        -- JOIN tbl_module tm
-//       --   ON tc.course_id = tm.course_id
-
-//       JOIN tbl_module tm
-//         ON tc.course_id = tm.course_id
-//       AND tm.status = $1
-
-
-//       -- VIDEOS (FILTER BY STATUS)
-//       LEFT JOIN tbl_module_videos tmv
-//         ON tm.module_id = tmv.module_id
-//        AND tmv.status = $1
-
-
-//       -- ASSIGNMENT (FILTER BY STATUS)
-//       LEFT JOIN tbl_assignment ta
-//         ON tm.module_id = ta.module_id
-//        AND ta.status = $1
-
- 
-//       -- STUDENTS
-//       LEFT JOIN tbl_student_course tsc
-//         ON tc.course_id = tsc.course_id
-
-
-//       -- MODULE COUNT
-//       LEFT JOIN (
-//         SELECT
-//           course_id,
-//           COUNT(DISTINCT module_id) AS total_modules
-//         FROM tbl_module
-//         GROUP BY course_id
-//       ) mc ON mc.course_id = tc.course_id
-
-
-//       GROUP BY
-//         tc.course_id,
-//         tc.course_title,
-//         tc.course_description,
-//         tc.duration,
-//         tc.level,
-//         tc.status,
-//         tcg.category_name,
-//         tut.full_name,
-
-//         tm.module_id,
-//         tm.module_title,
-//         tm.status AS module_status,
-//         tmv.module_video_id,
-//         tmv.video_title,
-//         tmv.status,
-
-//         ta.assignment_id,
-//         ta.assignment_title,
-//         ta.assignment_type,
-//         ta.total_questions,
-//         ta.total_marks,
-//         ta.pass_percentage,
-//         ta.status,
-//         ta.assignment_date,
-//         ta.reason,
-
-  
-
-//         mc.total_modules
-//     `;
-
-
-//     const { rows } = await pool.query(query, [status]);
-
-//     const courses = {};
-
-
-//     // ---------- FORMAT RESPONSE ----------
-//     for (const row of rows) {
-
-//       /* ---------- COURSE ---------- */
-//       if (!courses[row.course_id]) {
-
-//         courses[row.course_id] = {
-
-//           course_id: row.course_id,
-//           course_title: row.course_title,
-//           status: row.course_status,
-
-//           description: row.course_description,
-//           category: row.category_name,
-//           level: row.level,
-//           duration: row.duration,
-
-//           tutor: row.tutor_name,
-
-//           total_modules: Number(row.total_modules),
-//           enrolled_students: Number(row.enrolled_count),
-
-//           modules: []
-//         };
-//       }
-
-
-//       const course = courses[row.course_id];
-
-
-//       /* ---------- MODULE ---------- */
-//       let module = course.modules.find(
-//         m => m.module_id === row.module_id
-//       );
-
-
-//       if (!module && row.module_id) {
-
-//         module = {
-
-//           module_id: row.module_id,
-//           module_title: row.module_title,
-//           status: row.module_status,
-
-
-//           videos: [],
-//           assignments: [] // ✅ IMPORTANT
-//         };
-
-//         course.modules.push(module);
-//       }
-
-
-//       /* ---------- VIDEO ---------- */
-//       if (row.module_video_id && module) {
-
-//         module.videos.push({
-
-//           module_video_id: row.module_video_id,
-//           video_title: row.video_title,
-//           status: row.video_status
-//         });
-//       }
-
-
-//       /* ---------- ASSIGNMENT ---------- */
-//    /* ---------- ASSIGNMENT ---------- */
-//       if (row.assignment_id && module) {
-
-//         let assignment = module.assignments.find(
-//           a => a.assignment_id === row.assignment_id
-//         );
-
-//         if (!assignment) {
-
-//           assignment = {
-//             assignment_id: row.assignment_id,
-
-//             // ✅ Module Info inside assignment
-//             module_id: row.module_id,
-//             module_title: row.module_title,
-
-//             title: row.assignment_title,
-//             type: row.assignment_type,
-
-//             total_questions: row.total_questions,
-//             total_marks: row.total_marks,
-//             pass_percentage: row.pass_percentage,
-
-//             status: row.assignment_status,
-//             date: row.assignment_date,
-//             reason: row.assignment_reason,
-//           };
-
-//           module.assignments.push(assignment);
-//         }
-//       }
-
-
-//     }
-
-
-//       const result = Object.values(courses);
-
-//     if (result.length === 0) {
-//       return res.status(200).json({
-//         statusCode: 200,
-//         message: "No courses found",
-//         data: []
-//       });
-//     }
-
-//     return res.status(200).json({
-//       statusCode: 200,
-//       message: "Admin courses fetched successfully",
-//       data: result
-//     });
-
-
-
-//   } catch (error) {
-
-//     console.error("getadmintotalcourse Error:", error);
-
-//     return res.status(500).json({
-
-//       statusCode: 500,
-//       message: "Internal Server Error"
-
-//     });
-//   }
-// };
-
 exports.getadmintotalcourse = async (req, res) => {
 
   const { status } = req.body;
@@ -2364,7 +2083,7 @@ exports.getadmintotalcourse = async (req, res) => {
     return res.status(401).json({
       statusCode: 401,
       message: 'Missing Required Field'
-    });
+    })
   }
 
   try {
@@ -2390,7 +2109,6 @@ exports.getadmintotalcourse = async (req, res) => {
         -- MODULE
         tm.module_id,
         tm.module_title,
-        tm.status AS module_status,
 
         -- VIDEO
         tmv.module_video_id,
@@ -2407,6 +2125,8 @@ exports.getadmintotalcourse = async (req, res) => {
         ta.status AS assignment_status,
         ta.assignment_date,
         ta.reason AS assignment_reason,
+
+      
 
         -- STUDENTS
         COUNT(DISTINCT tsc.student_id) AS enrolled_count,
@@ -2429,10 +2149,13 @@ exports.getadmintotalcourse = async (req, res) => {
        AND tut.role = 'tutor'
 
 
-      -- MODULE (FILTER BY STATUS)
+      -- MODULE
+       -- JOIN tbl_module tm
+      --   ON tc.course_id = tm.course_id
+
       JOIN tbl_module tm
         ON tc.course_id = tm.course_id
-       AND tm.status = $1
+      AND tm.status = $1
 
 
       -- VIDEOS (FILTER BY STATUS)
@@ -2446,7 +2169,7 @@ exports.getadmintotalcourse = async (req, res) => {
         ON tm.module_id = ta.module_id
        AND ta.status = $1
 
-
+ 
       -- STUDENTS
       LEFT JOIN tbl_student_course tsc
         ON tc.course_id = tsc.course_id
@@ -2462,36 +2185,36 @@ exports.getadmintotalcourse = async (req, res) => {
       ) mc ON mc.course_id = tc.course_id
 
 
-     GROUP BY
-  tc.course_id,
-  tc.course_title,
-  tc.course_description,
-  tc.duration,
-  tc.level,
-  tc.status,
-  tcg.category_name,
-  tut.full_name,
+      GROUP BY
+        tc.course_id,
+        tc.course_title,
+        tc.course_description,
+        tc.duration,
+        tc.level,
+        tc.status,
+        tcg.category_name,
+        tut.full_name,
 
-  tm.module_id,
-  tm.module_title,
-  tm.status,
+        tm.module_id,
+        tm.module_title,
+        tm.status AS module_status,
+        tmv.module_video_id,
+        tmv.video_title,
+        tmv.status,
 
-  tmv.module_video_id,
-  tmv.video_title,
-  tmv.status,
+        ta.assignment_id,
+        ta.assignment_title,
+        ta.assignment_type,
+        ta.total_questions,
+        ta.total_marks,
+        ta.pass_percentage,
+        ta.status,
+        ta.assignment_date,
+        ta.reason,
 
-  ta.assignment_id,
-  ta.assignment_title,
-  ta.assignment_type,
-  ta.total_questions,
-  ta.total_marks,
-  ta.pass_percentage,
-  ta.status,
-  ta.assignment_date,
-  ta.reason,
+  
 
-  mc.total_modules
-
+        mc.total_modules
     `;
 
 
@@ -2544,8 +2267,9 @@ exports.getadmintotalcourse = async (req, res) => {
           module_title: row.module_title,
           status: row.module_status,
 
+
           videos: [],
-          assignments: []
+          assignments: [] // ✅ IMPORTANT
         };
 
         course.modules.push(module);
@@ -2565,6 +2289,7 @@ exports.getadmintotalcourse = async (req, res) => {
 
 
       /* ---------- ASSIGNMENT ---------- */
+   /* ---------- ASSIGNMENT ---------- */
       if (row.assignment_id && module) {
 
         let assignment = module.assignments.find(
@@ -2574,9 +2299,9 @@ exports.getadmintotalcourse = async (req, res) => {
         if (!assignment) {
 
           assignment = {
-
             assignment_id: row.assignment_id,
 
+            // ✅ Module Info inside assignment
             module_id: row.module_id,
             module_title: row.module_title,
 
@@ -2596,10 +2321,11 @@ exports.getadmintotalcourse = async (req, res) => {
         }
       }
 
+
     }
 
 
-    const result = Object.values(courses);
+      const result = Object.values(courses);
 
     if (result.length === 0) {
       return res.status(200).json({
@@ -2609,7 +2335,6 @@ exports.getadmintotalcourse = async (req, res) => {
       });
     }
 
-
     return res.status(200).json({
       statusCode: 200,
       message: "Admin courses fetched successfully",
@@ -2617,16 +2342,21 @@ exports.getadmintotalcourse = async (req, res) => {
     });
 
 
+
   } catch (error) {
 
     console.error("getadmintotalcourse Error:", error);
 
     return res.status(500).json({
+
       statusCode: 500,
       message: "Internal Server Error"
+
     });
   }
 };
+
+
 
 
 exports.updateadminassignmentstatus = async (req, res) => {
