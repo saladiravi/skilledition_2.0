@@ -333,6 +333,7 @@ exports.getAssignmentById = async (req, res) => {
                 total_questions:assignment.total_questions,
                 total_marks:assignment.total_marks,
                 pass_percentage:assignment.pass_percentage,
+                reason:assignment.reason,
                 status:assignment.status,
                 assignment_date:assignment.assignment_date,
             
