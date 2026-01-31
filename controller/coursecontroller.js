@@ -2261,7 +2261,7 @@ exports.getadmintotalcourse = async (req, res) => {
 
           module_id: row.module_id,
           module_title: row.module_title,
-          status: status,
+          status:  row.video_status,
 
           videos: [],
           assignments: [] // ✅ IMPORTANT
