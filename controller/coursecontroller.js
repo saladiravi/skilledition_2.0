@@ -2150,12 +2150,8 @@ exports.getadmintotalcourse = async (req, res) => {
 
 
       -- MODULE
-       -- JOIN tbl_module tm
-      --   ON tc.course_id = tm.course_id
-
       JOIN tbl_module tm
         ON tc.course_id = tm.course_id
-      AND tm.status = $1
 
 
       -- VIDEOS (FILTER BY STATUS)
@@ -2197,7 +2193,7 @@ exports.getadmintotalcourse = async (req, res) => {
 
         tm.module_id,
         tm.module_title,
-        tm.status AS module_status,
+
         tmv.module_video_id,
         tmv.video_title,
         tmv.status,
@@ -2265,8 +2261,7 @@ exports.getadmintotalcourse = async (req, res) => {
 
           module_id: row.module_id,
           module_title: row.module_title,
-          status: row.module_status,
-
+          status: status,
 
           videos: [],
           assignments: [] // ✅ IMPORTANT
@@ -2355,9 +2350,6 @@ exports.getadmintotalcourse = async (req, res) => {
     });
   }
 };
-
-
-
 
 exports.updateadminassignmentstatus = async (req, res) => {
 
