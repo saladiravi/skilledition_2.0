@@ -240,85 +240,6 @@ exports.getcourseBytutor = async (req, res) => {
 
 
 
-// exports.addmodulewithvideos = async (req, res) => {
-//   const { course_id, module_title, module_description } = req.body;
-
-//   try {
-//     const exitcourse = await pool.query(
-//       `SELECT course_id FROM tbl_course WHERE course_id=$1`,
-//       [course_id]
-//     );
-
-//     if (exitcourse.rows.length === 0) {
-//       return res.status(404).json({ statusCode: 404, message: "Course Not Found" });
-//     }
-
-//     let sheet_file = null;
-//     if (req.files?.sheet_file?.length > 0) {
-//       sheet_file = await uploadToS3(req.files.sheet_file[0], "modules/sheets");
-//     }
-
-//     const moduleInsert = await pool.query(
-//       `INSERT INTO tbl_module (course_id, module_title, module_description, sheet_file)
-//        VALUES ($1, $2, $3, $4)
-//        RETURNING module_id`,
-//       [course_id, module_title, module_description, sheet_file]
-//     );
-
-//     const module_id = moduleInsert.rows[0].module_id;
-//     let insertedVideos = 0;
-
-//     if (req.files?.video_files?.length > 0) {
-//       // let index = 0;
-
-//       for (const file of req.files.video_files) {
-
-//         const durationSeconds = await getVideoDuration(file.path);
-//         const formattedDuration = formatDurationHMS(durationSeconds);
-
-//         const uploadedVideoUrl = await uploadToS3(file, "modules/videos");
-
-
-
-//         // let duration = Array.isArray(video_duration)
-//         //   ? video_duration[index]
-//         //   : video_duration;
-
-//        const videoTitle = file.originalname.replace(/\.[^/.]+$/, "");
-//         await pool.query(
-//           `INSERT INTO tbl_module_videos 
-//             (module_id, video, video_title, video_duration, status)
-//             VALUES ($1, $2, $3, $4, $5)`,
-//           [
-//             module_id,
-//            uploadedVideoUrl,
-//             videoTitle,
-//             formattedDuration,
-//             "pending" 
-//           ]
-//         );
-
-
-//         insertedVideos++;
-//       }
-//     }
-
-//     return res.status(200).json({
-//       statusCode: 200,
-//       message: "Module and videos added successfully",
-//       module_id,
-//       videos_uploaded: insertedVideos
-//     });
-
-//   } catch (error) {
-//     console.error("Error adding module with videos:", error);
-//     return res.status(500).json({
-//       statusCode: 500,
-//       message: "Internal Server Error"
-//     });
-//   }
-// };
-
 
 
 exports.addModulesWithVideos = async (req, res) => {
@@ -796,12 +717,15 @@ exports.gettotalcourse = async (req, res) => {
       );
 
       if (!module && row.module_id) {
+        const signedSheetUrl = row.sheet_file
+          ? await getSignedVideoUrl(row.sheet_file)
+          : null;
 
         module = {
           module_id: row.module_id,
           module_title: row.module_title,
           module_description: row.module_description,
-          sheet_file: row.sheet_file,
+          sheet_file: signedSheetUrl,
           total_duration: row.total_duration,
           videos: []
         };
@@ -869,6 +793,8 @@ exports.gettotalcourse = async (req, res) => {
     });
   }
 };
+
+
 exports.getvideosbymoduleid = async (req, res) => {
   const { module_id, status } = req.body
   try {
