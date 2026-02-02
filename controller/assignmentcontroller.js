@@ -864,8 +864,9 @@ exports.getRejectedQuestions = async (req, res) => {
                 a.total_marks,
                 a.pass_percentage,
                 a.status AS assignment_status,
-                a.assignment_date,
                 a.reason,
+                a.assignment_date,
+               
                 -- Question details
                 q.question_id,
                 q.question,
@@ -902,7 +903,8 @@ exports.getRejectedQuestions = async (req, res) => {
             total_marks: result.rows[0].total_marks,
             pass_percentage: result.rows[0].pass_percentage,
             status: result.rows[0].assignment_status,
-            assignment_date: result.rows[0].assignment_date
+            assignment_date: result.rows[0].assignment_date,
+            reason: result.rows[0].reason
         };
 
         // Rejected questions
@@ -913,9 +915,7 @@ exports.getRejectedQuestions = async (req, res) => {
             b: row.b,
             c: row.c,
             d: row.d,
-            answer: row.answer,
-            status: row.question_status,
-            reason: row.question_reason
+            answer: row.answer
         }));
 
         res.status(200).json({
