@@ -865,7 +865,7 @@ exports.getRejectedQuestions = async (req, res) => {
                 a.pass_percentage,
                 a.status AS assignment_status,
                 a.assignment_date,
-
+                a.reason,
                 -- Question details
                 q.question_id,
                 q.question,
@@ -873,14 +873,13 @@ exports.getRejectedQuestions = async (req, res) => {
                 q.b,
                 q.c,
                 q.d,
-                q.answer,
-                q.status AS question_status,
-                q.reason AS question_reason
+                q.answer
+           
             FROM tbl_assignment a
             LEFT JOIN tbl_questions q
                 ON a.assignment_id = q.assignment_id
             WHERE a.assignment_id = $1
-              AND q.status = 'Rejected'
+              AND a.status = 'Rejected'
         `;
 
         const result = await pool.query(query, [assignment_id]);
