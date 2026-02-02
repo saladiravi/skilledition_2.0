@@ -725,7 +725,8 @@ exports.gettotalcourse = async (req, res) => {
           module_id: row.module_id,
           module_title: row.module_title,
           module_description: row.module_description,
-          sheet_file: signedSheetUrl,
+          sheet_file: row.sheet_file,
+          sheet_file_url: signedSheetUrl,
           total_duration: row.total_duration,
           videos: []
         };
