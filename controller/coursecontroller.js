@@ -2180,10 +2180,7 @@ exports.getadmintotalcourse = async (req, res) => {
         GROUP BY course_id
       ) mc ON mc.course_id = tc.course_id
 
-      WHERE (
-        tmv.module_video_id IS NOT NULL
-        OR ta.assignment_id IS NOT NULL
-      )
+      
     
       GROUP BY
         tc.course_id,
