@@ -763,22 +763,49 @@ exports.gettotalcourse = async (req, res) => {
     }
 
     // ---------- SHOW ONLY REJECTED VIDEOS ----------
-    for (const course of Object.values(coursesMap)) {
-      for (const module of course.modules) {
-        const rejectedVideos = module.videos.filter(
-          v => v.status === 'Rejected'
-        );
+    // for (const course of Object.values(coursesMap)) {
+    //   for (const module of course.modules) {
+    //     const rejectedVideos = module.videos.filter(
+    //       v => v.status === 'Rejected'
+    //     );
 
-        if (rejectedVideos.length > 0) {
-          module.videos = rejectedVideos;
-        }
-      }
+    //     if (rejectedVideos.length > 0) {
+    //       module.videos = rejectedVideos;
+    //     }
+    //   }
 
-      // ---------- NO STUDENTS -> NULL ----------
-      if (course.students.length === 0) {
-        course.students = null;
-      }
+    //   // ---------- NO STUDENTS -> NULL ----------
+    //   if (course.students.length === 0) {
+    //     course.students = null;
+    //   }
+    // }
+
+
+    // ---------- FILTER VIDEOS BY STATUS PRIORITY ----------
+for (const course of Object.values(coursesMap)) {
+  for (const module of course.modules) {
+
+    const rejected = module.videos.filter(v => v.status === 'Rejected');
+    const pending = module.videos.filter(v => v.status === 'Pending');
+    const published = module.videos.filter(v => v.status === 'Published');
+
+    // Priority: Rejected > Pending > Published
+    if (rejected.length > 0) {
+      module.videos = rejected;
+    } 
+    else if (pending.length > 0) {
+      module.videos = pending;
+    } 
+    else {
+      module.videos = published;
     }
+  }
+
+  // ---------- NO STUDENTS -> NULL ----------
+  if (course.students.length === 0) {
+    course.students = null;
+  }
+}
 
     return res.status(200).json({
       statusCode: 200,
