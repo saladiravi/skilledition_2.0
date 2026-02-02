@@ -929,7 +929,7 @@ exports.updateModuleVideos = async (req, res) => {
 
     // 1️⃣ Check module exists
     const moduleCheck = await client.query(
-      `SELECT module_id FROM tbl_module WHERE module_id = $1`,
+      `SELECT module_id,course_id FROM tbl_module WHERE module_id = $1`,
       [module_id]
     );
 
@@ -1010,6 +1010,18 @@ exports.updateModuleVideos = async (req, res) => {
 
       updatedCount++;
     }
+const course_id = moduleCheck.rows[0].course_id;
+// ✅ Update module count in tbl_course
+await client.query(
+  `UPDATE tbl_course
+   SET no_of_modules = (
+     SELECT COUNT(*)
+     FROM tbl_module
+     WHERE course_id = $1
+   )
+   WHERE course_id = $1`,
+  [course_id]
+);
 
     await client.query("COMMIT");
 
