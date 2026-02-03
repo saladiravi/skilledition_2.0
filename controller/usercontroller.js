@@ -94,7 +94,7 @@ exports.loginUser = async (req, res) => {
         role: user.role
       },
       jwr_secret,
-      { expiresIn: '12h' }
+      { expiresIn: '1m' }
     );
 
     return res.status(200).json({
