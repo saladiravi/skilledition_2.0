@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const { uploadToS3, getSignedVideoUrl } = require('../utils/s3upload');
 require("dotenv").config();
 
-const jwr_secret = process.env.JWT_SECRET;
+const jwt_secret = process.env.JWT_SECRET;
 
 
 
@@ -93,7 +93,7 @@ exports.loginUser = async (req, res) => {
         email: user.email,
         role: user.role
       },
-      jwr_secret,
+      jwt_secret,
       { expiresIn: '1m' }
     );
 
