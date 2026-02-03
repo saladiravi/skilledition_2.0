@@ -26,6 +26,21 @@ exports.addasignment = async (req, res) => {
             });
         }
 
+            const existAssignment = await pool.query(
+            `
+            SELECT assignment_id
+            FROM tbl_assignment
+            WHERE module_id = $1
+            `,
+            [module_id]
+            );
+
+            if (existAssignment.rows.length > 0) {
+            return res.status(409).json({
+                statusCode: 409,
+                message: "This module already has an assignment"
+            });
+            }
         // Insert into tbl_assignment
         const assignmentRes = await pool.query(
             `INSERT INTO tbl_assignment (course_id, module_id, assignment_title,assignment_type,total_questions,total_marks,pass_percentage)
@@ -139,77 +154,6 @@ exports.updateAssignment = async (req, res) => {
         });
     }
 };
-
-
-// exports.addassignmentquestion = async (req, res) => {
-//     const { assignment_id, questions } = req.body;
-
-//     if (!assignment_id || !questions || !Array.isArray(questions)) {
-//         return res.status(400).json({
-//             statusCode: 400,
-//             message: "Bad Request: assignment_id and questions are required"
-//         });
-//     }
-
-//     try {
-//         // Get assignment + total question count
-//         const existAssign = await pool.query(
-//             `SELECT assignment_id, total_questions 
-//              FROM tbl_assignment 
-//              WHERE assignment_id = $1`,
-//             [assignment_id]
-//         );
-
-//         if (existAssign.rows.length === 0) {
-//             return res.status(404).json({
-//                 statusCode: 404,
-//                 message: "Assignment Not Found"
-//             });
-//         }
-
-//         const totalAllowed = existAssign.rows[0].total_questions;
-//         const incomingCount = questions.length;
-
-//         // Strict total match check
-//         if (incomingCount !== totalAllowed) {
-//             return res.status(400).json({
-//                 statusCode: 400,
-//                 message: `You must add exactly ${totalAllowed} questions. You sent ${incomingCount}. Nothing was added.`
-//             });
-//         }
-
-//         // Insert question only when count matches
-//         for (const q of questions) {
-//             await pool.query(
-//                 `INSERT INTO tbl_questions 
-//                 (question, a, b, c, d, answer, assignment_id)
-//                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-//                 [
-//                     q.question,
-//                     q.a,
-//                     q.b,
-//                     q.c,
-//                     q.d,
-//                     q.answer,
-//                     assignment_id
-//                 ]
-//             );
-//         }
-
-//         return res.status(200).json({
-//             statusCode: 200,
-//             message: "Questions added successfully",
-//             added: incomingCount
-//         });
-
-//     } catch (error) {
-//         console.log(error);
-//         return res.status(500).json({
-//             statusCode: 500,
-//             message: "Internal Server Error"
-//         });
-//     }
-// };
 
 
 exports.addassignmentquestion = async (req, res) => {
