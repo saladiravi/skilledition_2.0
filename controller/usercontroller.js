@@ -94,7 +94,7 @@ exports.loginUser = async (req, res) => {
         role: user.role
       },
       jwt_secret,
-      { expiresIn: '1m' }
+      { expiresIn: '24h' }
     );
 
     return res.status(200).json({
@@ -157,7 +157,7 @@ exports.adminloginUser = async (req, res) => {
         email: user.email,
         role: user.role
       },
-      jwr_secret,
+      jwt_secret,
       { expiresIn: '24h'}
     );
 
