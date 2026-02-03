@@ -978,11 +978,11 @@ exports.updateRejectedQuestions = async (req, res) => {
             );
 
             // ❌ Prevent update if not rejected
-            if (result.rowCount === 0) {
-                throw new Error(
-                    `Question ${q.question_id} is not rejected or cannot be updated`
-                );
-            }
+            // if (result.rowCount === 0) {
+            //     throw new Error(
+            //         `Question ${q.question_id} is not rejected or cannot be updated`
+            //     );
+            // }
         }
 
         // Assignment goes back to Pending
