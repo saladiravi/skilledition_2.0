@@ -15,5 +15,6 @@ router.post('/submitExam',verifyToken,allowRoles("admin","student","tutor"),stud
 router.post('/updateWatchProgress',verifyToken,allowRoles("admin","student","tutor"),studentcourse.updateWatchProgress)
 router.post('/unlockAssignmentAfterModule',verifyToken,allowRoles("admin","student","tutor"),studentcourse.unlockAssignmentAfterModule)
 
+router.post('/getexamstudent',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getexamstudent)
 
 module.exports=router

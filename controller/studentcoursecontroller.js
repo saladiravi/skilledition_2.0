@@ -140,29 +140,38 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     }
 
     const result = await pool.query(`
-  SELECT
-    tc.course_id,
-    tc.course_title,
-    tc.course_description,
-    tc.price,
-    tc.level,
-    tc.category_id,
-    cat.category_name,
+      SELECT
+        tc.course_id,
+        tc.course_title,
+        tc.course_description,
+        tc.price,
+        tc.level,
+        tc.category_id,
+        cat.category_name,
 
-    EXISTS (
-      SELECT 1 
-      FROM tbl_student_course tsc
-      WHERE tsc.course_id = tc.course_id
-      AND tsc.student_id = $1
-    ) AS is_enrolled
+        /* ✅ student_course_id if enrolled */
+        tsc.student_course_id,
 
-  FROM tbl_course tc
-  JOIN tbl_category cat 
-    ON tc.category_id = cat.category_id
+        /* ✅ enrolled status */
+        CASE 
+          WHEN tsc.student_course_id IS NOT NULL 
+          THEN true 
+          ELSE false 
+        END AS is_enrolled
 
-  WHERE tc.status = 'Published'
-  ORDER BY tc.course_id ASC
-`, [student_id]);
+      FROM tbl_course tc
+
+      JOIN tbl_category cat 
+        ON tc.category_id = cat.category_id
+
+      /* ✅ Join student_course */
+      LEFT JOIN tbl_student_course tsc
+        ON tsc.course_id = tc.course_id
+       AND tsc.student_id = $1
+
+      WHERE tc.status = 'Published'
+      ORDER BY tc.course_id ASC
+    `, [student_id]);
 
     return res.status(200).json({
       statusCode: 200,
@@ -171,6 +180,8 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     });
 
   } catch (error) {
+    console.error("getAllCoursesWithEnrollStatus Error:", error);
+
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
@@ -907,6 +918,91 @@ exports.unlockAssignmentAfterModule = async (req, res) => {
     return res.status(500).json({
       statusCode: 500,
       message: 'Server Error'
+    });
+  }
+};
+
+
+exports.getexamstudent = async (req, res) => {
+  try {
+    const { student_id } = req.body;
+
+    if (!student_id) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "student_id is required"
+      });
+    }
+
+    const result = await pool.query(`
+      SELECT 
+
+        ta.assignment_title,
+        ta.total_questions,
+
+        tc.course_title,
+
+        tsa.student_assignment_id,
+        tsa.status,
+        tsa.total_marks,
+
+        /* ✅ Correct Answers */
+        COUNT(
+          CASE WHEN tans.is_correct = true THEN 1 END
+        ) AS correct_answers,
+
+        /* ✅ Wrong Answers */
+        COUNT(
+          CASE WHEN tans.is_correct = false THEN 1 END
+        ) AS wrong_answers
+
+      FROM tbl_student_course tsc
+
+      /* Only purchased courses */
+      JOIN tbl_course tc
+        ON tsc.course_id = tc.course_id
+
+      JOIN tbl_assignment ta
+        ON tc.course_id = ta.course_id
+
+      JOIN tbl_student_assignment tsa
+        ON ta.assignment_id = tsa.assignment_id
+       AND tsa.student_id = tsc.student_id
+
+      LEFT JOIN tbl_student_answers tans
+        ON tsa.student_assignment_id = tans.student_assignment_id
+
+      WHERE tsc.student_id = $1
+
+      GROUP BY
+        ta.assignment_title,
+        ta.total_questions,
+        tc.course_title,
+        tsa.student_assignment_id,
+        tsa.status,
+        tsa.total_marks
+
+      ORDER BY tsa.student_assignment_id DESC
+    `, [student_id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Result not found"
+      });
+    }
+
+    return res.status(200).json({
+      statusCode: 200,
+      data: result.rows
+    });
+
+  } catch (error) {
+    console.error("getexamstudent Error:", error);
+
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
     });
   }
 };
