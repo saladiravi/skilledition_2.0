@@ -35,7 +35,7 @@ exports.studentbuycourse = async (req, res) => {
     await client.query(`
       UPDATE tbl_student_course_progress
       SET is_unlocked = true,
-          is_unlocked_at = NOW()
+          unlocked_at = NOW()
       WHERE student_id = $1
         AND course_id = $2
         AND module_video_id = (
@@ -607,7 +607,7 @@ exports.updateWatchProgress = async (req, res) => {
         await pool.query(`
           UPDATE tbl_student_course_progress
           SET is_unlocked = true,
-              is_unlocked_at = NOW()
+              unlocked_at = NOW()
           WHERE student_id = $1
           AND module_video_id = $2
         `, [student_id, nextId]);
@@ -718,7 +718,7 @@ exports.unlockAssignmentAfterModule = async (req, res) => {
       // Insert if not exists
       await pool.query(`
         INSERT INTO tbl_student_course_progress
-        (student_id, course_id, module_id, assignment_id, is_unlocked, is_unlocked_at)
+        (student_id, course_id, module_id, assignment_id, is_unlocked, unlocked_at)
         SELECT
           $1,
           course_id,
@@ -738,7 +738,7 @@ exports.unlockAssignmentAfterModule = async (req, res) => {
       await pool.query(`
         UPDATE tbl_student_course_progress
         SET is_unlocked = true,
-            is_unlocked_at = NOW()
+            unlocked_at = NOW()
         WHERE student_id = $1
         AND assignment_id = $2
       `, [student_id, assignmentId]);
