@@ -13,5 +13,7 @@ router.post('/getstudentcourse',verifyToken,allowRoles("admin","student","tutor"
 router.post('/studentwatchvideo',verifyToken,allowRoles("admin","student","tutor"),studentcourse.studentwatchvideo);
 router.post('/submitExam',verifyToken,allowRoles("admin","student","tutor"),studentcourse.submitExam);
 router.post('/updateWatchProgress',verifyToken,allowRoles("admin","student","tutor"),studentcourse.updateWatchProgress)
+router.post('/unlockAssignmentAfterModule',verifyToken,allowRoles("admin","student","tutor"),studentcourse.unlockAssignmentAfterModule)
+
 
 module.exports=router

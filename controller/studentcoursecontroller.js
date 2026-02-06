@@ -470,6 +470,7 @@ exports.submitExam = async (req, res) => {
 
 
 exports.updateWatchProgress = async (req, res) => {
+
   const { student_id, module_video_id, watched } = req.body;
 
   if (!student_id || !module_video_id || !watched) {
@@ -481,26 +482,38 @@ exports.updateWatchProgress = async (req, res) => {
 
   try {
 
+    /* ============================
+       1. Get Video Info
+    ============================*/
 
-    const videoData = await pool.query(`
+    const videoRes = await pool.query(`
       SELECT module_id, video_duration
       FROM tbl_module_videos
       WHERE module_video_id = $1
     `, [module_video_id]);
 
-    if (videoData.rows.length === 0) {
+    if (videoRes.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
         message: 'Video not found'
       });
     }
 
-    const { module_id, video_duration } = videoData.rows[0];
+    const { module_id, video_duration } = videoRes.rows[0];
 
 
-    /* ------------------------------------
-       2. Update Watched Time
-    -------------------------------------*/
+    /* ============================
+       2. Convert Time
+    ============================*/
+
+    const watchedSeconds = timeToSeconds(watched);
+    const durationSeconds = timeToSeconds(video_duration);
+
+
+    /* ============================
+       3. Update Watched
+    ============================*/
+
     await pool.query(`
       UPDATE tbl_student_course_progress
       SET watched = $1
@@ -509,102 +522,108 @@ exports.updateWatchProgress = async (req, res) => {
     `, [watched, student_id, module_video_id]);
 
 
-    /* ------------------------------------
-       3. Check Completed
-    -------------------------------------*/
+    /* ============================
+       4. Check Completed
+    ============================*/
 
-    const isCompleted = Number(watched) >= Number(video_duration);
-
-
-    if (isCompleted) {
-
-      /* ------------------------------
-         4. Mark Video Completed
-      -------------------------------*/
-      await pool.query(`
-        UPDATE tbl_student_course_progress
-        SET is_completed = true,
-            completed_at = NOW()
-        WHERE student_id = $1
-        AND module_video_id = $2
-      `, [student_id, module_video_id]);
+    const isCompleted =
+      watchedSeconds + 2 >= durationSeconds;
 
 
-      /* ------------------------------
-         5. Unlock Next Video
-      -------------------------------*/
+    if (!isCompleted) {
 
-      // Get current video order
-      const currentVideo = await pool.query(`
-        SELECT module_video_id
-        FROM tbl_module_videos
-        WHERE module_id = $1
-        ORDER BY module_video_id
-      `, [module_id]);
+      return res.status(200).json({
+        statusCode: 200,
+        message: 'Progress Updated'
+      });
+    }
 
 
-      const videoList = currentVideo.rows.map(v => v.module_video_id);
+    /* ============================
+       5. Mark Completed
+    ============================*/
 
-      const currentIndex = videoList.indexOf(module_video_id);
-
-      if (currentIndex !== -1 && currentIndex + 1 < videoList.length) {
-
-        const nextVideoId = videoList[currentIndex + 1];
-
-        await pool.query(`
-          UPDATE tbl_student_course_progress
-          SET is_unlocked = true,
-              unlocked_at = NOW()
-          WHERE student_id = $1
-          AND module_video_id = $2
-        `, [student_id, nextVideoId]);
-
-      }
+    await pool.query(`
+      UPDATE tbl_student_course_progress
+      SET is_completed = true,
+          completed_at = NOW()
+      WHERE student_id = $1
+      AND module_video_id = $2
+    `, [student_id, module_video_id]);
 
 
-      /* ------------------------------
-         6. Check All Videos Completed
-      -------------------------------*/
+    /* ============================
+       6. Get Video List
+    ============================*/
 
-      const completedCheck = await pool.query(`
-        SELECT COUNT(*) AS total,
-               COUNT(*) FILTER (WHERE is_completed = true) AS completed
+    const listRes = await pool.query(`
+      SELECT module_video_id
+      FROM tbl_module_videos
+      WHERE module_id = $1
+      ORDER BY module_video_id
+    `, [module_id]);
+
+    const ids = listRes.rows.map(v => Number(v.module_video_id));
+
+    const index = ids.indexOf(Number(module_video_id));
+
+
+    /* ============================
+       7. Unlock Next Video
+    ============================*/
+
+    if (index !== -1 && index + 1 < ids.length) {
+
+      const nextId = ids[index + 1];
+
+
+      const check = await pool.query(`
+        SELECT student_course_progress_id
         FROM tbl_student_course_progress
         WHERE student_id = $1
-        AND module_id = $2
-      `, [student_id, module_id]);
+        AND module_video_id = $2
+      `, [student_id, nextId]);
 
 
-      const { total, completed } = completedCheck.rows[0];
+      if (check.rows.length === 0) {
 
+        await pool.query(`
+          INSERT INTO tbl_student_course_progress
+          (student_id, course_id, module_id, module_video_id, is_unlocked)
+          SELECT
+            $1,
+            course_id,
+            module_id,
+            $2,
+            true
+          FROM tbl_student_course_progress
+          WHERE student_id = $1
+          AND module_video_id = $3
+          LIMIT 1
+        `, [student_id, nextId, module_video_id]);
 
-      /* ------------------------------
-         7. Unlock Assignment
-      -------------------------------*/
-      if (Number(total) === Number(completed)) {
+      } else {
 
         await pool.query(`
           UPDATE tbl_student_course_progress
           SET is_unlocked = true,
-              unlocked_at = NOW()
+              is_unlocked_at = NOW()
           WHERE student_id = $1
-          AND module_id = $2
-          AND assignment_id IS NOT NULL
-        `, [student_id, module_id]);
-
+          AND module_video_id = $2
+        `, [student_id, nextId]);
       }
-
     }
 
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Progress Updated'
+      message: 'Video Completed & Next Unlocked'
     });
 
-  } catch (error) {
 
-    console.error(error);
+  } catch (err) {
+
+    console.error(err);
 
     return res.status(500).json({
       statusCode: 500,
@@ -613,3 +632,136 @@ exports.updateWatchProgress = async (req, res) => {
   }
 };
 
+
+exports.unlockAssignmentAfterModule = async (req, res) => {
+
+  const { student_id, module_id } = req.body;
+
+  if (!student_id || !module_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: 'Missing Required Fields'
+    });
+  }
+
+  try {
+
+    /* ============================
+       1. Check All Videos Completed
+    ============================*/
+
+    const checkRes = await pool.query(`
+      SELECT
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE is_completed = true) AS done
+      FROM tbl_student_course_progress
+      WHERE student_id = $1
+      AND module_id = $2
+      AND module_video_id IS NOT NULL
+    `, [student_id, module_id]);
+
+    const { total, done } = checkRes.rows[0];
+
+    if (Number(total) === 0) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: 'No videos in this module'
+      });
+    }
+
+    if (Number(total) !== Number(done)) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: 'All videos not completed yet'
+      });
+    }
+
+
+    /* ============================
+       2. Get Assignment ID (FIXED)
+    ============================*/
+
+    const assignRes = await pool.query(`
+      SELECT assignment_id
+      FROM tbl_assignment
+      WHERE module_id = $1
+    `, [module_id]);
+
+    if (assignRes.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'No Assignment Found For This Module'
+      });
+    }
+
+    const assignmentId = assignRes.rows[0].assignment_id;
+
+
+    /* ============================
+       3. Check Progress Row
+    ============================*/
+
+    const checkAssign = await pool.query(`
+      SELECT student_course_progress_id
+      FROM tbl_student_course_progress
+      WHERE student_id = $1
+      AND assignment_id = $2
+    `, [student_id, assignmentId]);
+
+
+    /* ============================
+       4. Insert / Update
+    ============================*/
+
+    if (checkAssign.rows.length === 0) {
+
+      // Insert if not exists
+      await pool.query(`
+        INSERT INTO tbl_student_course_progress
+        (student_id, course_id, module_id, assignment_id, is_unlocked, is_unlocked_at)
+        SELECT
+          $1,
+          course_id,
+          module_id,
+          $2,
+          true,
+          NOW()
+        FROM tbl_student_course_progress
+        WHERE student_id = $1
+        AND module_id = $3
+        LIMIT 1
+      `, [student_id, assignmentId, module_id]);
+
+    } else {
+
+      // Update if exists
+      await pool.query(`
+        UPDATE tbl_student_course_progress
+        SET is_unlocked = true,
+            is_unlocked_at = NOW()
+        WHERE student_id = $1
+        AND assignment_id = $2
+      `, [student_id, assignmentId]);
+    }
+
+
+    /* ============================
+       5. Success
+    ============================*/
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: 'Assignment Unlocked Successfully'
+    });
+
+
+  } catch (err) {
+
+    console.error(err);
+
+    return res.status(500).json({
+      statusCode: 500,
+      message: 'Server Error'
+    });
+  }
+};
