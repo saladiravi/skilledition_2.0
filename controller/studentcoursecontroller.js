@@ -85,12 +85,23 @@ exports.getStudentMyCourse = async (req, res) => {
         tsc.student_course_id,
         tsc.student_id,
         tsc.course_id,
+
         tc.course_title,
         tc.course_description,
-         tc.price
+        tc.price,
+        tc.level,
+
+        tc.category_id,
+        cat.category_name
+
       FROM tbl_student_course tsc
+
       JOIN tbl_course tc 
         ON tsc.course_id = tc.course_id
+
+      JOIN tbl_category cat
+        ON tc.category_id = cat.category_id
+
       WHERE tsc.student_id = $1
       `,
       [student_id]
@@ -110,8 +121,6 @@ exports.getStudentMyCourse = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("getStudentMyCourse Error:", error);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
@@ -131,23 +140,29 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT
-        tc.course_id,
-        tc.course_title,
-        tc.course_description,
-        tc.price,
+  SELECT
+    tc.course_id,
+    tc.course_title,
+    tc.course_description,
+    tc.price,
+    tc.level,
+    tc.category_id,
+    cat.category_name,
 
-        EXISTS (
-          SELECT 1 
-          FROM tbl_student_course tsc
-          WHERE tsc.course_id = tc.course_id
-          AND tsc.student_id = $1
-        ) AS is_enrolled
+    EXISTS (
+      SELECT 1 
+      FROM tbl_student_course tsc
+      WHERE tsc.course_id = tc.course_id
+      AND tsc.student_id = $1
+    ) AS is_enrolled
 
-      FROM tbl_course tc
-       WHERE status='Published'
-      ORDER BY tc.course_id DESC
-    `, [student_id]);
+  FROM tbl_course tc
+  JOIN tbl_category cat 
+    ON tc.category_id = cat.category_id
+
+  WHERE tc.status = 'Published'
+  ORDER BY tc.course_id ASC
+`, [student_id]);
 
     return res.status(200).json({
       statusCode: 200,
@@ -156,8 +171,6 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("getAllCoursesWithEnrollStatus Error:", error);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
@@ -319,24 +332,24 @@ exports.studentwatchvideo = async (req, res) => {
       WHERE module_video_id = $1
     `, [module_video_id]);
 
-        if (data.rows.length === 0) {
-              return res.status(404).json({
-                statusCode: 404,
-                message: 'Video not found'
-              });
-            }
+    if (data.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Video not found'
+      });
+    }
 
-     const videoData = data.rows[0];
+    const videoData = data.rows[0];
 
-   
+
     const signedUrl = await getSignedVideoUrl(videoData.video);
 
-   
+
     videoData.video = signedUrl;
     return res.status(200).json({
       statusCode: 200,
       message: 'Fetched Successfully',
-       result: videoData
+      result: videoData
     });
 
   } catch (error) {
