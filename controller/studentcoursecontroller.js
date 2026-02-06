@@ -318,7 +318,7 @@ exports.studentwatchvideo = async (req, res) => {
     `, [student_id, module_video_id]);
 
     // If no record found OR locked
-    if (lockCheck.rows.length === 0 || lockCheck.rows[0].is_unlocked === False) {
+    if (lockCheck.rows.length === 0 || lockCheck.rows[0].is_unlocked === false) {
       return res.status(403).json({
         statusCode: 403,
         message: 'Video is locked. Complete previous videos to unlock.'
@@ -469,5 +469,147 @@ exports.submitExam = async (req, res) => {
 };
 
 
+exports.updateWatchProgress = async (req, res) => {
+  const { student_id, module_video_id, watched } = req.body;
 
+  if (!student_id || !module_video_id || !watched) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: 'Missing Required Fields'
+    });
+  }
+
+  try {
+
+
+    const videoData = await pool.query(`
+      SELECT module_id, video_duration
+      FROM tbl_module_videos
+      WHERE module_video_id = $1
+    `, [module_video_id]);
+
+    if (videoData.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Video not found'
+      });
+    }
+
+    const { module_id, video_duration } = videoData.rows[0];
+
+
+    /* ------------------------------------
+       2. Update Watched Time
+    -------------------------------------*/
+    await pool.query(`
+      UPDATE tbl_student_course_progress
+      SET watched = $1
+      WHERE student_id = $2
+      AND module_video_id = $3
+    `, [watched, student_id, module_video_id]);
+
+
+    /* ------------------------------------
+       3. Check Completed
+    -------------------------------------*/
+
+    const isCompleted = Number(watched) >= Number(video_duration);
+
+
+    if (isCompleted) {
+
+      /* ------------------------------
+         4. Mark Video Completed
+      -------------------------------*/
+      await pool.query(`
+        UPDATE tbl_student_course_progress
+        SET is_completed = true,
+            completed_at = NOW()
+        WHERE student_id = $1
+        AND module_video_id = $2
+      `, [student_id, module_video_id]);
+
+
+      /* ------------------------------
+         5. Unlock Next Video
+      -------------------------------*/
+
+      // Get current video order
+      const currentVideo = await pool.query(`
+        SELECT module_video_id
+        FROM tbl_module_videos
+        WHERE module_id = $1
+        ORDER BY module_video_id
+      `, [module_id]);
+
+
+      const videoList = currentVideo.rows.map(v => v.module_video_id);
+
+      const currentIndex = videoList.indexOf(module_video_id);
+
+      if (currentIndex !== -1 && currentIndex + 1 < videoList.length) {
+
+        const nextVideoId = videoList[currentIndex + 1];
+
+        await pool.query(`
+          UPDATE tbl_student_course_progress
+          SET is_unlocked = true,
+              unlocked_at = NOW()
+          WHERE student_id = $1
+          AND module_video_id = $2
+        `, [student_id, nextVideoId]);
+
+      }
+
+
+      /* ------------------------------
+         6. Check All Videos Completed
+      -------------------------------*/
+
+      const completedCheck = await pool.query(`
+        SELECT COUNT(*) AS total,
+               COUNT(*) FILTER (WHERE is_completed = true) AS completed
+        FROM tbl_student_course_progress
+        WHERE student_id = $1
+        AND module_id = $2
+      `, [student_id, module_id]);
+
+
+      const { total, completed } = completedCheck.rows[0];
+
+
+      /* ------------------------------
+         7. Unlock Assignment
+      -------------------------------*/
+      if (Number(total) === Number(completed)) {
+
+        await pool.query(`
+          UPDATE tbl_student_course_progress
+          SET is_unlocked = true,
+              unlocked_at = NOW()
+          WHERE student_id = $1
+          AND module_id = $2
+          AND assignment_id IS NOT NULL
+        `, [student_id, module_id]);
+
+      }
+
+    }
+
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: 'Progress Updated'
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    return res.status(500).json({
+      statusCode: 500,
+      message: 'Server Error'
+    });
+  }
+};
 

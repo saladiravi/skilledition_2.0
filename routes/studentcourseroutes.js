@@ -12,6 +12,6 @@ router.post('/getAllCoursesWithEnrollStatus',verifyToken,allowRoles("admin","stu
 router.post('/getstudentcourse',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getstudentcourse);
 router.post('/studentwatchvideo',verifyToken,allowRoles("admin","student","tutor"),studentcourse.studentwatchvideo);
 router.post('/submitExam',verifyToken,allowRoles("admin","student","tutor"),studentcourse.submitExam);
-
+router.post('/updateWatchProgress',verifyToken,allowRoles("admin","student","tutor"),studentcourse.updateWatchProgress)
 
 module.exports=router
