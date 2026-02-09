@@ -366,6 +366,9 @@ exports.getstudentcourse = async (req, res) => {
     ON tc.tutor_id = tt.tutor_id
 
   WHERE tc.course_id = $1
+  ORDER BY 
+  tm.module_id ASC,
+  tmv.module_video_id ASC
 `, [course_id, student_id]);
 
     if (rows.length === 0) {
@@ -439,13 +442,14 @@ exports.getstudentcourse = async (req, res) => {
       }
     }
 
-    return res.json({
+    return res.status(200).json({
       statusCode: 200,
+      message:'Fetched Sucessfully',
       data: course
     });
 
   } catch (error) {
-    console.error(error);
+     
     return res.status(500).json({
       statusCode: 500,
       message: 'Internal Server Error'
@@ -504,7 +508,7 @@ exports.studentwatchvideo = async (req, res) => {
     videoData.video = signedUrl;
     return res.status(200).json({
       statusCode: 200,
-      message: 'Fetched Successfully',
+      message: 'watched sucessfully',
       result: videoData
     });
 
@@ -519,7 +523,7 @@ exports.studentwatchvideo = async (req, res) => {
 
 
 
-exports.submitExam = async (req, res) => {
+exports.submitExam = async (req, res) => { 
   try {
 
     const { assignment_id, student_id, answers } = req.body;
@@ -614,6 +618,7 @@ exports.submitExam = async (req, res) => {
 
     res.json({
       success: true,
+
       student_assignment_id,
       marks: totalMarks
     });
