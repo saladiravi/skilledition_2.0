@@ -339,6 +339,10 @@ exports.getstudentcourse = async (req, res) => {
     COALESCE(tsp.is_completed, false) AS is_completed,
 
     COUNT(tmv.module_video_id) OVER() AS total_videos,
+     TO_CHAR(
+    SUM(tmv.video_duration::INTERVAL) OVER (),
+    'HH24:MI:SS'
+  ) AS total_video_duration,
     COUNT(
       CASE WHEN tsp.is_completed = true THEN 1 END
     ) OVER() AS completed_videos
@@ -382,7 +386,7 @@ exports.getstudentcourse = async (req, res) => {
     // 🔹 Overall progress
     const totalVideos = Number(rows[0].total_videos);
     const completedVideos = Number(rows[0].completed_videos);
-
+    const totalVideoDuration = rows[0].total_video_duration;
     const progressPercentage =
       totalVideos === 0
         ? 0
@@ -392,6 +396,7 @@ exports.getstudentcourse = async (req, res) => {
     const course = {
       course_id: rows[0].course_id,
       course_title: rows[0].course_title,
+       total_video_duration: totalVideoDuration,
       no_of_modules: rows[0].no_of_modules,
       tutor_name: rows[0].full_name,
       subject_to_teach: rows[0].subject_to_teach,
@@ -420,8 +425,9 @@ exports.getstudentcourse = async (req, res) => {
           module_title: row.module_title,
           module_description: row.module_description,
           total_duration:row.total_duration,
-          sheet_file: signedSheet,
-           videos: [],
+          sheet_file: row.sheet_file,
+          sheet_file_url: signedSheet,
+          videos: [],
           assignment: row.assignment_id
             ? {
               assignment_id: row.assignment_id,
