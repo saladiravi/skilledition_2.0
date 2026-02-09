@@ -229,7 +229,7 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
 //        AND tsp.student_id = $2
 //        AND tsp.course_id = tc.course_id
 //       WHERE tc.course_id = $1
-     
+
 //     `, [course_id, student_id]);
 
 //     if (rows.length === 0) {
@@ -312,7 +312,7 @@ exports.getstudentcourse = async (req, res) => {
   const { course_id, student_id } = req.body;
 
   try {
- const { rows } = await pool.query(`
+    const { rows } = await pool.query(`
   SELECT
     tc.course_id,
     tc.course_title,
@@ -326,6 +326,7 @@ exports.getstudentcourse = async (req, res) => {
     tm.total_duration,
 
     tmv.module_video_id,
+    tmv.video,
     tmv.video_title,
 
     ta.assignment_id,
@@ -396,7 +397,7 @@ exports.getstudentcourse = async (req, res) => {
     const course = {
       course_id: rows[0].course_id,
       course_title: rows[0].course_title,
-       total_video_duration: totalVideoDuration,
+      total_video_duration: totalVideoDuration,
       no_of_modules: rows[0].no_of_modules,
       tutor_name: rows[0].full_name,
       subject_to_teach: rows[0].subject_to_teach,
@@ -424,7 +425,7 @@ exports.getstudentcourse = async (req, res) => {
           module_id: row.module_id,
           module_title: row.module_title,
           module_description: row.module_description,
-          total_duration:row.total_duration,
+          total_duration: row.total_duration,
           sheet_file: row.sheet_file,
           sheet_file_url: signedSheet,
           videos: [],
@@ -439,32 +440,32 @@ exports.getstudentcourse = async (req, res) => {
         course.modules.push(moduleMap[row.module_id]);
       }
 
-    if (row.module_video_id) {
+      if (row.module_video_id) {
 
-  let videoUrl = null;
+        let videoUrl = null;
 
-  if (row.is_unlocked && row.video) {
-    videoUrl = await getSignedVideoUrl(row.video);
-  }
+        if (row.is_unlocked && row.video) {
+          videoUrl = await getSignedVideoUrl(row.video);
+        }
 
-  moduleMap[row.module_id].videos.push({
-    module_video_id: row.module_video_id,
-    video_title: row.video_title,
-    video_url: videoUrl,
-    is_unlocked: row.is_unlocked,
-    is_completed: row.is_completed
-  });
-}
+        moduleMap[row.module_id].videos.push({
+          module_video_id: row.module_video_id,
+          video_title: row.video_title,
+          video_url: videoUrl,
+          is_unlocked: row.is_unlocked,
+          is_completed: row.is_completed
+        });
+      }
     }
 
     return res.status(200).json({
       statusCode: 200,
-      message:'Fetched Sucessfully',
+      message: 'Fetched Sucessfully',
       data: course
     });
 
   } catch (error) {
-     
+
     return res.status(500).json({
       statusCode: 500,
       message: 'Internal Server Error'
@@ -538,7 +539,7 @@ exports.studentwatchvideo = async (req, res) => {
 
 
 
-exports.submitExam = async (req, res) => { 
+exports.submitExam = async (req, res) => {
   try {
 
     const { assignment_id, student_id, answers } = req.body;
