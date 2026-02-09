@@ -2,6 +2,23 @@ const pool = require('../config/db');
 const { getSignedVideoUrl } = require('../utils/s3upload');
 
 
+function timeToSeconds(time) {
+  if (!time) return 0;
+
+  const parts = time.split(':').map(Number);
+
+  if (parts.some(isNaN)) return 0;
+
+  if (parts.length === 3) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+
+  if (parts.length === 2) {
+    return parts[0] * 60 + parts[1];
+  }
+
+  return Number(time) || 0;
+}
 exports.studentbuycourse = async (req, res) => {
   const { course_id, student_id } = req.body;
 
