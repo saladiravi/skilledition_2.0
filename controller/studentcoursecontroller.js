@@ -439,23 +439,22 @@ exports.getstudentcourse = async (req, res) => {
         course.modules.push(moduleMap[row.module_id]);
       }
 
-        if (row.module_video_id) {
+    if (row.module_video_id) {
 
-        let videoUrl = null;
+  let videoUrl = null;
 
-        if (row.is_unlocked) {
-          videoUrl = await getSignedVideoUrl(row.video); 
-          // 👆 replace `row.video` with correct column if different
-        }
+  if (row.is_unlocked && row.video) {
+    videoUrl = await getSignedVideoUrl(row.video);
+  }
 
-        moduleMap[row.module_id].videos.push({
-          module_video_id: row.module_video_id,
-          video_title: row.video_title,
-          video_url: videoUrl,   // ✅ only when unlocked
-          is_unlocked: row.is_unlocked,
-          is_completed: row.is_completed
-        });
-      }
+  moduleMap[row.module_id].videos.push({
+    module_video_id: row.module_video_id,
+    video_title: row.video_title,
+    video_url: videoUrl,
+    is_unlocked: row.is_unlocked,
+    is_completed: row.is_completed
+  });
+}
     }
 
     return res.status(200).json({
