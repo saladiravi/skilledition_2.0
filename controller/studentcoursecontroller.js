@@ -317,12 +317,13 @@ exports.getstudentcourse = async (req, res) => {
     tc.course_id,
     tc.course_title,
     tc.no_of_modules,
-    tc.duration,
+   
 
     tm.module_id,
     tm.module_title,
     tm.module_description,
     tm.sheet_file,
+    tm.total_duration,
 
     tmv.module_video_id,
     tmv.video_title,
@@ -392,7 +393,6 @@ exports.getstudentcourse = async (req, res) => {
       course_id: rows[0].course_id,
       course_title: rows[0].course_title,
       no_of_modules: rows[0].no_of_modules,
-      duration: rows[0].duration,
       tutor_name: rows[0].full_name,
       subject_to_teach: rows[0].subject_to_teach,
       professional_background: rows[0].professional_background,
@@ -419,6 +419,7 @@ exports.getstudentcourse = async (req, res) => {
           module_id: row.module_id,
           module_title: row.module_title,
           module_description: row.module_description,
+          total_duration:row.total_duration,
           sheet_file: signedSheet,
            videos: [],
           assignment: row.assignment_id
