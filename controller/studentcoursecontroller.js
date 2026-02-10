@@ -65,7 +65,7 @@ exports.studentbuycourse = async (req, res) => {
         WHERE tm.course_id = $2
       `, [student_id, course_id]);
 
-      
+
     // 3. Unlock first video of first module
     await client.query(`
       UPDATE tbl_student_course_progress
@@ -1001,7 +1001,7 @@ exports.getexamstudent = async (req, res) => {
         tsa.student_assignment_id,
 
         /* ✅ If exam not written */
-        COALESCE(tsa.status, 'NOT ATTEMPTED') AS status,
+        COALESCE(tsa.status, 'Pending') AS status,
 
         COALESCE(tsa.total_marks, 0) AS total_marks,
 
@@ -1052,8 +1052,7 @@ exports.getexamstudent = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("getexamstudent Error:", error);
-
+  
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
