@@ -1029,6 +1029,7 @@ exports.getexamstudent = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
+      message:'Fetched Sucessfully',
       data: result.rows
     });
 
