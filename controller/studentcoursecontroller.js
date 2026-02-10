@@ -1024,7 +1024,7 @@ exports.getexamstudent = async (req, res) => {
         tsa.status,
         tsa.total_marks
 
-      ORDER BY ta.assignment_id DESC
+      ORDER BY ta.assignment_id ASC
     `, [student_id]);
 
     return res.status(200).json({
