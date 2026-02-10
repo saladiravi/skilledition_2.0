@@ -733,6 +733,44 @@ exports.updateWatchProgress = async (req, res) => {
     }
 
 
+      /* ============================
+       8. Check ALL Videos Completed
+    ============================ */
+
+    const allCompletedRes = await pool.query(`
+        SELECT
+          COUNT(*) AS total_videos,
+          COUNT(
+            CASE WHEN is_completed = true THEN 1 END
+          ) AS completed_videos
+        FROM tbl_student_course_progress
+        WHERE student_id = $1
+          AND module_id = $2
+          AND module_video_id IS NOT NULL
+      `, [student_id, module_id]);
+
+    const { total_videos, completed_videos } = allCompletedRes.rows[0];
+
+    const allVideosCompleted =
+      Number(total_videos) > 0 &&
+      Number(total_videos) === Number(completed_videos);
+
+    /* ============================
+     9. Unlock Assignment
+  ============================ */
+
+    if (allVideosCompleted) {
+
+      await pool.query(`
+    UPDATE tbl_student_course_progress
+    SET is_unlocked = true,
+        unlocked_at = NOW()
+    WHERE student_id = $1
+      AND module_id = $2
+      AND assignment_id IS NOT NULL
+  `, [student_id, module_id]);
+    }
+    
     return res.status(200).json({
       statusCode: 200,
       message: 'Video Completed & Next Unlocked'
