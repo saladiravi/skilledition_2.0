@@ -936,90 +936,116 @@ exports.getexamstudent = async (req, res) => {
 
     const result = await pool.query(`
       SELECT
-          ta.assignment_id,
-          ta.assignment_title,
-          ta.total_questions,
+        ta.assignment_id,
+        ta.assignment_title,
+        ta.total_questions,
 
-          ts.is_unlocked,
+        ts.is_unlocked,
+        tc.course_title,
 
-          tc.course_title,
+        tsa.student_assignment_id,
 
-          tsa.student_assignment_id,
+        COALESCE(tsa.status, 'Pending') AS status,
+        COALESCE(tsa.total_marks, 0) AS total_marks,
 
-          /* Exam status */
-          COALESCE(tsa.status, 'Pending') AS status,
+        COUNT(CASE WHEN tans.is_correct = true THEN 1 END) AS correct_answers,
+        COUNT(CASE WHEN tans.is_correct = false THEN 1 END) AS wrong_answers,
 
-          COALESCE(tsa.total_marks, 0) AS total_marks,
+        COUNT(*) OVER () AS total_assignments,
 
-          /* Correct answers */
-          COUNT(
-            CASE WHEN tans.is_correct = true THEN 1 END
-          ) AS correct_answers,
+        COUNT(
+          CASE
+            WHEN COALESCE(tsa.status, 'Pending') = 'Pending'
+            THEN 1
+          END
+        ) OVER () AS pending_assignments,
 
-          /* Wrong answers */
-          COUNT(
-            CASE WHEN tans.is_correct = false THEN 1 END
-          ) AS wrong_answers,
+        COUNT(
+          CASE
+            WHEN tsa.status = 'Completed'
+            THEN 1
+          END
+        ) OVER () AS submitted_assignments
 
-          /* ✅ TOTAL assignments (window function) */
-          COUNT(*) OVER () AS total_assignments,
+      FROM tbl_student_course tsc
+      JOIN tbl_course tc
+        ON tsc.course_id = tc.course_id
+      JOIN tbl_assignment ta
+        ON tc.course_id = ta.course_id
 
-          /* ⏳ Pending / Not attempted count */
-          COUNT(
-            CASE
-              WHEN COALESCE(tsa.status, 'Pending') = 'Pending'
-              THEN 1
-            END
-          ) OVER () AS pending_assignments,
-           
-           COUNT(
-              CASE
-                WHEN tsa.status = 'Completed' THEN 1
-              END
-            ) OVER () AS submitted_assignments
+      LEFT JOIN tbl_student_assignment tsa
+        ON ta.assignment_id = tsa.assignment_id
+       AND tsa.student_id = tsc.student_id
 
-        FROM tbl_student_course tsc
+      LEFT JOIN tbl_student_answers tans
+        ON tsa.student_assignment_id = tans.student_assignment_id
 
-        JOIN tbl_course tc
-          ON tsc.course_id = tc.course_id
+      LEFT JOIN tbl_student_course_progress ts
+        ON ts.assignment_id = ta.assignment_id
+       AND ts.student_id = tsc.student_id
 
-        JOIN tbl_assignment ta
-          ON tc.course_id = ta.course_id
+      WHERE tsc.student_id = $1
 
-        LEFT JOIN tbl_student_assignment tsa
-          ON ta.assignment_id = tsa.assignment_id
-        AND tsa.student_id = tsc.student_id
+      GROUP BY
+        ta.assignment_id,
+        ta.assignment_title,
+        ta.total_questions,
+        tc.course_title,
+        tsa.student_assignment_id,
+        tsa.status,
+        tsa.total_marks,
+        ts.is_unlocked
 
-        LEFT JOIN tbl_student_answers tans
-          ON tsa.student_assignment_id = tans.student_assignment_id
-
-        LEFT JOIN tbl_student_course_progress ts
-          ON ts.assignment_id = ta.assignment_id
-        AND ts.student_id = tsc.student_id
-
-        WHERE tsc.student_id = $1
-
-        GROUP BY
-          ta.assignment_id,
-          ta.assignment_title,
-          ta.total_questions,
-          tc.course_title,
-          tsa.student_assignment_id,
-          tsa.status,
-          tsa.total_marks,
-          ts.is_unlocked
-
-        ORDER BY ta.assignment_id ASC;
+      ORDER BY ta.assignment_id ASC
     `, [student_id]);
+
+    if (result.rows.length === 0) {
+      return res.status(200).json({
+        statusCode: 200,
+        data: {
+          counts: {
+            total_assignments: 0,
+            pending_assignments: 0,
+            submitted_assignments: 0
+          },
+          assignment: []
+        }
+      });
+    }
+
+    // ✅ Extract counts from FIRST row
+    const {
+      total_assignments,
+      pending_assignments,
+      submitted_assignments
+    } = result.rows[0];
+
+    // ✅ Remove count fields from list items
+    const assignment = result.rows.map(row => {
+      const {
+        total_assignments,
+        pending_assignments,
+        submitted_assignments,
+        ...rest
+      } = row;
+      return rest;
+    });
 
     return res.status(200).json({
       statusCode: 200,
-      message:'Fetched Sucessfully',
-      data: result.rows
+      message: 'Fetched Successfully',
+      data: {
+        counts: {
+          total_assignments: Number(total_assignments),
+          pending_assignments: Number(pending_assignments),
+          submitted_assignments: Number(submitted_assignments)
+        },
+        assignment
+      }
     });
 
   } catch (error) {
-  
+    console.error("getexamstudent Error:", error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
