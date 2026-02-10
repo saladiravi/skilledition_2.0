@@ -973,37 +973,40 @@ exports.getexamstudent = async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT 
-
+      SELECT
+        ta.assignment_id,
         ta.assignment_title,
         ta.total_questions,
 
         tc.course_title,
 
         tsa.student_assignment_id,
-        tsa.status,
-        tsa.total_marks,
 
-        /* ✅ Correct Answers */
+        /* ✅ If exam not written */
+        COALESCE(tsa.status, 'NOT_ATTEMPTED') AS status,
+
+        COALESCE(tsa.total_marks, 0) AS total_marks,
+
+        /* ✅ Correct answers */
         COUNT(
           CASE WHEN tans.is_correct = true THEN 1 END
         ) AS correct_answers,
 
-        /* ✅ Wrong Answers */
+        /* ✅ Wrong answers */
         COUNT(
           CASE WHEN tans.is_correct = false THEN 1 END
         ) AS wrong_answers
 
       FROM tbl_student_course tsc
 
-      /* Only purchased courses */
       JOIN tbl_course tc
         ON tsc.course_id = tc.course_id
 
       JOIN tbl_assignment ta
         ON tc.course_id = ta.course_id
 
-      JOIN tbl_student_assignment tsa
+      /* 🔥 IMPORTANT: LEFT JOIN */
+      LEFT JOIN tbl_student_assignment tsa
         ON ta.assignment_id = tsa.assignment_id
        AND tsa.student_id = tsc.student_id
 
@@ -1013,6 +1016,7 @@ exports.getexamstudent = async (req, res) => {
       WHERE tsc.student_id = $1
 
       GROUP BY
+        ta.assignment_id,
         ta.assignment_title,
         ta.total_questions,
         tc.course_title,
@@ -1020,15 +1024,8 @@ exports.getexamstudent = async (req, res) => {
         tsa.status,
         tsa.total_marks
 
-      ORDER BY tsa.student_assignment_id DESC
+      ORDER BY ta.assignment_id DESC
     `, [student_id]);
-
-    // if (result.rows.length === 0) {
-    //   return res.status(404).json({
-    //     statusCode: 404,
-    //     message: "Result not found"
-    //   });
-    // }
 
     return res.status(200).json({
       statusCode: 200,
