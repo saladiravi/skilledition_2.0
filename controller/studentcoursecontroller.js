@@ -184,10 +184,8 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
         tc.category_id,
         cat.category_name,
 
-        /* ✅ student_course_id if enrolled */
         tsc.student_course_id,
 
-        /* ✅ enrolled status */
         CASE 
           WHEN tsc.student_course_id IS NOT NULL 
           THEN true 
@@ -196,15 +194,30 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
 
       FROM tbl_course tc
 
-      JOIN tbl_category cat 
+      JOIN tbl_category cat
         ON tc.category_id = cat.category_id
 
-      /* ✅ Join student_course */
       LEFT JOIN tbl_student_course tsc
         ON tsc.course_id = tc.course_id
        AND tsc.student_id = $1
 
       WHERE tc.status = 'Published'
+
+      /* ✅ ALL assignments must be Published */
+      AND NOT EXISTS (
+        SELECT 1
+        FROM tbl_assignment ta
+        WHERE ta.course_id = tc.course_id
+          AND ta.status <> 'Published'
+      )
+
+      /* optional: ensure course HAS assignments */
+      AND EXISTS (
+        SELECT 1
+        FROM tbl_assignment ta
+        WHERE ta.course_id = tc.course_id
+      )
+
       ORDER BY tc.course_id ASC
     `, [student_id]);
 
@@ -215,8 +228,7 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("getAllCoursesWithEnrollStatus Error:", error);
-
+    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
@@ -224,124 +236,6 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
   }
 };
 
-// exports.getstudentcourse = async (req, res) => {
-//   const { course_id, student_id } = req.body;
-
-//   try {
-//     const { rows } = await pool.query(`
-//       SELECT
-//         tc.course_id,
-//         tc.course_title,
-//         tc.no_of_modules,
-//         tc.duration,
-
-//         tm.module_id,
-//         tm.module_title,
-
-//         tmv.module_video_id,
-//         tmv.video_title,
-
-//         ta.assignment_id,
-//         ta.assignment_title,
-
-//         COALESCE(tsp.is_unlocked, false) AS is_unlocked,
-//         COALESCE(tsp.is_completed, false) AS is_completed,
-
-//         COUNT(tmv.module_video_id) OVER() AS total_videos,
-//         COUNT(
-//           CASE WHEN tsp.is_completed = true THEN 1 END
-//         ) OVER() AS completed_videos
-
-//       FROM tbl_course tc
-//       JOIN tbl_module tm
-//         ON tc.course_id = tm.course_id
-//       LEFT JOIN tbl_module_videos tmv
-//         ON tm.module_id = tmv.module_id
-//       LEFT JOIN tbl_assignment ta
-//         ON tm.module_id = ta.module_id
-//       LEFT JOIN tbl_student_course_progress tsp
-//         ON tsp.module_video_id = tmv.module_video_id
-//        AND tsp.student_id = $2
-//        AND tsp.course_id = tc.course_id
-//       WHERE tc.course_id = $1
-
-//     `, [course_id, student_id]);
-
-//     if (rows.length === 0) {
-//       return res.json({
-//         statusCode: 200,
-//         data: null
-//       });
-//     }
-
-//     // 🔹 Overall progress
-//     const totalVideos = Number(rows[0].total_videos);
-//     const completedVideos = Number(rows[0].completed_videos);
-
-//     const progressPercentage =
-//       totalVideos === 0
-//         ? 0
-//         : Math.round((completedVideos / totalVideos) * 100);
-
-//     // 🔹 Base course object
-//     const course = {
-//       course_id: rows[0].course_id,
-//       course_title: rows[0].course_title,
-//       no_of_modules: rows[0].no_of_modules,
-//       duration: rows[0].duration,
-//       progress: {
-//         total_videos: totalVideos,
-//         completed_videos: completedVideos,
-//         percentage: progressPercentage
-//       },
-//       modules: []
-//     };
-
-//     // 🔹 Build modules + videos
-//     const moduleMap = {};
-
-//     for (const row of rows) {
-//       // create module if not exists
-//       if (!moduleMap[row.module_id]) {
-//         moduleMap[row.module_id] = {
-//           module_id: row.module_id,
-//           module_title: row.module_title,
-//           assignment: row.assignment_id
-//             ? {
-//               assignment_id: row.assignment_id,
-//               assignment_title: row.assignment_title
-//             }
-//             : null,
-//           videos: []
-//         };
-
-//         course.modules.push(moduleMap[row.module_id]);
-//       }
-
-//       // add video
-//       if (row.module_video_id) {
-//         moduleMap[row.module_id].videos.push({
-//           module_video_id: row.module_video_id,
-//           video_title: row.video_title,
-//           is_unlocked: row.is_unlocked,
-//           is_completed: row.is_completed
-//         });
-//       }
-//     }
-
-//     return res.json({
-//       statusCode: 200,
-//       data: course
-//     });
-
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({
-//       statusCode: 500,
-//       message: 'Internal Server Error'
-//     });
-//   }
-// };
 
 exports.getstudentcourse = async (req, res) => {
   const { course_id, student_id } = req.body;
