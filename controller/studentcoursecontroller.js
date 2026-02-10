@@ -374,6 +374,10 @@ exports.getstudentcourse = async (req, res) => {
     COALESCE(tsp.is_unlocked, false) AS is_unlocked,
     COALESCE(tsp.is_completed, false) AS is_completed,
 
+    COALESCE(tspa.is_unlocked, false) AS assignment_is_unlocked,
+      tspa.unlocked_at AS assignment_unlocked_at,
+      COALESCE(tspa.is_completed, false) AS assignment_is_completed,
+
     COUNT(tmv.module_video_id) OVER() AS total_videos,
      TO_CHAR(
     SUM(tmv.video_duration::INTERVAL) OVER (),
@@ -398,6 +402,11 @@ exports.getstudentcourse = async (req, res) => {
     ON tsp.module_video_id = tmv.module_video_id
    AND tsp.student_id = $2
    AND tsp.course_id = tc.course_id
+
+    LEFT JOIN tbl_student_course_progress tspa
+      ON tspa.assignment_id = ta.assignment_id
+      AND tspa.student_id = $2
+      AND tspa.course_id = tc.course_id
 
   JOIN tbl_user tu
     ON tc.tutor_id = tu.user_id
@@ -466,9 +475,12 @@ exports.getstudentcourse = async (req, res) => {
           videos: [],
           assignment: row.assignment_id
             ? {
-              assignment_id: row.assignment_id,
-              assignment_title: row.assignment_title
-            }
+                assignment_id: row.assignment_id,
+                assignment_title: row.assignment_title,
+                is_unlocked: row.assignment_is_unlocked,
+                is_completed: row.assignment_is_completed,
+                unlocked_at: row.assignment_unlocked_at
+              }
             : null,
         };
 
