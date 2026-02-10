@@ -970,7 +970,13 @@ exports.getexamstudent = async (req, res) => {
               WHEN COALESCE(tsa.status, 'Pending') = 'Pending'
               THEN 1
             END
-          ) OVER () AS pending_assignments
+          ) OVER () AS pending_assignments,
+           
+           COUNT(
+              CASE
+                WHEN tsa.status = 'Completed' THEN 1
+              END
+            ) OVER () AS submitted_assignments
 
         FROM tbl_student_course tsc
 
@@ -1081,7 +1087,7 @@ exports.writeExam = async (req, res) => {
       `
       UPDATE tbl_student_assignment
       SET total_marks = $1,
-          status = 'COMPLETED'
+          status = 'Completed'
       WHERE student_assignment_id = $2
       `,
       [totalMarks, student_assignment_id]
