@@ -19,6 +19,7 @@ function timeToSeconds(time) {
 
   return Number(time) || 0;
 }
+
 exports.studentbuycourse = async (req, res) => {
   const { course_id, student_id } = req.body;
 
@@ -48,6 +49,23 @@ exports.studentbuycourse = async (req, res) => {
       WHERE tm.course_id = $2
     `, [student_id, course_id]);
 
+      await client.query(`
+        INSERT INTO tbl_student_course_progress
+          (student_id, course_id, module_id, module_video_id, assignment_id, is_unlocked, is_completed)
+        SELECT
+          $1,
+          tm.course_id,
+          tm.module_id,
+          NULL,
+          ta.assignment_id,
+          false,
+          false
+        FROM tbl_module tm
+        JOIN tbl_assignment ta ON tm.module_id = ta.module_id
+        WHERE tm.course_id = $2
+      `, [student_id, course_id]);
+
+      
     // 3. Unlock first video of first module
     await client.query(`
       UPDATE tbl_student_course_progress
