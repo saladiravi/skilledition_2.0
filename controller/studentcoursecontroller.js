@@ -983,7 +983,7 @@ exports.getexamstudent = async (req, res) => {
         tsa.student_assignment_id,
 
         /* ✅ If exam not written */
-        COALESCE(tsa.status, 'NOT_ATTEMPTED') AS status,
+        COALESCE(tsa.status, 'NOT ATTEMPTED') AS status,
 
         COALESCE(tsa.total_marks, 0) AS total_marks,
 
