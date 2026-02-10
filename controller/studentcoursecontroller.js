@@ -1023,12 +1023,12 @@ exports.getexamstudent = async (req, res) => {
       ORDER BY tsa.student_assignment_id DESC
     `, [student_id]);
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        statusCode: 404,
-        message: "Result not found"
-      });
-    }
+    // if (result.rows.length === 0) {
+    //   return res.status(404).json({
+    //     statusCode: 404,
+    //     message: "Result not found"
+    //   });
+    // }
 
     return res.status(200).json({
       statusCode: 200,
