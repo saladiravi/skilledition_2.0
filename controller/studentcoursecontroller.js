@@ -936,57 +936,74 @@ exports.getexamstudent = async (req, res) => {
 
     const result = await pool.query(`
       SELECT
-        ta.assignment_id,
-        ta.assignment_title,
-        ta.total_questions,
+          ta.assignment_id,
+          ta.assignment_title,
+          ta.total_questions,
 
-        tc.course_title,
+          ts.is_unlocked,
 
-        tsa.student_assignment_id,
+          tc.course_title,
 
-        /* ✅ If exam not written */
-        COALESCE(tsa.status, 'Pending') AS status,
+          tsa.student_assignment_id,
 
-        COALESCE(tsa.total_marks, 0) AS total_marks,
+          /* Exam status */
+          COALESCE(tsa.status, 'NOT_ATTEMPTED') AS status,
 
-        /* ✅ Correct answers */
-        COUNT(
-          CASE WHEN tans.is_correct = true THEN 1 END
-        ) AS correct_answers,
+          COALESCE(tsa.total_marks, 0) AS total_marks,
 
-        /* ✅ Wrong answers */
-        COUNT(
-          CASE WHEN tans.is_correct = false THEN 1 END
-        ) AS wrong_answers
+          /* Correct answers */
+          COUNT(
+            CASE WHEN tans.is_correct = true THEN 1 END
+          ) AS correct_answers,
 
-      FROM tbl_student_course tsc
+          /* Wrong answers */
+          COUNT(
+            CASE WHEN tans.is_correct = false THEN 1 END
+          ) AS wrong_answers,
 
-      JOIN tbl_course tc
-        ON tsc.course_id = tc.course_id
+          /* ✅ TOTAL assignments (window function) */
+          COUNT(*) OVER () AS total_assignments,
 
-      JOIN tbl_assignment ta
-        ON tc.course_id = ta.course_id
+          /* ⏳ Pending / Not attempted count */
+          COUNT(
+            CASE
+              WHEN COALESCE(tsa.status, 'Pending') = 'Pending'
+              THEN 1
+            END
+          ) OVER () AS pending_assignments
 
-      /* 🔥 IMPORTANT: LEFT JOIN */
-      LEFT JOIN tbl_student_assignment tsa
-        ON ta.assignment_id = tsa.assignment_id
-       AND tsa.student_id = tsc.student_id
+        FROM tbl_student_course tsc
 
-      LEFT JOIN tbl_student_answers tans
-        ON tsa.student_assignment_id = tans.student_assignment_id
+        JOIN tbl_course tc
+          ON tsc.course_id = tc.course_id
 
-      WHERE tsc.student_id = $1
+        JOIN tbl_assignment ta
+          ON tc.course_id = ta.course_id
 
-      GROUP BY
-        ta.assignment_id,
-        ta.assignment_title,
-        ta.total_questions,
-        tc.course_title,
-        tsa.student_assignment_id,
-        tsa.status,
-        tsa.total_marks
+        LEFT JOIN tbl_student_assignment tsa
+          ON ta.assignment_id = tsa.assignment_id
+        AND tsa.student_id = tsc.student_id
 
-      ORDER BY ta.assignment_id ASC
+        LEFT JOIN tbl_student_answers tans
+          ON tsa.student_assignment_id = tans.student_assignment_id
+
+        LEFT JOIN tbl_student_course_progress ts
+          ON ts.assignment_id = ta.assignment_id
+        AND ts.student_id = tsc.student_id
+
+        WHERE tsc.student_id = $1
+
+        GROUP BY
+          ta.assignment_id,
+          ta.assignment_title,
+          ta.total_questions,
+          tc.course_title,
+          tsa.student_assignment_id,
+          tsa.status,
+          tsa.total_marks,
+          ts.is_unlocked
+
+        ORDER BY ta.assignment_id ASC;
     `, [student_id]);
 
     return res.status(200).json({
@@ -1086,4 +1103,55 @@ exports.writeExam = async (req, res) => {
   } finally {
     
   }
+};
+
+
+
+exports.getAssignmentById = async (req, res) => {
+    const { assignment_id } = req.body;
+
+    try {
+        // Check assignment exists
+        const assignmentData = await pool.query(
+            `SELECT * FROM tbl_assignment WHERE assignment_id = $1`,
+            [assignment_id]
+        );
+
+        if (assignmentData.rows.length === 0) {
+            return res.status(404).json({
+                statusCode: 404,
+                message: "Assignment Not Found"
+            });
+        }
+
+        const assignment = assignmentData.rows[0];
+        const fetchdata = await pool.query(`SELECT * FROM tbl_assignment WHERE assignment_id=$1`, [assignment_id]);
+
+        // Fetch questions belonging to this assignment
+        const questionData = await pool.query(
+            `SELECT question_id, question, a, b, c, d
+             FROM tbl_questions 
+             WHERE assignment_id = $1
+             ORDER BY question_id ASC`,
+            [assignment_id]
+        );
+
+        const questions = questionData.rows;
+    
+        return res.status(200).json({
+            statusCode: 200,
+            message: "Assignment fetched successfully",
+            assignment: {
+                assignment_id: assignment.assignment_id,
+                questions: questions
+            }
+        });
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            statusCode: 500,
+            message: "Internal Server Error"
+        });
+    }
 };
