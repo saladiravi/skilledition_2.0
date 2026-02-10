@@ -1041,3 +1041,87 @@ exports.getexamstudent = async (req, res) => {
     });
   }
 };
+
+
+exports.writeExam = async (req, res) => {
+ 
+  try {
+    const { student_id, assignment_id, answers } = req.body;
+
+ 
+    // 1️⃣ Create student assignment
+    const assignmentResult = await pool.query(
+      `
+      INSERT INTO tbl_student_assignment
+      (assignment_id, student_id, total_marks, status, created_at)
+      VALUES ($1, $2, 0, 'IN_PROGRESS', NOW())
+      RETURNING student_assignment_id
+      `,
+      [assignment_id, student_id]
+    );
+
+    const student_assignment_id =
+      assignmentResult.rows[0].student_assignment_id;
+
+    let totalMarks = 0;
+
+    // 2️⃣ Loop through answers
+    for (let ans of answers) {
+      const { question_id, selected_answer } = ans;
+
+      // fetch correct answer
+      const q = await pool.query(
+        `SELECT answer FROM tbl_questions WHERE question_id = $1`,
+        [question_id]
+      );
+
+      const correct_answer = q.rows[0].answer;
+      const is_correct = selected_answer === correct_answer;
+
+      if (is_correct) totalMarks++;
+
+      // insert answer
+      await pool.query(
+        `
+        INSERT INTO tbl_student_answers
+        (student_assignment_id, question_id, selected_answer, correct_answer, is_correct, created_at)
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        `,
+        [
+          student_assignment_id,
+          question_id,
+          selected_answer,
+          correct_answer,
+          is_correct
+        ]
+      );
+    }
+
+    // 3️⃣ Update marks + status
+    await pool.query(
+      `
+      UPDATE tbl_student_assignment
+      SET total_marks = $1,
+          status = 'COMPLETED'
+      WHERE student_assignment_id = $2
+      `,
+      [totalMarks, student_assignment_id]
+    );
+
+  
+    res.status(200).json({
+      message: 'Exam submitted successfully',
+      student_assignment_id,
+      total_marks: totalMarks
+    });
+  } catch (error) {
+  
+    console.error(error);
+
+    res.status(500).json({
+      message: 'Something went wrong'
+    });
+  } finally {
+    
+  }
+};
