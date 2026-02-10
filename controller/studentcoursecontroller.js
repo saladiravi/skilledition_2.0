@@ -591,7 +591,7 @@ exports.updateWatchProgress = async (req, res) => {
 
   const { student_id, module_video_id, watched } = req.body;
 
-  if (!student_id || !module_video_id || !watched) {
+  if (!student_id || !module_video_id || watched == null) {
     return res.status(400).json({
       statusCode: 400,
       message: 'Missing Required Fields'
@@ -770,7 +770,7 @@ exports.updateWatchProgress = async (req, res) => {
       AND assignment_id IS NOT NULL
   `, [student_id, module_id]);
     }
-    
+
     return res.status(200).json({
       statusCode: 200,
       message: 'Video Completed & Next Unlocked'
