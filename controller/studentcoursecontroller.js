@@ -83,6 +83,15 @@ exports.studentbuycourse = async (req, res) => {
         )
     `, [student_id, course_id]);
 
+
+      await client.query(`
+        INSERT INTO tbl_student_final_assignment
+          (student_id, course_id,assignment_title)
+        VALUES
+          ($1, $2,'Final Assignment')
+      `, [student_id, course_id]);
+
+      
     await client.query('COMMIT');
 
     return res.status(200).json({
