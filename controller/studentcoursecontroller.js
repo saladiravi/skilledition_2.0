@@ -1055,12 +1055,26 @@ exports.getexamstudent = async (req, res) => {
 
 
 exports.writeExam = async (req, res) => {
-
   try {
     const { student_id, assignment_id, answers } = req.body;
 
+    // 1️⃣ Get assignment details (module + course)
+    const assignmentRes = await pool.query(
+      `
+      SELECT module_id, course_id
+      FROM tbl_assignment
+      WHERE assignment_id = $1
+      `,
+      [assignment_id]
+    );
 
-    // 1️⃣ Create student assignment
+    if (assignmentRes.rows.length === 0) {
+      return res.status(404).json({ message: "Assignment not found" });
+    }
+
+    const { module_id, course_id } = assignmentRes.rows[0];
+
+    // 2️⃣ Create student assignment entry
     const assignmentResult = await pool.query(
       `
       INSERT INTO tbl_student_assignment
@@ -1076,11 +1090,10 @@ exports.writeExam = async (req, res) => {
 
     let totalMarks = 0;
 
-    // 2️⃣ Loop through answers
+    // 3️⃣ Store answers + calculate marks
     for (let ans of answers) {
       const { question_id, selected_answer } = ans;
 
-      // fetch correct answer
       const q = await pool.query(
         `SELECT answer FROM tbl_questions WHERE question_id = $1`,
         [question_id]
@@ -1091,7 +1104,6 @@ exports.writeExam = async (req, res) => {
 
       if (is_correct) totalMarks++;
 
-      // insert answer
       await pool.query(
         `
         INSERT INTO tbl_student_answers
@@ -1108,7 +1120,7 @@ exports.writeExam = async (req, res) => {
       );
     }
 
-    // 3️⃣ Update marks + status
+    // 4️⃣ Update assignment result
     await pool.query(
       `
       UPDATE tbl_student_assignment
@@ -1119,19 +1131,33 @@ exports.writeExam = async (req, res) => {
       [totalMarks, student_assignment_id]
     );
 
+    // 5️⃣ Mark current module as completed
+    await pool.query(
+      `
+      UPDATE tbl_student_course_progress
+      SET is_completed = true,
+          completed_at = NOW()
+      WHERE student_id = $1
+        AND course_id = $2
+        AND module_id = $3
+        AND assignment_id = $4
+      `,
+      [student_id, course_id, module_id, assignment_id]
+    );
+
     // 6️⃣ Unlock NEXT module
 
     // Step 1: Get next module
     const nextModuleRes = await pool.query(
       `
-        SELECT module_id
-        FROM tbl_student_course_progress
-        WHERE student_id = $1
-          AND course_id = $2
-          AND module_id > $3
-        ORDER BY module_id ASC
-        LIMIT 1
-        `,
+  SELECT module_id
+  FROM tbl_student_course_progress
+  WHERE student_id = $1
+    AND course_id = $2
+    AND module_id > $3
+  ORDER BY module_id ASC
+  LIMIT 1
+  `,
       [student_id, course_id, module_id]
     );
 
@@ -1168,20 +1194,16 @@ exports.writeExam = async (req, res) => {
         );
       }
     }
+
     res.status(200).json({
-      message: 'Exam submitted successfully',
+      message: "Exam submitted successfully",
       student_assignment_id,
       total_marks: totalMarks
     });
+
   } catch (error) {
-
     console.error(error);
-
-    res.status(500).json({
-      message: 'Something went wrong'
-    });
-  } finally {
-
+    res.status(500).json({ message: "Something went wrong" });
   }
 };
 
