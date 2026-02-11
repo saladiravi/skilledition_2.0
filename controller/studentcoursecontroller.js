@@ -49,7 +49,7 @@ exports.studentbuycourse = async (req, res) => {
       WHERE tm.course_id = $2
     `, [student_id, course_id]);
 
-      await client.query(`
+    await client.query(`
         INSERT INTO tbl_student_course_progress
           (student_id, course_id, module_id, module_video_id, assignment_id, is_unlocked, is_completed)
         SELECT
@@ -369,12 +369,12 @@ exports.getstudentcourse = async (req, res) => {
           videos: [],
           assignment: row.assignment_id
             ? {
-                assignment_id: row.assignment_id,
-                assignment_title: row.assignment_title,
-                is_unlocked: row.assignment_is_unlocked,
-                is_completed: row.assignment_is_completed,
-                unlocked_at: row.assignment_unlocked_at
-              }
+              assignment_id: row.assignment_id,
+              assignment_title: row.assignment_title,
+              is_unlocked: row.assignment_is_unlocked,
+              is_completed: row.assignment_is_completed,
+              unlocked_at: row.assignment_unlocked_at
+            }
             : null,
         };
 
@@ -733,9 +733,9 @@ exports.updateWatchProgress = async (req, res) => {
     }
 
 
-      /* ============================
-       8. Check ALL Videos Completed
-    ============================ */
+    /* ============================
+     8. Check ALL Videos Completed
+  ============================ */
 
     const allCompletedRes = await pool.query(`
         SELECT
@@ -1055,11 +1055,11 @@ exports.getexamstudent = async (req, res) => {
 
 
 exports.writeExam = async (req, res) => {
- 
+
   try {
     const { student_id, assignment_id, answers } = req.body;
 
- 
+
     // 1️⃣ Create student assignment
     const assignmentResult = await pool.query(
       `
@@ -1119,72 +1119,120 @@ exports.writeExam = async (req, res) => {
       [totalMarks, student_assignment_id]
     );
 
-  
+    // 6️⃣ Unlock NEXT module
+
+    // Step 1: Get next module
+    const nextModuleRes = await pool.query(
+      `
+        SELECT module_id
+        FROM tbl_student_course_progress
+        WHERE student_id = $1
+          AND course_id = $2
+          AND module_id > $3
+        ORDER BY module_id ASC
+        LIMIT 1
+        `,
+      [student_id, course_id, module_id]
+    );
+
+    if (nextModuleRes.rows.length > 0) {
+
+      const nextModuleId = nextModuleRes.rows[0].module_id;
+
+      // Step 2: Get first video of next module
+      const firstVideoRes = await pool.query(
+        `
+    SELECT module_video_id
+    FROM tbl_module_videos
+    WHERE module_id = $1
+    ORDER BY module_video_id ASC
+    LIMIT 1
+    `,
+        [nextModuleId]
+      );
+
+      if (firstVideoRes.rows.length > 0) {
+        const firstVideoId = firstVideoRes.rows[0].module_video_id;
+
+        // Step 3: Unlock that video
+        await pool.query(
+          `
+      UPDATE tbl_student_course_progress
+      SET is_unlocked = true,
+          unlocked_at = NOW()
+      WHERE student_id = $1
+        AND course_id = $2
+        AND module_video_id = $3
+      `,
+          [student_id, course_id, firstVideoId]
+        );
+      }
+    }
     res.status(200).json({
       message: 'Exam submitted successfully',
       student_assignment_id,
       total_marks: totalMarks
     });
   } catch (error) {
-  
+
     console.error(error);
 
     res.status(500).json({
       message: 'Something went wrong'
     });
   } finally {
-    
+
   }
 };
 
 
 
 exports.getAssignmentById = async (req, res) => {
-    const { assignment_id } = req.body;
+  const { assignment_id } = req.body;
 
-    try {
-        // Check assignment exists
-        const assignmentData = await pool.query(
-            `SELECT * FROM tbl_assignment WHERE assignment_id = $1`,
-            [assignment_id]
-        );
+  try {
+    // Check assignment exists
+    const assignmentData = await pool.query(
+      `SELECT * FROM tbl_assignment WHERE assignment_id = $1`,
+      [assignment_id]
+    );
 
-        if (assignmentData.rows.length === 0) {
-            return res.status(404).json({
-                statusCode: 404,
-                message: "Assignment Not Found"
-            });
-        }
+    if (assignmentData.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Assignment Not Found"
+      });
+    }
 
-        const assignment = assignmentData.rows[0];
-        const fetchdata = await pool.query(`SELECT * FROM tbl_assignment WHERE assignment_id=$1`, [assignment_id]);
+    const assignment = assignmentData.rows[0];
+    const fetchdata = await pool.query(`SELECT * FROM tbl_assignment WHERE assignment_id=$1`, [assignment_id]);
 
-        // Fetch questions belonging to this assignment
-        const questionData = await pool.query(
-            `SELECT question_id, question, a, b, c, d
+    // Fetch questions belonging to this assignment
+    const questionData = await pool.query(
+      `SELECT question_id, question, a, b, c, d
              FROM tbl_questions 
              WHERE assignment_id = $1
              ORDER BY question_id ASC`,
-            [assignment_id]
-        );
+      [assignment_id]
+    );
 
-        const questions = questionData.rows;
-    
-        return res.status(200).json({
-            statusCode: 200,
-            message: "Assignment fetched successfully",
-            assignment: {
-                assignment_id: assignment.assignment_id,
-                assignment_title:assignment.assignment_title,
-                questions: questions
-            }
-        });
+    const questions = questionData.rows;
 
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({
-            statusCode: 500,
-            message: "Internal Server Error"
-        });
-    }
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Assignment fetched successfully",
+      assignment: {
+        assignment_id: assignment.assignment_id,
+        assignment_title: assignment.assignment_title,
+        questions: questions
+      }
+    });
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
 };
