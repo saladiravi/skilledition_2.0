@@ -923,6 +923,138 @@ exports.unlockAssignmentAfterModule = async (req, res) => {
 };
 
 
+// exports.getexamstudent = async (req, res) => {
+//   try {
+//     const { student_id } = req.body;
+
+//     if (!student_id) {
+//       return res.status(400).json({
+//         statusCode: 400,
+//         message: "student_id is required"
+//       });
+//     }
+
+//     const result = await pool.query(`
+//       SELECT
+//         ta.assignment_id,
+//         ta.assignment_title,
+//         ta.total_questions,
+
+//         ts.is_unlocked,
+//         tc.course_title,
+
+//         tsa.student_assignment_id,
+
+//         COALESCE(tsa.status, 'Pending') AS status,
+//         COALESCE(tsa.total_marks, 0) AS total_marks,
+
+//         COUNT(CASE WHEN tans.is_correct = true THEN 1 END) AS correct_answers,
+//         COUNT(CASE WHEN tans.is_correct = false THEN 1 END) AS wrong_answers,
+
+//         COUNT(*) OVER () AS total_assignments,
+
+//         COUNT(
+//           CASE
+//             WHEN COALESCE(tsa.status, 'Pending') = 'Pending'
+//             THEN 1
+//           END
+//         ) OVER () AS pending_assignments,
+
+//         COUNT(
+//           CASE
+//             WHEN tsa.status = 'Completed'
+//             THEN 1
+//           END
+//         ) OVER () AS submitted_assignments
+
+//       FROM tbl_student_course tsc
+//       JOIN tbl_course tc
+//         ON tsc.course_id = tc.course_id
+//       JOIN tbl_assignment ta
+//         ON tc.course_id = ta.course_id
+
+//       LEFT JOIN tbl_student_assignment tsa
+//         ON ta.assignment_id = tsa.assignment_id
+//        AND tsa.student_id = tsc.student_id
+
+//       LEFT JOIN tbl_student_answers tans
+//         ON tsa.student_assignment_id = tans.student_assignment_id
+
+//       LEFT JOIN tbl_student_course_progress ts
+//         ON ts.assignment_id = ta.assignment_id
+//        AND ts.student_id = tsc.student_id
+
+//       WHERE tsc.student_id = $1
+
+//       GROUP BY
+//         ta.assignment_id,
+//         ta.assignment_title,
+//         ta.total_questions,
+//         tc.course_title,
+//         tsa.student_assignment_id,
+//         tsa.status,
+//         tsa.total_marks,
+//         ts.is_unlocked
+
+//       ORDER BY ta.assignment_id ASC
+//     `, [student_id]);
+
+//     if (result.rows.length === 0) {
+//       return res.status(200).json({
+//         statusCode: 200,
+//         data: {
+//           counts: {
+//             total_assignments: 0,
+//             pending_assignments: 0,
+//             submitted_assignments: 0
+//           },
+//           assignment: []
+//         }
+//       });
+//     }
+
+
+    
+//     // ✅ Extract counts from FIRST row
+//     const {
+//       total_assignments,
+//       pending_assignments,
+//       submitted_assignments
+//     } = result.rows[0];
+
+//     // ✅ Remove count fields from list items
+//     const assignment = result.rows.map(row => {
+//       const {
+//         total_assignments,
+//         pending_assignments,
+//         submitted_assignments,
+//         ...rest
+//       } = row;
+//       return rest;
+//     });
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: 'Fetched Successfully',
+//       data: {
+//         counts: {
+//           total_assignments: Number(total_assignments),
+//           pending_assignments: Number(pending_assignments),
+//           submitted_assignments: Number(submitted_assignments)
+//         },
+//         assignment
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error("getexamstudent Error:", error);
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error"
+//     });
+//   }
+// };
+
 exports.getexamstudent = async (req, res) => {
   try {
     const { student_id } = req.body;
@@ -934,7 +1066,10 @@ exports.getexamstudent = async (req, res) => {
       });
     }
 
-    const result = await pool.query(`
+    /* =======================
+       1️⃣ ASSIGNMENTS QUERY
+    ======================= */
+    const assignmentResult = await pool.query(`
       SELECT
         ta.assignment_id,
         ta.assignment_title,
@@ -999,7 +1134,29 @@ exports.getexamstudent = async (req, res) => {
       ORDER BY ta.assignment_id ASC
     `, [student_id]);
 
-    if (result.rows.length === 0) {
+    /* =======================
+       2️⃣ FINAL ASSIGNMENT QUERY
+    ======================= */
+    const finalAssignmentResult = await pool.query(`
+      SELECT
+        tfa.final_assignment_id,
+        tc.course_title,
+        tfa.assignment_title,
+        tfa.total_questions,
+        tfa.is_locked,
+        COALESCE(tfa.correct_answers, 0) AS correct_answers,
+        COALESCE(tfa.wrong_answer, 0) AS wrong_answers
+        
+      FROM tbl_student_final_assignment tfa
+      JOIN tbl_course tc
+        ON tfa.course_id = tc.course_id
+      WHERE tfa.student_id = $1
+    `, [student_id]);
+
+    /* =======================
+       3️⃣ HANDLE EMPTY CASE
+    ======================= */
+    if (assignmentResult.rows.length === 0) {
       return res.status(200).json({
         statusCode: 200,
         data: {
@@ -1008,20 +1165,22 @@ exports.getexamstudent = async (req, res) => {
             pending_assignments: 0,
             submitted_assignments: 0
           },
-          assignment: []
+          assignment: [],
+          finalassignment: finalAssignmentResult.rows
         }
       });
     }
 
-    // ✅ Extract counts from FIRST row
+    /* =======================
+       4️⃣ EXTRACT COUNTS
+    ======================= */
     const {
       total_assignments,
       pending_assignments,
       submitted_assignments
-    } = result.rows[0];
+    } = assignmentResult.rows[0];
 
-    // ✅ Remove count fields from list items
-    const assignment = result.rows.map(row => {
+    const assignment = assignmentResult.rows.map(row => {
       const {
         total_assignments,
         pending_assignments,
@@ -1031,6 +1190,9 @@ exports.getexamstudent = async (req, res) => {
       return rest;
     });
 
+    /* =======================
+       5️⃣ FINAL RESPONSE
+    ======================= */
     return res.status(200).json({
       statusCode: 200,
       message: 'Fetched Successfully',
@@ -1040,7 +1202,8 @@ exports.getexamstudent = async (req, res) => {
           pending_assignments: Number(pending_assignments),
           submitted_assignments: Number(submitted_assignments)
         },
-        assignment
+        assignment,
+        finalassignment: finalAssignmentResult.rows
       }
     });
 
