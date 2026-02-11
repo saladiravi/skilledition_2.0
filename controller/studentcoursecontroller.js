@@ -1196,6 +1196,7 @@ exports.writeExam = async (req, res) => {
     }
 
     res.status(200).json({
+      statusCode:200,
       message: "Exam submitted successfully",
       student_assignment_id,
       total_marks: totalMarks
