@@ -1147,7 +1147,7 @@ exports.getexamstudent = async (req, res) => {
         tc.course_title,
         tfa.assignment_title,
         tfa.total_questions,
-        tfa.is_locked,
+        tfa.is_unlocked,
         tfa.unlocked_date,
         tfa.status,
         COALESCE(tfa.correct_answers, 0) AS correct_answers,
@@ -1437,14 +1437,14 @@ const createFinalAssignment = async (client, student_id, course_id) => {
     // 1. Create final assignment entry
  const finalAssignmentResult = await client.query(`
   INSERT INTO tbl_student_final_assignment
-    (student_id, course_id, assignment_title, created_at, unlocked_date, is_locked, status)
+    (student_id, course_id, assignment_title, created_at, unlocked_date, is_unlocked, status)
   SELECT
     $1::integer,
     $2::integer,
     'Final Assignment',
     NOW(),
     NOW() + (tc.duration || ' days')::INTERVAL,
-    true,
+    false,
     'Pending'
   FROM tbl_course tc
   WHERE tc.course_id = $2::integer
