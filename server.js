@@ -6,6 +6,7 @@ const category=require('./routes/categoryroutes');
 const course=require('./routes/courseroutes');
 const assignment=require('./routes/assignmentroutes');
 const tutor=require('./routes/tutorroutes');
+const student=require('./routes/studentroutes');
 const studentcourse=require('./routes/studentcourseroutes')
 const studentassignment=require('./routes/studentassignmentroutes');
 const feedbacks =require('./routes/feedbackroutes');
@@ -28,6 +29,7 @@ app.use('/studentassignment',studentassignment);
 app.use('/feedbacks',feedbacks);
 app.use('/announcement',announcement);
 app.use('/contact',contactroutes);
+app.use('/student',student);
 
 
 app.listen(5000, () => {
