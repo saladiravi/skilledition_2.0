@@ -8,11 +8,11 @@ const { allowRoles } = require("../middleware/roleMiddleware");
 
 router.post('/getprofile',verifyToken,allowRoles("admin","student","tutor"),studentController.getprofile);
 
-
-router.post('/updateprofile', verifyToken,allowRoles("admin","student","tutor"),uploads.fields([
-  { name: 'profile_pic', maxCount: 10 },
-]), studentController.updateprofile);
-
+router.post(
+  '/updateprofile',verifyToken,allowRoles("admin","student","tutor"),
+  uploads.single('profile_image'), // same name as DB
+  studentController.updateprofile
+);
 
 module.exports = router;
  

@@ -1,48 +1,65 @@
 const pool = require('../config/db');
-
+const { uploadToS3, getSignedVideoUrl, deletefroms3 } = require('../utils/s3upload');
 
 exports.getprofile = async (req, res) => {
   const { user_id } = req.body;
 
-  if (!user_id) {
-    return res.status(400).json({
-      statusCode: 400,
-      message: 'Missing Required Field'
-    });
-  }
-
   try {
+    const result = await pool.query(`
+      SELECT 
+        tu.user_id AS user_id,
+        tu.full_name,
+        tu.email AS user_email,
+        tu.phone_number,
+        tu.role,
+        tu.status,
+        tu.created_at,
 
-  const result = await pool.query(`
-  SELECT 
-    tu.email,
-    tu.role,
-    ts.*
-  FROM tbl_user AS tu
-  JOIN tbl_student AS ts 
-    ON tu.user_id = ts.user_id
-  WHERE tu.user_id = $1
-    AND LOWER(tu.role) = 'student'
-`, [user_id]);
+        ts.student_id,
+        ts.first_name,
+        ts.last_name,
+        ts.email AS student_email,
+        ts.modile_number,
+        ts.gender,
+        ts.date_of_birth,
+        ts.college,
+        ts.qualification,
+        ts.year_of_passing,
+        ts.address,
+        ts.pincode,
+        ts.profile_image
+      FROM tbl_user tu
+      LEFT JOIN tbl_student ts
+        ON tu.user_id::bigint = ts.user_id
+      WHERE tu.user_id = $1
+    `, [user_id]);
 
-    if (result.rowCount === 0) {
+    if (!result.rows.length) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Student Not Found'
+        message: "User Not Found"
       });
+    }
+
+    let userData = result.rows[0];
+
+    // 🔥 Generate signed URL if profile image exists
+    if (userData.profile_image) {
+      const signedUrl = await getSignedVideoUrl(userData.profile_image);
+      userData.profile_image = signedUrl;
     }
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Fetched Successfully',
-      data: result.rows[0]   
+      message: "Fetched Successfully",
+      data: userData
     });
 
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error'
+      message: "Internal Server Error"
     });
   }
 };
@@ -50,51 +67,44 @@ exports.getprofile = async (req, res) => {
 
 exports.updateprofile = async (req, res) => {
   try {
-    const {
-      student_id,
-      first_name,
-      last_name,
-      mobile_number,
-      gender,
-      date_of_birth,
-      college,
-      qualification,
-      year_of_passing,
-      address,
-      pincode
-    } = req.body;
+    const { user_id } = req.body;
 
-    if (!student_id) {
+    if (!user_id) {
       return res.status(400).json({
         statusCode: 400,
-        message: "student_id is required"
+        message: "user_id is required"
       });
     }
 
-    // ✅ Check student exists
-    const checkStudent = await pool.query(
-      `SELECT * FROM tbl_student WHERE student_id = $1`,
-      [student_id]
+    // 🔹 Check if student exists
+    let checkStudent = await pool.query(
+      `SELECT * FROM tbl_student WHERE user_id = $1`,
+      [user_id]
     );
 
+    // 🔥 If NOT exist → create empty student record
     if (checkStudent.rows.length === 0) {
-      return res.status(404).json({
-        statusCode: 404,
-        message: "Student not found"
-      });
+      await pool.query(
+        `INSERT INTO tbl_student (user_id) VALUES ($1)`,
+        [user_id]
+      );
+
+      // Fetch again
+      checkStudent = await pool.query(
+        `SELECT * FROM tbl_student WHERE user_id = $1`,
+        [user_id]
+      );
     }
 
-    let profile_pic_key = checkStudent.rows[0].profile_image; // keep old image
+    let profile_pic_key = checkStudent.rows[0].profile_image;
 
-    // ✅ Upload profile picture to S3 (if provided)
-    if (req.files?.profile_image?.length > 0) {
+    if (req.file) {
       profile_pic_key = await uploadToS3(
-        req.files.profile_image[0],
+        req.file,
         "users/profile_image"
       );
     }
 
-    // ✅ Update student profile
     await pool.query(
       `
       UPDATE tbl_student
@@ -109,21 +119,21 @@ exports.updateprofile = async (req, res) => {
           address = $9,
           pincode = $10,
           profile_image = $11
-      WHERE student_id = $12
+      WHERE user_id = $12
       `,
       [
-        first_name,
-        last_name,
-        mobile_number,
-        gender,
-        date_of_birth,
-        college,
-        qualification,
-        year_of_passing,
-        address,
-        pincode,
+        req.body.first_name,
+        req.body.last_name,
+        req.body.mobile_number,
+        req.body.gender,
+        req.body.date_of_birth,
+        req.body.college,
+        req.body.qualification,
+        req.body.year_of_passing,
+        req.body.address,
+        req.body.pincode,
         profile_pic_key,
-        student_id
+        user_id
       ]
     );
 
