@@ -10,16 +10,12 @@ exports.getprofile = async (req, res) => {
         tu.user_id AS user_id,
         tu.full_name,
         tu.email AS user_email,
-        tu.phone_number,
         tu.role,
-        tu.status,
+       
         tu.created_at,
 
         ts.student_id,
-        ts.first_name,
-        ts.last_name,
-        ts.email AS student_email,
-        ts.modile_number,
+        ts.mobile_number,
         ts.gender,
         ts.date_of_birth,
         ts.college,
@@ -108,22 +104,20 @@ exports.updateprofile = async (req, res) => {
     await pool.query(
       `
       UPDATE tbl_student
-      SET first_name = $1,
-          last_name = $2,
-          modile_number = $3,
-          gender = $4,
-          date_of_birth = $5,
-          college = $6,
-          qualification = $7,
-          year_of_passing = $8,
-          address = $9,
-          pincode = $10,
-          profile_image = $11
-      WHERE user_id = $12
+      SET 
+          mobile_number = $1,
+          gender = $2,
+          date_of_birth = $3,
+          college = $4,
+          qualification = $5,
+          year_of_passing = $6,
+          address = $7,
+          pincode = $8,
+          profile_image = $9
+      WHERE user_id = $10
       `,
       [
-        req.body.first_name,
-        req.body.last_name,
+     
         req.body.mobile_number,
         req.body.gender,
         req.body.date_of_birth,
