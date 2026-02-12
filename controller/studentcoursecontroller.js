@@ -84,12 +84,7 @@ exports.studentbuycourse = async (req, res) => {
     `, [student_id, course_id]);
 
 
-      await client.query(`
-        INSERT INTO tbl_student_final_assignment
-          (student_id, course_id,assignment_title)
-        VALUES
-          ($1, $2,'Final Assignment')
-      `, [student_id, course_id]);
+    await createFinalAssignment(client, student_id, course_id);
 
       
     await client.query('COMMIT');
@@ -1153,6 +1148,8 @@ exports.getexamstudent = async (req, res) => {
         tfa.assignment_title,
         tfa.total_questions,
         tfa.is_locked,
+        tfa.unlocked_date,
+        tfa.status,
         COALESCE(tfa.correct_answers, 0) AS correct_answers,
         COALESCE(tfa.wrong_answer, 0) AS wrong_answers
         
@@ -1429,5 +1426,96 @@ exports.getAssignmentById = async (req, res) => {
       statusCode: 500,
       message: "Internal Server Error"
     });
+  }
+};
+
+
+
+const createFinalAssignment = async (client, student_id, course_id) => {
+  try {
+
+    // 1. Create final assignment entry
+ const finalAssignmentResult = await client.query(`
+  INSERT INTO tbl_student_final_assignment
+    (student_id, course_id, assignment_title, created_at, unlocked_date, is_locked, status)
+  SELECT
+    $1::integer,
+    $2::integer,
+    'Final Assignment',
+    NOW(),
+    NOW() + (tc.duration || ' days')::INTERVAL,
+    true,
+    'Pending'
+  FROM tbl_course tc
+  WHERE tc.course_id = $2::integer
+  RETURNING final_assignment_id
+`, [student_id, course_id]);
+
+    const final_assignment_id = finalAssignmentResult.rows[0].final_assignment_id;
+
+    // 2. Get all modules
+    const modules = await client.query(`
+      SELECT module_id
+      FROM tbl_module
+      WHERE course_id = $1
+      ORDER BY module_id
+    `, [course_id]);
+
+    let totalInsertedQuestions = 0;
+
+    // 3. Loop modules
+    for (const module of modules.rows) {
+
+      const questions = await client.query(`
+        SELECT tq.question, tq.a, tq.b, tq.c, tq.d, tq.answer
+        FROM tbl_assignment ta
+        JOIN tbl_questions tq ON ta.assignment_id = tq.assignment_id
+        WHERE ta.course_id = $1
+          AND ta.module_id = $2
+         
+        ORDER BY RANDOM()
+        LIMIT 5
+      `, [course_id, module.module_id]);
+
+      for (const q of questions.rows) {
+        await client.query(`
+          INSERT INTO tbl_student_final_assignment_questions
+            (final_assignment_id, question, a, b, c, d, answer)
+          VALUES
+            ($1, $2, $3, $4, $5, $6, $7)
+        `, [
+          final_assignment_id,
+          q.question,
+          q.a,
+          q.b,
+          q.c,
+          q.d,
+          q.answer
+        ]);
+
+        totalInsertedQuestions++;
+      }
+    }
+
+    // 4. Calculate Timer (1 question = 1 minute)
+    const timerMinutes = totalInsertedQuestions; // 1 min per question
+
+    // 5. Update final assignment with totals
+    await client.query(`
+      UPDATE tbl_student_final_assignment
+      SET total_questions = $1,
+          total_marks = $1,
+          timmer = $2
+      WHERE final_assignment_id = $3
+    `, [
+      totalInsertedQuestions,
+      timerMinutes + ' minutes',
+      final_assignment_id
+    ]);
+
+    return final_assignment_id;
+
+  } catch (error) {
+    throw error;
   }
 };
