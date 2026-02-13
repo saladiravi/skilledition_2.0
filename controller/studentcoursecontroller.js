@@ -1087,8 +1087,8 @@ exports.getexamstudent = async (req, res) => {
         COALESCE(tsa.status, 'Pending') AS status,
         COALESCE(tsa.total_marks, 0) AS total_marks,
 
-        COUNT(CASE WHEN tans.is_correct = true THEN 1 END) AS correct_answers,
-        COUNT(CASE WHEN tans.is_correct = false THEN 1 END) AS wrong_answers,
+      CAST(COUNT(CASE WHEN tans.is_correct = true THEN 1 END) AS INTEGER) AS correct_answers,
+      CAST(COUNT(CASE WHEN tans.is_correct = false THEN 1 END) AS INTEGER) AS wrong_answers,
 
         COUNT(*) OVER () AS total_assignments,
 
