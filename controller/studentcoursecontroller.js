@@ -311,7 +311,7 @@ exports.getstudentcourse = async (req, res) => {
 
   /* ✅ FIX */
   LEFT JOIN tbl_tutor tt
-    ON tc.tutor_id = tt.tutor_id
+    ON tc.tutor_id = tt.user_id
 
   WHERE tc.course_id = $1
   ORDER BY 
