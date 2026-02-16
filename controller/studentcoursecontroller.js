@@ -1622,12 +1622,12 @@ exports.writeFinalExam = async (req, res) => {
 
     const assignment = assignmentRes.rows[0];
 
-    if (assignment.is_unlocked === true) {
-      return res.status(403).json({
-        statusCode: 403,
-        message: "Exam is locked"
-      });
-    }
+    // if (assignment.is_unlocked === true) {
+    //   return res.status(403).json({
+    //     statusCode: 403,
+    //     message: "Exam is locked"
+    //   });
+    // }
 
     if (assignment.status === "Completed") {
       return res.status(400).json({
