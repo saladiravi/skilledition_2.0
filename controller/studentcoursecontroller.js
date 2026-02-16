@@ -86,7 +86,7 @@ exports.studentbuycourse = async (req, res) => {
 
     await createFinalAssignment(client, student_id, course_id);
 
-      
+
     await client.query('COMMIT');
 
     return res.status(200).json({
@@ -1018,7 +1018,7 @@ exports.unlockAssignmentAfterModule = async (req, res) => {
 //     }
 
 
-    
+
 //     // ✅ Extract counts from FIRST row
 //     const {
 //       total_assignments,
@@ -1238,7 +1238,10 @@ exports.writeExam = async (req, res) => {
     );
 
     if (assignmentRes.rows.length === 0) {
-      return res.status(404).json({ message: "Assignment not found" });
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Assignment not found"
+      });
     }
 
     const { module_id, course_id } = assignmentRes.rows[0];
@@ -1365,7 +1368,7 @@ exports.writeExam = async (req, res) => {
     }
 
     res.status(200).json({
-      statusCode:200,
+      statusCode: 200,
       message: "Exam submitted successfully",
       student_assignment_id,
       total_marks: totalMarks
@@ -1421,7 +1424,7 @@ exports.getAssignmentById = async (req, res) => {
     });
 
   } catch (error) {
-    console.log(error);
+
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
@@ -1435,7 +1438,7 @@ const createFinalAssignment = async (client, student_id, course_id) => {
   try {
 
     // 1. Create final assignment entry
- const finalAssignmentResult = await client.query(`
+    const finalAssignmentResult = await client.query(`
   INSERT INTO tbl_student_final_assignment
     (student_id, course_id, assignment_title, created_at, unlocked_date, is_unlocked, status)
   SELECT
@@ -1517,5 +1520,273 @@ const createFinalAssignment = async (client, student_id, course_id) => {
 
   } catch (error) {
     throw error;
+  }
+};
+
+
+
+exports.getfinalquestions = async (req, res) => {
+  const { final_assignment_id } = req.body;
+
+  if (!final_assignment_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: 'Missing Required Field'
+    });
+  }
+
+  try {
+
+    // 1. Check assignment lock status
+    const checklock = await pool.query(`
+      SELECT is_unlocked
+      FROM tbl_student_final_assignment
+      WHERE final_assignment_id = $1
+    `, [final_assignment_id]);
+
+    if (checklock.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Final assignment not found'
+      });
+    }
+
+    if (checklock.rows[0].is_unlocked === false) {
+      return res.status(403).json({
+        statusCode: 403,
+        message: 'Exam is locked'
+      });
+    }
+    const assigment = await pool.query(`SELECT is_unlocked ,status FROM tbl_student_final_assignment WHERE final_assignment_id=$1`, [final_assignment_id])
+
+    // 2. Get Questions & Options
+    const questions = await pool.query(`
+      SELECT 
+        final_assignment_question_id,
+        question,
+        a,
+        b,
+        c,
+        d
+        
+      FROM tbl_student_final_assignment_questions
+      WHERE final_assignment_id = $1
+      ORDER BY final_assignment_question_id
+    `, [final_assignment_id]);
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: 'Questions fetched successfully',
+      assignment: assigment.rows,
+      data: questions.rows
+    });
+
+  } catch (error) {
+
+    return res.status(500).json({
+      statusCode: 500,
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+
+exports.writeFinalExam = async (req, res) => {
+  try {
+    const { final_assignment_id, answers } = req.body;
+
+    if (!final_assignment_id || !answers || answers.length === 0) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Missing required fields"
+      });
+    }
+
+    // 1️⃣ Check if assignment exists & unlocked
+    const assignmentRes = await pool.query(
+      `
+      SELECT *
+      FROM tbl_student_final_assignment
+      WHERE final_assignment_id = $1
+      `,
+      [final_assignment_id]
+    );
+
+    if (assignmentRes.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Final assignment not found"
+      });
+    }
+
+    const assignment = assignmentRes.rows[0];
+
+    if (assignment.is_unlocked === true) {
+      return res.status(403).json({
+        statusCode: 403,
+        message: "Exam is locked"
+      });
+    }
+
+    if (assignment.status === "Completed") {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Exam already submitted"
+      });
+    }
+
+    let correctCount = 0;
+    let wrongCount = 0;
+
+    // 2️⃣ Loop answers
+    for (let ans of answers) {
+
+      const { final_assignment_question_id, selected_answer } = ans;
+
+      const questionRes = await pool.query(
+        `
+        SELECT answer
+        FROM tbl_student_final_assignment_questions
+        WHERE final_assignment_question_id = $1
+          AND final_assignment_id = $2
+        `,
+        [final_assignment_question_id, final_assignment_id]
+      );
+
+      if (questionRes.rows.length === 0) continue;
+
+      const correctAnswer = questionRes.rows[0].answer;
+      const isCorrect = selected_answer === correctAnswer;
+
+      if (isCorrect) {
+        correctCount++;
+      } else {
+        wrongCount++;
+      }
+
+      await pool.query(
+        `
+        UPDATE tbl_student_final_assignment_questions
+        SET student_answer = $1,
+            is_correct = $2
+        WHERE final_assignment_question_id = $3
+        `,
+        [selected_answer, isCorrect, final_assignment_question_id]
+      );
+    }
+
+    const totalQuestions = correctCount + wrongCount;
+    const totalMarks = correctCount; // 1 mark per question
+
+    // 3️⃣ Calculate Grade (Optional Logic)
+    let grade = "F";
+    const percentage = (correctCount / totalQuestions) * 100;
+
+    if (percentage >= 90) grade = "A+";
+    else if (percentage >= 75) grade = "A";
+    else if (percentage >= 60) grade = "B";
+    else if (percentage >= 50) grade = "C";
+
+    // 4️⃣ Update Final Assignment
+    await pool.query(
+      `
+      UPDATE tbl_student_final_assignment
+      SET correct_answers = $1,
+          wrong_answer = $2,
+          total_marks = $3,
+          grade = $4,
+          submitted_at = NOW(),
+          status = 'Completed',
+          is_unlocked = true
+      WHERE final_assignment_id = $5
+      `,
+      [
+        correctCount,
+        wrongCount,
+        totalMarks.toString(),
+        grade,
+        final_assignment_id
+      ]
+    );
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Final Exam submitted successfully",
+      result: {
+        total_questions: totalQuestions,
+        correct_answers: correctCount,
+        wrong_answers: wrongCount,
+        total_marks: totalMarks,
+        grade: grade
+      }
+    });
+
+  } catch (error) {
+
+    return res.status(500).json({
+      message: "Something went wrong"
+    });
+  }
+};
+
+
+exports.getfinalexamresult = async (req, res) => {
+  const { final_assignment_id } = req.body;
+
+  if (!final_assignment_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: 'Missing Required Field'
+    });
+  }
+
+  try {
+
+    // 1. Check assignment lock status
+    const checklock = await pool.query(`
+      SELECT is_unlocked
+      FROM tbl_student_final_assignment
+      WHERE final_assignment_id = $1
+    `, [final_assignment_id]);
+
+    if (checklock.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Final assignment not found'
+      });
+    }
+
+
+
+    // 2. Get Questions & Options
+    const questions = await pool.query(`
+      SELECT 
+        final_assignment_question_id,
+        question,
+        a,
+        b,
+        c,
+        d,
+        answer, 
+        student_answer,
+        is_correct
+        
+      FROM tbl_student_final_assignment_questions
+      WHERE final_assignment_id = $1
+      ORDER BY final_assignment_question_id
+    `, [final_assignment_id]);
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: 'Questions fetched successfully',
+      data: questions.rows
+    });
+
+  } catch (error) {
+
+    return res.status(500).json({
+      statusCode: 500,
+      message: 'Internal Server Error'
+    });
   }
 };

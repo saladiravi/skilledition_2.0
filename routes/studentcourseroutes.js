@@ -18,6 +18,9 @@ router.post('/unlockAssignmentAfterModule',verifyToken,allowRoles("admin","stude
 router.post('/writeExam',verifyToken,allowRoles("admin","student","tutor"),studentcourse.writeExam)
 router.post('/getexamstudent',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getexamstudent)
 router.post('/getAssignmentById',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getAssignmentById)
+router.post('/getfinalquestions',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getfinalquestions)
+router.post('/writeFinalExam',verifyToken,allowRoles("admin","student","tutor"),studentcourse.writeFinalExam)
+router.post('/getfinalexamresult',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getfinalexamresult)
 
 
 module.exports=router
