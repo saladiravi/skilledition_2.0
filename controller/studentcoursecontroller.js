@@ -1557,7 +1557,7 @@ exports.getfinalquestions = async (req, res) => {
         message: 'Exam is locked'
       });
     }
-    const assigment = await pool.query(`SELECT is_unlocked ,status FROM tbl_student_final_assignment WHERE final_assignment_id=$1`, [final_assignment_id])
+    const assigment = await pool.query(`SELECT is_unlocked ,status,timmer FROM tbl_student_final_assignment WHERE final_assignment_id=$1`, [final_assignment_id])
 
     // 2. Get Questions & Options
     const questions = await pool.query(`
