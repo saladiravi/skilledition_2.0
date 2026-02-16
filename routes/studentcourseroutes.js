@@ -23,4 +23,8 @@ router.post('/writeFinalExam',verifyToken,allowRoles("admin","student","tutor"),
 router.post('/getfinalexamresult',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getfinalexamresult)
 
 
+router.post('/updatedtime',verifyToken,allowRoles("admin","student","tutor"),studentcourse.updatedtime)
+
+
+
 module.exports=router

@@ -1157,6 +1157,7 @@ exports.getexamstudent = async (req, res) => {
       JOIN tbl_course tc
         ON tfa.course_id = tc.course_id
       WHERE tfa.student_id = $1
+       ORDER BY tfa.final_assignment_id ASC
     `, [student_id]);
 
     /* =======================
@@ -1557,7 +1558,7 @@ exports.getfinalquestions = async (req, res) => {
         message: 'Exam is locked'
       });
     }
-    const assigment = await pool.query(`SELECT is_unlocked ,status,timmer FROM tbl_student_final_assignment WHERE final_assignment_id=$1`, [final_assignment_id])
+    const assigment = await pool.query(`SELECT is_unlocked ,status,timmer,updated_time  FROM tbl_student_final_assignment WHERE final_assignment_id=$1`, [final_assignment_id])
 
     // 2. Get Questions & Options
     const questions = await pool.query(`
@@ -1787,6 +1788,53 @@ exports.getfinalexamresult = async (req, res) => {
     return res.status(500).json({
       statusCode: 500,
       message: 'Internal Server Error'
+    });
+  }
+};
+
+
+
+
+exports.updatedtime = async (req, res) => {
+  const { final_assignment_id, updated_time } = req.body;
+
+  if (!final_assignment_id || !updated_time) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "final_assignment_id and updated_time are required"
+    });
+  }
+
+  try {
+    const query = `
+      UPDATE tbl_student_final_assignment
+      SET updated_time = $1
+      WHERE final_assignment_id = $2
+      RETURNING *;
+    `;
+
+    const values = [updated_time, final_assignment_id];
+
+    const result = await pool.query(query, values);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Final assignment not found"
+      });
+    }
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Updated time successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
     });
   }
 };
