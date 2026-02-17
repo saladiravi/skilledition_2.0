@@ -1558,7 +1558,7 @@ exports.getfinalquestions = async (req, res) => {
         message: 'Exam is locked'
       });
     }
-    const assigment = await pool.query(`SELECT is_unlocked ,status,timmer,updated_time  FROM tbl_student_final_assignment WHERE final_assignment_id=$1`, [final_assignment_id])
+    const assigment = await pool.query(`SELECT is_unlocked ,status,timmer,remaining_time  FROM tbl_student_final_assignment WHERE final_assignment_id=$1`, [final_assignment_id])
 
     // 2. Get Questions & Options
     const questions = await pool.query(`
@@ -1796,24 +1796,24 @@ exports.getfinalexamresult = async (req, res) => {
 
 
 exports.updatedtime = async (req, res) => {
-  const { final_assignment_id, updated_time } = req.body;
+  const { final_assignment_id, remaining_time } = req.body;
 
-  if (!final_assignment_id || !updated_time) {
+  if (!final_assignment_id || !remaining_time) {
     return res.status(400).json({
       statusCode: 400,
-      message: "final_assignment_id and updated_time are required"
+      message: "final_assignment_id and remaining_time are required"
     });
   }
 
   try {
     const query = `
       UPDATE tbl_student_final_assignment
-      SET updated_time = $1
+      SET remaining_time = $1
       WHERE final_assignment_id = $2
       RETURNING *;
     `;
 
-    const values = [updated_time, final_assignment_id];
+    const values = [remaining_time, final_assignment_id];
 
     const result = await pool.query(query, values);
 
