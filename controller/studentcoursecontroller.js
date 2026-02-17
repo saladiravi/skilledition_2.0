@@ -1838,3 +1838,58 @@ exports.updatedtime = async (req, res) => {
     });
   }
 };
+
+
+exports.getstudentassignmentresult  = async (req, res) => {
+  const { assignment_id, student_id } = req.body;
+
+  if (!assignment_id || !student_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "assignment_id and student_id are required"
+    });
+  }
+
+  try {
+    const result = await pool.query(`
+      SELECT
+        ta.assignment_id,
+        ta.assignment_title,
+        tq.question_id,
+        tq.question,
+        tq.a,
+        tq.b,
+        tq.c,
+        tq.d,
+        tsa.selected_answer,
+        tsa.correct_answer,
+        tsa.is_correct,
+        CASE 
+            WHEN tsa.is_correct = true THEN 'Correct'
+            ELSE 'Wrong'
+        END AS result_status
+      FROM tbl_assignment ta
+      JOIN tbl_questions tq 
+          ON tq.assignment_id = ta.assignment_id
+      JOIN tbl_student_assignment tsa_main 
+          ON tsa_main.assignment_id = ta.assignment_id
+      JOIN tbl_student_answers tsa 
+          ON tsa.student_assignment_id = tsa_main.student_assignment_id
+          AND tsa.question_id = tq.question_id
+      WHERE ta.assignment_id = $1
+      AND tsa_main.student_id = $2
+      ORDER BY tq.question_id ASC
+    `, [assignment_id, student_id]);
+
+    return res.status(200).json({
+      statusCode: 200,
+      data: result.rows
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      statusCode: 500,
+      message: 'Internal Server Error'
+    });
+  }
+};

@@ -21,6 +21,7 @@ router.post('/getAssignmentById',verifyToken,allowRoles("admin","student","tutor
 router.post('/getfinalquestions',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getfinalquestions)
 router.post('/writeFinalExam',verifyToken,allowRoles("admin","student","tutor"),studentcourse.writeFinalExam)
 router.post('/getfinalexamresult',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getfinalexamresult)
+router.post('/getstudentassignmentresult',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getstudentassignmentresult)
 
 
 router.post('/updatedtime',verifyToken,allowRoles("admin","student","tutor"),studentcourse.updatedtime)
