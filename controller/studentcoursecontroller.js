@@ -1826,8 +1826,7 @@ exports.updatedtime = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Updated time successfully",
-      data: result.rows[0]
+      message: "Updated time successfully"
     });
 
   } catch (error) {
@@ -1840,7 +1839,7 @@ exports.updatedtime = async (req, res) => {
 };
 
 
-exports.getstudentassignmentresult  = async (req, res) => {
+exports.getstudentassignmentresult = async (req, res) => {
   const { assignment_id, student_id } = req.body;
 
   if (!assignment_id || !student_id) {
@@ -1881,12 +1880,39 @@ exports.getstudentassignmentresult  = async (req, res) => {
       ORDER BY tq.question_id ASC
     `, [assignment_id, student_id]);
 
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'No assignment found'
+      });
+    }
+
+    // Build the assignment object with questions array
+    const assignment = {
+      assignment_id: result.rows[0].assignment_id,
+      assignment_title: result.rows[0].assignment_title,
+      questions: result.rows.map(q => ({
+        question_id: q.question_id,
+        question: q.question,
+        a: q.a,
+        b: q.b,
+        c: q.c,
+        d: q.d,
+        selected_answer: q.selected_answer,
+        correct_answer: q.correct_answer,
+        is_correct: q.is_correct,
+        result_status: q.result_status
+      }))
+    };
+
     return res.status(200).json({
       statusCode: 200,
-      data: result.rows
+      message:'Result Fetched Sucessfully',
+      data: assignment
     });
 
   } catch (error) {
+    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: 'Internal Server Error'
