@@ -1912,7 +1912,7 @@ exports.getstudentassignmentresult = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    
     return res.status(500).json({
       statusCode: 500,
       message: 'Internal Server Error'
