@@ -1919,3 +1919,44 @@ exports.getstudentassignmentresult = async (req, res) => {
     });
   }
 };
+
+
+exports.unlockfinalassignment = async (req, res) => {
+  const { final_assignment_id, status } = req.body;
+
+  if (!final_assignment_id || !status) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "final_assignment_id and status are required"
+    });
+  }
+
+  try {
+    const result = await pool.query(`
+      UPDATE tbl_student_final_assignment
+      SET status = $2
+      WHERE final_assignment_id = $1
+      RETURNING final_assignment_id, student_id, assignment_title, status;
+    `, [final_assignment_id, status]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Assignment not found"
+      });
+    }
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Assignment status updated successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
