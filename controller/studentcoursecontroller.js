@@ -1197,6 +1197,25 @@ exports.getexamstudent = async (req, res) => {
       return rest;
     });
 
+
+        await pool.query(`
+          UPDATE tbl_student_final_assignment tfa
+          SET is_unlocked = true
+          WHERE tfa.student_id = $1
+          AND NOT EXISTS (
+              SELECT 1
+              FROM tbl_student_course_progress scp
+              WHERE scp.student_id = tfa.student_id
+                AND scp.course_id = tfa.course_id   -- 🔥 important
+                AND (
+                      scp.assignment_id IS NOT NULL
+                      OR scp.module_video_id IS NOT NULL
+                    )
+                AND scp.is_completed = false
+          )
+        `, [student_id]);
+
+        
     /* =======================
        5️⃣ FINAL RESPONSE
     ======================= */
