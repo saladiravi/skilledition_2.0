@@ -1922,22 +1922,22 @@ exports.getstudentassignmentresult = async (req, res) => {
 
 
 exports.unlockfinalassignment = async (req, res) => {
-  const { final_assignment_id, status } = req.body;
+  const { final_assignment_id, is_unlocked } = req.body;
 
-  if (!final_assignment_id || !status) {
+  if (!final_assignment_id || !is_unlocked) {
     return res.status(400).json({
       statusCode: 400,
-      message: "final_assignment_id and status are required"
+      message: "final_assignment_id and unlocked are required"
     });
   }
 
   try {
     const result = await pool.query(`
       UPDATE tbl_student_final_assignment
-      SET status = $2
+      SET is_unlocked = $2
       WHERE final_assignment_id = $1
-      RETURNING final_assignment_id, student_id, assignment_title, status;
-    `, [final_assignment_id, status]);
+      RETURNING final_assignment_id, student_id, assignment_title, is_unlocked;
+    `, [final_assignment_id, is_unlocked]);
 
     if (result.rowCount === 0) {
       return res.status(404).json({
@@ -1948,7 +1948,7 @@ exports.unlockfinalassignment = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Assignment status updated successfully",
+      message: "Assignment  unlocked successfully",
       data: result.rows[0]
     });
 
