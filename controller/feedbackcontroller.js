@@ -263,18 +263,13 @@ exports.getStudentCoursefeedback = async (req, res) => {
         c.course_id,
         c.course_title,
         c.course_description,
-       
         c.no_of_modules,
-    
 
         u.user_id AS tutor_id,
         u.full_name AS tutor_name,
 
-        -- TOTAL COURSE VIDEO DURATION
         COALESCE(
-          SUM(
-            EXTRACT(EPOCH FROM mv.video_duration::interval)
-          ), 0
+          SUM(EXTRACT(EPOCH FROM mv.video_duration::interval)), 0
         ) AS total_duration_seconds,
 
         f.feedback_id,
@@ -291,7 +286,6 @@ exports.getStudentCoursefeedback = async (req, res) => {
 
       LEFT JOIN tbl_module_videos mv
         ON mv.module_id = m.module_id
-        AND mv.status = 'Approved'
 
       LEFT JOIN tbl_feedback f 
         ON f.course_id = c.course_id 
@@ -301,22 +295,28 @@ exports.getStudentCoursefeedback = async (req, res) => {
 
       GROUP BY 
         c.course_id,
+        c.course_title,
+        c.course_description,
+        c.no_of_modules,
         u.user_id,
-        f.feedback_id
+        u.full_name,
+        f.feedback_id,
+        f.rating,
+        f.review
       `,
       [student_id, course_id]
     );
 
     return res.status(200).json({
-      statusCode:200,
+      statusCode: 200,
       message: "Fetched successfully",
       data: result.rows[0] || null
     });
 
   } catch (error) {
-    console.log(error)
+    console.log(error);
     return res.status(500).json({
-      statusCode:500,
+      statusCode: 500,
       message: "Internal server error"
     });
   }
