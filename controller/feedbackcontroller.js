@@ -282,7 +282,9 @@ exports.getStudentCoursefeedback = async (req, res) => {
         u.user_id AS tutor_id,
         u.full_name AS tutor_name,
 
-      
+      COALESCE(
+          SUM(EXTRACT(EPOCH FROM mv.video_duration::interval)), 0
+        ) AS total_duration_seconds
 
         f.feedback_id,
         f.rating,
