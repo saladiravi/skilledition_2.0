@@ -1,5 +1,19 @@
 const con = require('../config/db');
 
+
+function formatDurationHMS(seconds) {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  const h = hrs.toString().padStart(2, "0");
+  const m = mins.toString().padStart(2, "0");
+  const s = secs.toString().padStart(2, "0");
+
+  return `${h}:${m}:${s}`;
+}
+
+
 exports.addfeedback = async (req, res) => {
   try {
     const { student_id, tutor_id, course_id, rating, enjoy_most, review} = req.body;
@@ -307,10 +321,17 @@ exports.getStudentCoursefeedback = async (req, res) => {
       [student_id, course_id]
     );
 
+    const data = result.rows[0] || null;
+
+    if (data) {
+      const totalSeconds = Number(data.total_duration_seconds);
+      data.formatted_duration = formatDurationHMS(totalSeconds);
+    }
+
     return res.status(200).json({
       statusCode: 200,
       message: "Fetched successfully",
-      data: result.rows[0] || null
+      data
     });
 
   } catch (error) {
