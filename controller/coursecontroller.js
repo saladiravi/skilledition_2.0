@@ -76,8 +76,8 @@ exports.addcourse = async (req, res) => {
     // 3. Insert course
     const insertCourse = await pool.query(
       `INSERT INTO tbl_course 
-      (category_id, tutor_id, course_title, course_description, duration, no_of_modules, level)
-      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      (category_id, tutor_id, course_title, course_description, duration, no_of_modules, level,price)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
       RETURNING course_id`,
       [
         category_id,
@@ -86,7 +86,8 @@ exports.addcourse = async (req, res) => {
         course_description,
         duration,
         no_of_modules,
-        level
+        level,
+        '15000'
       ]
     );
 
@@ -97,7 +98,7 @@ exports.addcourse = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Add Course Error:", error);
+
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
