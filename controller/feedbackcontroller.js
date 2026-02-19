@@ -245,3 +245,79 @@ exports.getStudentFeedbacks = async (req, res) => {
     });
   }
 };
+
+
+exports.getStudentCoursefeedback = async (req, res) => {
+  try {
+    const { student_id, course_id } = req.body;
+
+    if (!student_id || !course_id) {
+      return res.status(400).json({
+        message: "student_id and course_id are required"
+      });
+    }
+
+    const result = await con.query(
+      `
+      SELECT 
+        c.course_id,
+        c.course_title,
+        c.course_description,
+       
+        c.no_of_modules,
+    
+
+        u.user_id AS tutor_id,
+        u.full_name AS tutor_name,
+
+        -- TOTAL COURSE VIDEO DURATION
+        COALESCE(
+          SUM(
+            EXTRACT(EPOCH FROM mv.video_duration::interval)
+          ), 0
+        ) AS total_duration_seconds,
+
+        f.feedback_id,
+        f.rating,
+        f.review
+
+      FROM tbl_course c
+
+      JOIN tbl_user u 
+        ON c.tutor_id = u.user_id
+
+      LEFT JOIN tbl_module m
+        ON m.course_id = c.course_id
+
+      LEFT JOIN tbl_module_videos mv
+        ON mv.module_id = m.module_id
+        AND mv.status = 'Approved'
+
+      LEFT JOIN tbl_feedback f 
+        ON f.course_id = c.course_id 
+        AND f.student_id = $1
+
+      WHERE c.course_id = $2
+
+      GROUP BY 
+        c.course_id,
+        u.user_id,
+        f.feedback_id
+      `,
+      [student_id, course_id]
+    );
+
+    return res.status(200).json({
+      statusCode:200,
+      message: "Fetched successfully",
+      data: result.rows[0] || null
+    });
+
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      statusCode:500,
+      message: "Internal server error"
+    });
+  }
+};

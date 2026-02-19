@@ -16,4 +16,9 @@ router.post('/respond-feedback', verifyToken,allowRoles("admin","student","tutor
 
 router.post('/get-student-feedbacks', verifyToken,allowRoles("admin","student","tutor"),feedback.getStudentFeedbacks); // Get student feedback API --> student will get the feedback from tutor 
 
+
+
+router.post('/getStudentCoursefeedback', verifyToken,allowRoles("admin","student","tutor"),feedback.getStudentCoursefeedback); // Get student feedback API --> student will get the feedback from tutor 
+
+
 module.exports = router
