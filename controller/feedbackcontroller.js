@@ -276,15 +276,13 @@ exports.getStudentCoursefeedback = async (req, res) => {
       SELECT 
         c.course_id,
         c.course_title,
-        c.course_description,
+       
         c.no_of_modules,
-
+        c.duration,
         u.user_id AS tutor_id,
         u.full_name AS tutor_name,
 
-        COALESCE(
-          SUM(EXTRACT(EPOCH FROM mv.video_duration::interval)), 0
-        ) AS total_duration_seconds,
+      
 
         f.feedback_id,
         f.rating,
@@ -310,8 +308,9 @@ exports.getStudentCoursefeedback = async (req, res) => {
       GROUP BY 
         c.course_id,
         c.course_title,
-        c.course_description,
+       
         c.no_of_modules,
+         c.duration,
         u.user_id,
         u.full_name,
         f.feedback_id,
