@@ -20,6 +20,20 @@ function timeToSeconds(time) {
   return Number(time) || 0;
 }
 
+
+function formatDurationHMS(seconds) {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  const h = hrs.toString().padStart(2, "0");
+  const m = mins.toString().padStart(2, "0");
+  const s = secs.toString().padStart(2, "0");
+
+  return `${h}:${m}:${s}`;
+}
+
+
 exports.studentbuycourse = async (req, res) => {
   const { course_id, student_id } = req.body;
 
