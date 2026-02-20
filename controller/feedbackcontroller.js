@@ -288,7 +288,8 @@ exports.getStudentCoursefeedback = async (req, res) => {
 
         f.feedback_id,
         f.rating,
-        f.review
+        f.review,
+        f.response
 
       FROM tbl_course c
 
@@ -317,7 +318,8 @@ exports.getStudentCoursefeedback = async (req, res) => {
         u.full_name,
         f.feedback_id,
         f.rating,
-        f.review
+        f.review,
+        f.response
       `,
       [student_id, course_id]
     );
