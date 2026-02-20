@@ -1981,115 +1981,150 @@ exports.unlockfinalassignment = async (req, res) => {
 };
 
 
+
+
 exports.getCourseenroleDetails = async (req, res) => {
-    const { course_id } = req.body;
+  const { course_id, student_id } = req.body;
 
-    try {
+  try {
 
-        // 1️⃣ COURSE + SUMMARY
-        const courseResult = await pool.query(`
-            SELECT 
-                c.course_id,
-                c.course_title,
-                c.course_description,
-                c.duration,
-                c.no_of_modules,
-                c.level,
-                c.price,
-                COUNT(v.module_video_id) AS total_lessons,
-                COALESCE(SUM(v.video_duration::interval), '00:00:00') AS total_duration,
-                c.tutor_id
-            FROM tbl_course c
-            LEFT JOIN tbl_module m ON c.course_id = m.course_id
-            LEFT JOIN tbl_module_videos v ON m.module_id = v.module_id
-            WHERE c.course_id = $1
-            GROUP BY c.course_id
-        `, [course_id]);
+    // 1️⃣ COURSE + SUMMARY
+    const courseResult = await pool.query(`
+      SELECT 
+        c.course_id,
+        c.course_title,
+        c.course_description,
+        c.duration,
+        c.no_of_modules,
+        c.level,
+        c.price,
+        COUNT(v.module_video_id) AS total_lessons,
+        COALESCE(SUM(EXTRACT(EPOCH FROM v.video_duration::interval)), 0) AS total_duration,
+        c.tutor_id
+      FROM tbl_course c
+      LEFT JOIN tbl_module m ON c.course_id = m.course_id
+      LEFT JOIN tbl_module_videos v ON m.module_id = v.module_id
+      WHERE c.course_id = $1
+      GROUP BY 
+        c.course_id,
+        c.course_title,
+        c.course_description,
+        c.duration,
+        c.no_of_modules,
+        c.level,
+        c.price,
+        c.tutor_id
+    `, [course_id]);
 
-        if (courseResult.rows.length === 0) {
-            return res.status(404).json({
-              statusCode:404,
-               message: "Course not found"
-               });
-        }
-
-        const course = courseResult.rows[0];
-
-        // 2️⃣ MODULES + VIDEOS
-        const moduleResult = await pool.query(`
-            SELECT 
-                m.module_title,
-                v.video_title,
-                v.video_duration
-            FROM tbl_module m
-            LEFT JOIN tbl_module_videos v ON m.module_id = v.module_id
-            WHERE m.course_id = $1
-            ORDER BY m.module_id, v.module_video_id
-        `, [course_id]);
-
-        const modulesMap = {};
-
-        moduleResult.rows.forEach(row => {
-            if (!modulesMap[row.module_title]) {
-                modulesMap[row.module_title] = [];
-            }
-
-            if (row.video_title) {
-                modulesMap[row.module_title].push({
-                    video_title: row.video_title,
-                    duration: row.video_duration
-                });
-            }
-        });
-
-        const modules = Object.keys(modulesMap).map(title => ({
-            module_title: title,
-            lessons: modulesMap[title]
-        }));
-
-        // 3️⃣ TUTOR DETAILS
-        const tutorResult = await pool.query(`
-            SELECT 
-                u.full_name,
-                u.role,
-                COUNT(DISTINCT c.course_id) AS total_courses,
-                COUNT(DISTINCT sc.student_id) AS total_mentees
-            FROM tbl_user u
-            LEFT JOIN tbl_course c ON u.user_id = c.tutor_id
-            LEFT JOIN tbl_student_course sc ON c.course_id = sc.course_id
-            WHERE u.user_id = $1
-            GROUP BY u.user_id
-        `, [course.tutor_id]);
-
-        const tutor = tutorResult.rows[0];
-
-        // 4️⃣ FINAL RESPONSE
-        return res.status(200).json({
-          statusCode:200,
-          message:'Fetched Sucessfully',
-            course_details: {
-                title: course.course_title,
-                description: course.course_description,
-                weeks: course.duration,
-                total_modules: course.no_of_modules,
-                level: course.level,
-                price: course.price,
-                total_lessons: course.total_lessons,
-                total_duration: course.total_duration,
-                modules: modules
-            },
-            tutor_details: {
-                full_name: tutor.full_name,
-                role: tutor.role,
-                total_courses: tutor.total_courses,
-                total_mentees: tutor.total_mentees
-            }
-        });
-
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            message: "Internal Server Error"
-        });
+    if (courseResult.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Course not found"
+      });
     }
+
+    const course = courseResult.rows[0];
+
+    // Format duration (seconds → HH:MM:SS)
+    const formattedDuration = formatDurationHMS(
+      Number(course.total_duration)
+    );
+
+    // 2️⃣ MODULES + VIDEOS
+    const moduleResult = await pool.query(`
+      SELECT 
+        m.module_title,
+        v.video_title,
+        v.video_duration
+      FROM tbl_module m
+      LEFT JOIN tbl_module_videos v 
+        ON m.module_id = v.module_id
+      WHERE m.course_id = $1
+      ORDER BY m.module_id, v.module_video_id
+    `, [course_id]);
+
+    const modulesMap = {};
+
+    moduleResult.rows.forEach(row => {
+      if (!modulesMap[row.module_title]) {
+        modulesMap[row.module_title] = [];
+      }
+
+      if (row.video_title) {
+        modulesMap[row.module_title].push({
+          video_title: row.video_title,
+          duration: row.video_duration
+        });
+      }
+    });
+
+    const modules = Object.keys(modulesMap).map(title => ({
+      module_title: title,
+      lessons: modulesMap[title]
+    }));
+
+    // 3️⃣ TUTOR DETAILS
+    const tutorResult = await pool.query(`
+      SELECT 
+        u.full_name,
+        u.role,
+        COUNT(DISTINCT c.course_id) AS total_courses,
+        COUNT(DISTINCT sc.student_id) AS total_mentees
+      FROM tbl_user u
+      LEFT JOIN tbl_course c 
+        ON u.user_id = c.tutor_id
+      LEFT JOIN tbl_student_course sc 
+        ON c.course_id = sc.course_id
+      WHERE u.user_id = $1
+      GROUP BY u.user_id
+    `, [course.tutor_id]);
+
+    const tutor = tutorResult.rows[0];
+
+    // 4️⃣ CHECK STUDENT ENROLLMENT
+    let studentCourseId = null;
+
+    if (student_id) {
+      const enrollmentResult = await pool.query(`
+        SELECT student_course_id
+        FROM tbl_student_course
+        WHERE course_id = $1 AND student_id = $2
+      `, [course_id, student_id]);
+
+      studentCourseId = enrollmentResult.rows.length > 0
+        ? enrollmentResult.rows[0].student_course_id
+        : null;
+    }
+
+    // 5️⃣ FINAL RESPONSE
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Fetched Successfully",
+      student_course_id: studentCourseId,
+      course_details: {
+        title: course.course_title,
+        description: course.course_description,
+        weeks: course.duration,
+        total_modules: course.no_of_modules,
+        level: course.level,
+        price: course.price,
+        total_lessons: course.total_lessons,
+        total_duration: formattedDuration,
+        modules: modules
+      },
+      tutor_details: {
+        full_name: tutor.full_name,
+        role: tutor.role,
+        total_courses: tutor.total_courses,
+        total_mentees: tutor.total_mentees
+      }
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
 };
