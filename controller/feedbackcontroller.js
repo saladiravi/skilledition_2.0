@@ -276,13 +276,12 @@ exports.getStudentCoursefeedback = async (req, res) => {
       SELECT 
         c.course_id,
         c.course_title,
-       
         c.no_of_modules,
         c.duration,
         u.user_id AS tutor_id,
         u.full_name AS tutor_name,
 
-      COALESCE(
+        COALESCE(
           SUM(EXTRACT(EPOCH FROM mv.video_duration::interval)), 0
         ) AS total_duration_seconds,
 
@@ -311,9 +310,8 @@ exports.getStudentCoursefeedback = async (req, res) => {
       GROUP BY 
         c.course_id,
         c.course_title,
-       
         c.no_of_modules,
-         c.duration,
+        c.duration,
         u.user_id,
         u.full_name,
         f.feedback_id,
@@ -324,12 +322,18 @@ exports.getStudentCoursefeedback = async (req, res) => {
       [student_id, course_id]
     );
 
-    const data = result.rows[0] || null;
-
-    if (data) {
-      const totalSeconds = Number(data.total_duration_seconds);
-      data.formatted_duration = formatDurationHMS(totalSeconds);
+    // ✅ If course not found
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Course not found"
+      });
     }
+
+    const data = result.rows[0];
+
+    const totalSeconds = Number(data.total_duration_seconds);
+    data.formatted_duration = formatDurationHMS(totalSeconds);
 
     return res.status(200).json({
       statusCode: 200,
