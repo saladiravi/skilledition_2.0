@@ -43,8 +43,8 @@ exports.getinternship = async (req, res) => {
                 i.description,
                 i.status
             FROM tbl_user u
-            JOIN tbl_student s ON u.user_id = s.user_id
-            LEFT JOIN tbl_internship i ON s.student_id = i.student_id
+            LEFT JOIN tbl_internship i 
+                ON u.user_id = i.student_id
             WHERE u.user_id = $1
             ORDER BY i.internship_id DESC`,
             [user_id]
@@ -60,7 +60,7 @@ exports.getinternship = async (req, res) => {
         return res.status(200).json({
             statusCode: 200,
             message: "Fetched Successfully",
-            data: result.rows   // return all
+            data: result.rows
         });
 
     } catch (error) {
