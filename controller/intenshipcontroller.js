@@ -40,7 +40,8 @@ exports.getinternship = async (req, res) => {
                 i.project_name,
                 i.github_url,
                 i.web_url,
-                i.description
+                i.description,
+                i.status
             FROM tbl_user u
             JOIN tbl_student s ON u.user_id = s.user_id
             LEFT JOIN tbl_internship i ON s.student_id = i.student_id
