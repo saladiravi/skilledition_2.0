@@ -30,7 +30,7 @@ exports.addinternship = async (req, res) => {
 };
 
 exports.getinternship = async (req, res) => {
-    const { user_id } = req.body;   
+    const { user_id } = req.body;
 
     try {
         const result = await pool.query(
@@ -46,8 +46,8 @@ exports.getinternship = async (req, res) => {
             JOIN tbl_student s ON u.user_id = s.user_id
             LEFT JOIN tbl_internship i ON s.student_id = i.student_id
             WHERE u.user_id = $1
-            ORDER BY i.internship_id ASC`,
-            [user_id]   
+            ORDER BY i.internship_id DESC`,
+            [user_id]
         );
 
         if (result.rows.length === 0) {
@@ -60,7 +60,7 @@ exports.getinternship = async (req, res) => {
         return res.status(200).json({
             statusCode: 200,
             message: "Fetched Successfully",
-            data: result.rows[0]
+            data: result.rows   // return all
         });
 
     } catch (error) {
