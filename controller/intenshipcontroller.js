@@ -59,7 +59,7 @@ exports.getinternship = async (req, res) => {
         return res.status(200).json({
             statusCode: 200,
             message: "Fetched Successfully",
-            data: result.rows
+            data: result.rows[0]
         });
 
     } catch (error) {
