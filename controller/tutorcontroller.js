@@ -1953,11 +1953,10 @@ exports.updateTutorStatus = async (req, res) => {
 
 
 
-exports.getAllTutorbystatusbyid = async (req, res) => {
+exports.gettutordetailsbyId = async (req, res) => {
   try {
-    let { status, user_id } = req.body;
+    let { status, tutor_id } = req.body;
 
-    // ✅ Clean status
     status = status?.trim();
 
     if (!status) {
@@ -1971,10 +1970,10 @@ exports.getAllTutorbystatusbyid = async (req, res) => {
     let values = [status];
     let condition = `t.status = $1`;
 
-    // ✅ Optional user_id filter (from tbl_user)
-    if (user_id) {
-      values.push(user_id);
-      condition += ` AND u.user_id = $2`;
+    // ✅ Optional tutor_id filter (from tbl_tutor)
+    if (tutor_id) {
+      values.push(tutor_id);
+      condition += ` AND t.tutor_id = $2`;
     }
 
     // 🔴 REJECTED
@@ -1996,7 +1995,6 @@ exports.getAllTutorbystatusbyid = async (req, res) => {
         WHERE ${condition}
         ORDER BY t.rejected_at DESC
       `;
-
     }
 
     // 🟡 PENDING
@@ -2057,7 +2055,6 @@ exports.getAllTutorbystatusbyid = async (req, res) => {
 
         ORDER BY t.submitted_at ASC
       `;
-
     }
 
     // 🟢 PUBLISHED
@@ -2118,7 +2115,6 @@ exports.getAllTutorbystatusbyid = async (req, res) => {
       `;
     }
 
-    // ❌ Invalid Status
     else {
       return res.status(400).json({
         statusCode: 400,
@@ -2126,7 +2122,6 @@ exports.getAllTutorbystatusbyid = async (req, res) => {
       });
     }
 
-    // ✅ Execute Query
     const { rows } = await pool.query(query, values);
 
     return res.status(200).json({
@@ -2136,7 +2131,7 @@ exports.getAllTutorbystatusbyid = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("getAllTutorbystatus Error:", error);
+    console.error("getAllTutorbystatusnew Error:", error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal server error"

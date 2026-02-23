@@ -45,7 +45,7 @@ router.post('/getTutorById',verifyToken, allowRoles("admin", "student", "tutor")
 router.post('/gettutordetailsbystatus',verifyToken,allowRoles("admin", "student", "tutor"),tutorcontroller.getAllTutorbystatus);
 router.post('/updateTutorStatus',verifyToken,allowRoles("admin", "student", "tutor"),tutorcontroller.updateTutorStatus);
 
-router.post('/getAllTutorbystatusbyid',verifyToken,allowRoles("admin", "student", "tutor"),tutorcontroller.getAllTutorbystatusbyid);
+router.post('/gettutordetailsbystatusid',verifyToken,allowRoles("admin", "student", "tutor"),tutorcontroller.gettutordetailsbyId);
 
 
 module.exports = router;
