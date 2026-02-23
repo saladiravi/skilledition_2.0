@@ -41,6 +41,7 @@ router.get('/getAdminCourseList',verifyToken,allowRoles("admin","student","tutor
 router.post('/getadmintotalcourse',verifyToken,allowRoles("admin","student","tutor"),Course.getadmintotalcourse);
 router.post('/updateadminassignmentstatus',verifyToken,allowRoles("admin","student","tutor"),Course.updateadminassignmentstatus);
 router.post('/getModuleVideoById',verifyToken,allowRoles("admin","student","tutor"),Course.getModuleVideoById);
+router.post('/getadmincoursewithstatus',verifyToken,allowRoles("admin","student","tutor"),Course.getadmincoursewithstatus);
 
 
 module.exports = router;

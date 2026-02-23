@@ -1949,3 +1949,197 @@ exports.updateTutorStatus = async (req, res) => {
     client.release();
   }
 };
+
+
+
+
+exports.getAllTutorbystatusbyid = async (req, res) => {
+  try {
+    let { status, user_id } = req.body;
+
+    // ✅ Clean status
+    status = status?.trim();
+
+    if (!status) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "status is required"
+      });
+    }
+
+    let query = '';
+    let values = [status];
+    let condition = `t.status = $1`;
+
+    // ✅ Optional user_id filter (from tbl_user)
+    if (user_id) {
+      values.push(user_id);
+      condition += ` AND u.user_id = $2`;
+    }
+
+    // 🔴 REJECTED
+    if (status === 'Rejected') {
+
+      query = `
+        SELECT
+          t.tutor_id,
+          u.user_id,
+          u.full_name,
+          u.email,
+          t.subject_to_teach,
+          t.status,
+          TO_CHAR(t.rejected_at, 'Mon DD, YYYY, HH12:MI AM') AS rejected_date,
+          t.reject_reason,
+          t.professional_bio AS description
+        FROM tbl_tutor t
+        JOIN tbl_user u ON u.user_id = t.user_id
+        WHERE ${condition}
+        ORDER BY t.rejected_at DESC
+      `;
+
+    }
+
+    // 🟡 PENDING
+    else if (status === 'Pending') {
+
+      query = `
+        SELECT
+          t.tutor_id,
+          u.user_id,
+          u.full_name,
+          u.email,
+          t.years_of_experience AS experience,
+          t.subject_to_teach,
+          t.status,
+          t.submitted_at,
+
+          COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
+          COUNT(DISTINCT te.tutor_education_id) AS education,
+
+          tp.plan_type,
+          tp.royalty_percentage,
+          tp.price,
+          dv.short_bio,
+          t.country
+
+        FROM tbl_tutor t
+        JOIN tbl_user u ON u.user_id = t.user_id
+
+        LEFT JOIN tbl_tutor_certificates tc 
+          ON tc.tutor_id = t.tutor_id
+
+        LEFT JOIN tbl_tutor_education te 
+          ON te.tutor_id = t.tutor_id
+
+        LEFT JOIN tbl_demo_videos dv 
+          ON dv.tutor_id = t.tutor_id
+
+        LEFT JOIN tbl_tutor_payment_plan tp 
+          ON tp.demo_id = dv.demo_video_id
+
+        WHERE u.role = 'tutor'
+          AND ${condition}
+
+        GROUP BY 
+          t.tutor_id,
+          u.user_id,
+          u.full_name,
+          u.email,
+          t.years_of_experience,
+          t.subject_to_teach,
+          t.status,
+          t.country,
+          t.submitted_at,
+          tp.plan_type,
+          tp.royalty_percentage,
+          tp.price,
+          dv.short_bio
+
+        ORDER BY t.submitted_at ASC
+      `;
+
+    }
+
+    // 🟢 PUBLISHED
+    else if (status === 'Published') {
+
+      query = `
+        SELECT
+          t.tutor_id,
+          u.user_id,
+          u.full_name,
+          u.email,
+          t.years_of_experience AS experience,
+          t.subject_to_teach,
+          t.status,
+          t.submitted_at,
+
+          COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
+          COUNT(DISTINCT te.tutor_education_id) AS education,
+
+          tp.plan_type,
+          tp.royalty_percentage,
+          tp.price,
+          dv.short_bio,
+          t.country
+
+        FROM tbl_tutor t
+        JOIN tbl_user u ON u.user_id = t.user_id
+
+        LEFT JOIN tbl_tutor_certificates tc 
+          ON tc.tutor_id = t.tutor_id
+
+        LEFT JOIN tbl_tutor_education te 
+          ON te.tutor_id = t.tutor_id
+
+        LEFT JOIN tbl_demo_videos dv 
+          ON dv.tutor_id = t.tutor_id
+
+        LEFT JOIN tbl_tutor_payment_plan tp 
+          ON tp.demo_id = dv.demo_video_id
+
+        WHERE u.role = 'tutor'
+          AND ${condition}
+
+        GROUP BY 
+          t.tutor_id,
+          u.user_id,
+          u.full_name,
+          u.email,
+          t.years_of_experience,
+          t.subject_to_teach,
+          t.status,
+          t.country,
+          t.submitted_at,
+          tp.plan_type,
+          tp.royalty_percentage,
+          tp.price,
+          dv.short_bio
+      `;
+    }
+
+    // ❌ Invalid Status
+    else {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid status value"
+      });
+    }
+
+    // ✅ Execute Query
+    const { rows } = await pool.query(query, values);
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Tutors fetched successfully",
+      data: rows
+    });
+
+  } catch (error) {
+    console.error("getAllTutorbystatus Error:", error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error"
+    });
+  }
+};

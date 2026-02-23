@@ -2366,3 +2366,233 @@ exports.getModuleVideoById = async (req, res) => {
     });
   }
 };
+
+
+exports.getadmincoursewithstatus = async (req, res) => {
+
+  const { status, course_id } = req.body;
+
+  if (!status) {
+    return res.status(401).json({
+      statusCode: 401,
+      message: 'Missing Required Field'
+    });
+  }
+
+  try {
+
+    let values = [status];
+    let condition = `
+      WHERE (
+        tmv.module_video_id IS NOT NULL
+        OR ta.assignment_id IS NOT NULL
+      )
+    `;
+
+    // ✅ Add course_id filter if provided
+    if (course_id) {
+      values.push(course_id);
+      condition += ` AND tc.course_id = $2`;
+    }
+
+    const query = `
+
+      SELECT
+
+        -- COURSE
+        tc.course_id,
+        tc.course_title,
+        tc.course_description,
+        tc.duration,
+        tc.level,
+        tc.status AS course_status,
+ 
+        -- CATEGORY
+        tcg.category_name,
+
+        -- TUTOR
+        tut.full_name AS tutor_name,
+
+        -- MODULE
+        tm.module_id,
+        tm.module_title,
+
+        -- VIDEO
+        tmv.module_video_id,
+        tmv.video_title,
+        tmv.status AS video_status,
+
+        -- ASSIGNMENT
+        ta.assignment_id,
+        ta.assignment_title,
+        ta.assignment_type,
+        ta.total_questions,
+        ta.total_marks,
+        ta.pass_percentage,
+        ta.status AS assignment_status,
+        ta.assignment_date,
+        ta.reason AS assignment_reason,
+
+        -- STUDENTS
+        COUNT(DISTINCT tsc.student_id) AS enrolled_count,
+
+        -- TOTAL MODULES
+        COALESCE(mc.total_modules, 0) AS total_modules
+
+      FROM tbl_course tc
+
+      JOIN tbl_category tcg
+        ON tc.category_id = tcg.category_id
+
+      JOIN tbl_user tut
+        ON tc.tutor_id = tut.user_id
+       AND tut.role = 'tutor'
+
+      JOIN tbl_module tm
+        ON tc.course_id = tm.course_id
+
+      LEFT JOIN tbl_module_videos tmv
+        ON tm.module_id = tmv.module_id
+       AND tmv.status = $1
+
+      LEFT JOIN tbl_assignment ta
+        ON tm.module_id = ta.module_id
+       AND ta.status = $1
+
+      LEFT JOIN tbl_student_course tsc
+        ON tc.course_id = tsc.course_id
+
+      LEFT JOIN (
+        SELECT
+          course_id,
+          COUNT(DISTINCT module_id) AS total_modules
+        FROM tbl_module
+        GROUP BY course_id
+      ) mc ON mc.course_id = tc.course_id
+
+      ${condition}
+
+      GROUP BY
+        tc.course_id,
+        tc.course_title,
+        tc.course_description,
+        tc.duration,
+        tc.level,
+        tc.status,
+        tcg.category_name,
+        tut.full_name,
+        tm.module_id,
+        tm.module_title,
+        tmv.module_video_id,
+        tmv.video_title,
+        tmv.status,
+        ta.assignment_id,
+        ta.assignment_title,
+        ta.assignment_type,
+        ta.total_questions,
+        ta.total_marks,
+        ta.pass_percentage,
+        ta.status,
+        ta.assignment_date,
+        ta.reason,
+        mc.total_modules
+    `;
+
+    const { rows } = await pool.query(query, values);
+
+    const courses = {};
+
+    // ---------- FORMAT RESPONSE ----------
+    for (const row of rows) {
+
+      if (!courses[row.course_id]) {
+
+        courses[row.course_id] = {
+          course_id: row.course_id,
+          course_title: row.course_title,
+          status: row.course_status,
+          description: row.course_description,
+          category: row.category_name,
+          level: row.level,
+          duration: row.duration,
+          tutor: row.tutor_name,
+          total_modules: Number(row.total_modules),
+          enrolled_students: Number(row.enrolled_count),
+          modules: []
+        };
+      }
+
+      const course = courses[row.course_id];
+
+      let module = course.modules.find(
+        m => m.module_id === row.module_id
+      );
+
+      if (
+        !module &&
+        row.module_id &&
+        (row.module_video_id || row.assignment_id)
+      ) {
+
+        module = {
+          module_id: row.module_id,
+          module_title: row.module_title,
+          status: row.video_status,
+          videos: [],
+          assignments: []
+        };
+
+        course.modules.push(module);
+      }
+
+      if (row.module_video_id && module) {
+        module.videos.push({
+          module_video_id: row.module_video_id,
+          video_title: row.video_title,
+          status: row.video_status
+        });
+      }
+
+      if (row.assignment_id && module) {
+
+        let assignment = module.assignments.find(
+          a => a.assignment_id === row.assignment_id
+        );
+
+        if (!assignment) {
+
+          assignment = {
+            assignment_id: row.assignment_id,
+            module_id: row.module_id,
+            module_title: row.module_title,
+            title: row.assignment_title,
+            type: row.assignment_type,
+            total_questions: row.total_questions,
+            total_marks: row.total_marks,
+            pass_percentage: row.pass_percentage,
+            status: row.assignment_status,
+            date: row.assignment_date,
+            reason: row.assignment_reason,
+          };
+
+          module.assignments.push(assignment);
+        }
+      }
+    }
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Admin courses fetched successfully",
+      data: Object.values(courses)
+    });
+
+  } catch (error) {
+
+    console.error("getadmintotalcourse Error:", error);
+
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
