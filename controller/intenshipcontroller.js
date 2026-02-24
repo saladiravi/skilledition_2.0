@@ -113,3 +113,54 @@ exports.gettotalinternship = async (req, res) => {
     });
   }
 };
+
+
+exports.updateInternship = async (req, res) => {
+  try {
+    const { internship_id, role, start_date } = req.body;
+
+    // ✅ Validation
+    if (!internship_id) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "internship_id is required"
+      });
+    }
+
+    if (!role || !start_date) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "role and start_date are required"
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE tbl_internship
+       SET role = $1,
+           start_date = $2
+       WHERE internship_id = $3
+       RETURNING *`,
+      [role, start_date, internship_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Internship not found"
+      });
+    }
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Internship updated successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
