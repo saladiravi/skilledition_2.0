@@ -71,3 +71,44 @@ exports.getinternship = async (req, res) => {
         });
     }
 };
+
+
+exports.gettotalinternship = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT 
+          u.user_id,
+          u.full_name,
+          u.email,
+          i.project_name,
+          i.github_url,
+          i.web_url,
+          i.description,
+          i.status
+       FROM tbl_user u
+       LEFT JOIN tbl_internship i 
+            ON u.user_id = i.student_id
+       ORDER BY i.internship_id DESC`
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "No data found"
+      });
+    }
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Fetched Successfully",
+      data: result.rows   // ✅ return all rows
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
