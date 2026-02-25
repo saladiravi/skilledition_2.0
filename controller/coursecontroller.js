@@ -2596,3 +2596,122 @@ exports.getadmincoursewithstatus = async (req, res) => {
     });
   }
 };
+
+
+exports.getstudenttotalcourseprogress = async (req, res) => {
+  const { student_id } = req.body;
+
+  if (!student_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "student_id is required"
+    });
+  }
+
+  try {
+
+    // ---------------- 1️⃣ BASIC INFO ----------------
+    const studentResult = await pool.query(
+      `SELECT user_id, full_name, email
+       FROM tbl_user
+       WHERE user_id = $1 AND role = 'student'`,
+      [student_id]
+    );
+
+    if (studentResult.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Student not found"
+      });
+    }
+
+    const student = studentResult.rows[0];
+
+    // ---------------- 2️⃣ COURSES ENROLLED ----------------
+    const enrolledResult = await pool.query(
+      `SELECT COUNT(*) AS total
+       FROM tbl_student_course
+       WHERE student_id = $1`,
+      [student_id]
+    );
+
+    const coursesEnrolled = Number(enrolledResult.rows[0].total);
+
+    // ---------------- 3️⃣ TOTAL VIDEOS ----------------
+    const totalVideosResult = await pool.query(
+      `SELECT COUNT(tmv.module_video_id) AS total
+       FROM tbl_student_course tsc
+       JOIN tbl_module tm ON tsc.course_id = tm.course_id
+       JOIN tbl_module_videos tmv ON tm.module_id = tmv.module_id
+       WHERE tsc.student_id = $1`,
+      [student_id]
+    );
+
+    const totalVideos = Number(totalVideosResult.rows[0].total);
+
+    // ---------------- 4️⃣ COMPLETED VIDEOS ----------------
+    const completedVideosResult = await pool.query(
+      `SELECT COUNT(*) AS completed
+       FROM tbl_student_course_progress
+       WHERE student_id = $1
+       AND is_completed = true
+       AND module_video_id IS NOT NULL`,
+      [student_id]
+    );
+
+    const completedVideos = Number(completedVideosResult.rows[0].completed);
+
+    const overallProgress =
+      totalVideos > 0
+        ? Math.round((completedVideos / totalVideos) * 100)
+        : 0;
+
+    // ---------------- 5️⃣ ASSIGNMENTS COMPLETED ----------------
+    const assignmentResult = await pool.query(
+      `SELECT COUNT(*) AS total
+       FROM tbl_student_course_progress
+       WHERE student_id = $1
+       AND assignment_id IS NOT NULL
+       AND is_completed = true`,
+      [student_id]
+    );
+
+    const assignmentsCompleted = Number(assignmentResult.rows[0].total);
+
+    // ---------------- 6️⃣ RECENT ACTIVITY ----------------
+    const recentActivity = await pool.query(
+      `SELECT 
+          module_id,
+          assignment_id,
+          completed_at
+       FROM tbl_student_course_progress
+       WHERE student_id = $1
+       AND is_completed = true
+       ORDER BY completed_at DESC
+       LIMIT 5`,
+      [student_id]
+    );
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Student dashboard fetched successfully",
+      data: {
+        student_id: student.user_id,
+        student_name: student.full_name,
+        email: student.email,
+        overall_progress: overallProgress + "%",
+        courses_enrolled: coursesEnrolled,
+        assignments_completed: assignmentsCompleted,
+        average_grade: "N/A",
+        recent_activity: recentActivity.rows
+      }
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
