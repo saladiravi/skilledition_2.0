@@ -38,10 +38,10 @@ router.post('/getTutorCoursesWithModules',verifyToken,allowRoles("admin","studen
 // admin api's
 
 router.get('/getAdminCourseList',verifyToken,allowRoles("admin","student","tutor"),Course.getAdminCourseList);
-router.post('/getadmintotalcourse',verifyToken,allowRoles("admin","student","tutor"),Course.getadmintotalcourse);
+router.post('/getadmintotalcoursewithstaus',verifyToken,allowRoles("admin","student","tutor"),Course.getadmintotalcourse);
 router.post('/updateadminassignmentstatus',verifyToken,allowRoles("admin","student","tutor"),Course.updateadminassignmentstatus);
 router.post('/getModuleVideoById',verifyToken,allowRoles("admin","student","tutor"),Course.getModuleVideoById);
-router.post('/getadmincoursewithstatus',verifyToken,allowRoles("admin","student","tutor"),Course.getadmincoursewithstatus);
+router.post('/getadmincoursewithstatusid',verifyToken,allowRoles("admin","student","tutor"),Course.getadmincoursewithstatus);
 
 //tutor api
 router.post('/getstudenttotalcourseprogress',verifyToken,allowRoles("admin","student","tutor"),Course.getstudenttotalcourseprogress);
