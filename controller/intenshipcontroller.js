@@ -44,7 +44,7 @@ exports.getinternship = async (req, res) => {
                 i.status,
                 i.start_date,
                 i.end_date,
-                i.applied_date
+                 TO_CHAR(i.applied_date, 'DD-MM-YYYY') AS applied_date
             FROM tbl_user u
             LEFT JOIN tbl_internship i 
                 ON u.user_id = i.student_id
@@ -91,7 +91,7 @@ exports.gettotalinternship = async (req, res) => {
           i.status,
           i.start_date,
           i.end_date,
-          i.applied_date
+           TO_CHAR(i.applied_date, 'DD-MM-YYYY') AS applied_date
        FROM tbl_user u
        INNER JOIN tbl_internship i 
             ON u.user_id = i.student_id
