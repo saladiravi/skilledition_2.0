@@ -3,17 +3,17 @@ const pool = require('../config/db');
 
 exports.addinternship = async (req, res) => {
   try {
-    const { student_id, project_name, github_url, description, web_url } = req.body;
+    const { student_id, project_name, phone_number,github_url, description, web_url } = req.body;
 
 
 
 
     await pool.query(`
             INSERT INTO tbl_internship 
-            (student_id, project_name, github_url, web_url, description, applied_date) 
-            VALUES ($1, $2, $3, $4, $5, NOW())
+            (student_id, project_name,phone_number, github_url, web_url, description, applied_date) 
+            VALUES ($1, $2, $3, $4, $5,$6, NOW())
         `,
-      [student_id, project_name, github_url, web_url, description]);
+      [student_id, project_name,phone_number, github_url, web_url, description]);
 
     return res.status(200).json({
       statusCode: 200,
@@ -43,6 +43,7 @@ exports.getinternship = async (req, res) => {
                 i.description,
                 i.status,
                 i.role,
+                i.phone_number,
                 TO_CHAR(i.start_date, 'DD-MM-YYYY') AS start_date,
                 TO_CHAR(i.end_date, 'DD-MM-YYYY') AS end_date,
                 TO_CHAR(i.applied_date, 'DD-MM-YYYY') AS applied_date
@@ -91,6 +92,7 @@ exports.gettotalinternship = async (req, res) => {
           i.description,
           i.status,
           i.role,
+          i.phone_number,
           TO_CHAR(i.start_date, 'DD-MM-YYYY') AS start_date,
           TO_CHAR(i.end_date, 'DD-MM-YYYY') AS end_date,
           TO_CHAR(i.applied_date, 'DD-MM-YYYY') AS applied_date
