@@ -42,6 +42,7 @@ exports.getinternship = async (req, res) => {
                 i.web_url,
                 i.description,
                 i.status,
+                i.role,
                 TO_CHAR(i.start_date, 'DD-MM-YYYY') AS start_date,
                 TO_CHAR(i.end_date, 'DD-MM-YYYY') AS end_date,
                 TO_CHAR(i.applied_date, 'DD-MM-YYYY') AS applied_date
@@ -89,6 +90,7 @@ exports.gettotalinternship = async (req, res) => {
           i.web_url,
           i.description,
           i.status,
+          i.role,
           TO_CHAR(i.start_date, 'DD-MM-YYYY') AS start_date,
           TO_CHAR(i.end_date, 'DD-MM-YYYY') AS end_date,
           TO_CHAR(i.applied_date, 'DD-MM-YYYY') AS applied_date
@@ -123,7 +125,7 @@ exports.gettotalinternship = async (req, res) => {
 
 exports.updateInternship = async (req, res) => {
   try {
-    const { internship_id, role, status,start_date } = req.body;
+    const { internship_id, role, status, start_date } = req.body;
 
     // ✅ Validation
     if (!internship_id) {
@@ -144,10 +146,10 @@ exports.updateInternship = async (req, res) => {
       `UPDATE tbl_internship
        SET role = $1,
            start_date = $2,
-           status=$4,
-       WHERE internship_id = $5
+           status = $3
+       WHERE internship_id = $4
        RETURNING *`,
-      [role, start_date,status, internship_id]
+      [role, start_date, status, internship_id]
     );
 
     if (result.rowCount === 0) {
