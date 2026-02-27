@@ -3,6 +3,7 @@ const router=express.Router();
 const internship=require('../controller/intenshipcontroller');
 const { verifyToken } = require("../middleware/authMiddleware");
 const { allowRoles } = require("../middleware/roleMiddleware");
+const upload = require('../utils/uploadfile');
 
 router.post("/submitintership",verifyToken,allowRoles("admin","student","tutor"),internship.addinternship);
 
