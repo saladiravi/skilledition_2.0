@@ -13,6 +13,7 @@ const feedbacks =require('./routes/feedbackroutes');
 const announcement=require('./routes/announcementroutes');
 const contactroutes=require('./routes/contactroutes');
 const internship=require('./routes/internshiproutes');
+const chatRoutes = require("./routes/chatRoutes");
 
 const app = express();
 
@@ -32,6 +33,8 @@ app.use('/announcement',announcement);
 app.use('/contact',contactroutes);
 app.use('/student',student);
 app.use('/internship',internship);
+app.use('/chat',chatRoutes);
+
 
 app.listen(5000, () => {
     console.log("Server is running on port 5000");
