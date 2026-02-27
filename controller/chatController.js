@@ -12,7 +12,10 @@ exports.sendMessage = async (req, res) => {
     );
 
     if (userResult.rows.length === 0)
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({
+        statusCode: 404,
+        message: "User not found"
+      });
 
     const role = userResult.rows[0].role;
 
@@ -54,7 +57,10 @@ exports.sendMessage = async (req, res) => {
       );
 
       if (room.rows.length === 0)
-        return res.status(404).json({ message: "Chat room not found" });
+        return res.status(404).json({
+          statusCode: 404,
+          message: "Chat room not found"
+        });
 
       chatRoomId = room.rows[0].chat_room_id;
     }
@@ -68,13 +74,17 @@ exports.sendMessage = async (req, res) => {
     );
 
     res.status(200).json({
+      statusCode: 200,
       message: "Message sent successfully",
       chat_room_id: chatRoomId
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal Server Error" });
+   
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
   }
 };
 
@@ -99,11 +109,15 @@ exports.getMessages = async (req, res) => {
     );
 
     res.status(200).json({
+      statusCode: 200,
       messages: messages.rows
     });
 
   } catch (error) {
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
   }
 };
 
@@ -121,7 +135,10 @@ exports.getChatList = async (req, res) => {
     );
 
     if (userResult.rows.length === 0)
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({
+        statusCode: 404,
+        message: "User not found"
+      });
 
     const role = userResult.rows[0].role;
 
@@ -190,7 +207,10 @@ exports.getChatList = async (req, res) => {
     }
 
     else {
-      return res.status(403).json({ message: "Invalid role" });
+      return res.status(403).json({
+        statusCode: 403,
+        message: "Invalid role"
+      });
     }
 
     return res.status(200).json({
@@ -199,7 +219,10 @@ exports.getChatList = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal Server Error" });
+
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
   }
 };
