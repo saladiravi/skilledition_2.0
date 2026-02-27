@@ -78,7 +78,7 @@ exports.getinternship = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Fetched Successfully",
-      data: updatedRows
+      data: updatedRows[0]
     });
 
   } catch (error) {
@@ -212,12 +212,12 @@ exports.updateInternship = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Internship updated successfully",
-      data: result.rows[0]
+      message: "Internship updated successfully"
+    
     });
 
   } catch (error) {
-    console.error(error);
+
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
