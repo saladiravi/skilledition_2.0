@@ -116,12 +116,12 @@ exports.gettotalinternship = async (req, res) => {
        ORDER BY i.internship_id ASC`
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        statusCode: 404,
-        message: "No internship applications found"
-      });
-    }
+    // if (result.rows.length === 0) {
+    //   return res.status(404).json({
+    //     statusCode: 404,
+    //     message: "No internship applications found"
+    //   });
+    // }
 
     // ✅ Generate signed URLs
     const updatedRows = await Promise.all(
