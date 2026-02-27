@@ -9,8 +9,15 @@ router.post("/submitintership",verifyToken,allowRoles("admin","student","tutor")
 router.post('/getintership',verifyToken,allowRoles("admin","student","tutor"),internship.getinternship)
 router.get('/gettotalinternship',verifyToken,allowRoles("admin","student","tutor"),internship.gettotalinternship)
 
-router.post('/updateInternship',verifyToken,allowRoles("admin","student","tutor"),internship.updateInternship)
-
+router.post(
+  "/updateInternship",
+  verifyToken,
+  allowRoles("admin", "student", "tutor"),
+  upload.fields([
+    { name: "intership_certificate", maxCount: 1 }
+  ]),
+  internship.updateInternship
+);
 
 module.exports =router
 

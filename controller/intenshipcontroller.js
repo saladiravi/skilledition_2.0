@@ -1,5 +1,5 @@
 const pool = require('../config/db');
-
+const { uploadToS3, getSignedVideoUrl, deletefroms3 } = require('../utils/s3upload');
 
 exports.addinternship = async (req, res) => {
   try {
@@ -35,23 +35,25 @@ exports.getinternship = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT 
-                u.full_name,
-                u.email,
-                i.project_name,
-                i.github_url,
-                i.web_url,
-                i.description,
-                i.status,
-                i.role,
-                i.phone_number,
-                TO_CHAR(i.start_date, 'DD-MM-YYYY') AS start_date,
-                TO_CHAR(i.end_date, 'DD-MM-YYYY') AS end_date,
-                TO_CHAR(i.applied_date, 'DD-MM-YYYY') AS applied_date
-            FROM tbl_user u
-            LEFT JOIN tbl_internship i 
-                ON u.user_id = i.student_id
-            WHERE u.user_id = $1
-            ORDER BY i.internship_id DESC`,
+          u.full_name,
+          u.email,
+          i.internship_id,
+          i.project_name,
+          i.github_url,
+          i.web_url,
+          i.description,
+          i.status,
+          i.role,
+          i.phone_number,
+          i.intership_certificate,
+          TO_CHAR(i.start_date, 'DD-MM-YYYY') AS start_date,
+          TO_CHAR(i.end_date, 'DD-MM-YYYY') AS end_date,
+          TO_CHAR(i.applied_date, 'DD-MM-YYYY') AS applied_date
+       FROM tbl_user u
+       LEFT JOIN tbl_internship i 
+          ON u.user_id = i.student_id
+       WHERE u.user_id = $1
+       ORDER BY i.internship_id DESC`,
       [user_id]
     );
 
@@ -62,10 +64,21 @@ exports.getinternship = async (req, res) => {
       });
     }
 
+    // ✅ Generate signed URL for certificate
+    const updatedRows = await Promise.all(
+      result.rows.map(async (row) => {
+        if (row.intership_certificate) {
+          row.intership_certificate =
+            await getSignedVideoUrl(row.intership_certificate);
+        }
+        return row;
+      })
+    );
+
     return res.status(200).json({
       statusCode: 200,
       message: "Fetched Successfully",
-      data: result.rows[0]
+      data: updatedRows
     });
 
   } catch (error) {
@@ -93,6 +106,7 @@ exports.gettotalinternship = async (req, res) => {
           i.status,
           i.role,
           i.phone_number,
+          i.intership_certificate,
           TO_CHAR(i.start_date, 'DD-MM-YYYY') AS start_date,
           TO_CHAR(i.end_date, 'DD-MM-YYYY') AS end_date,
           TO_CHAR(i.applied_date, 'DD-MM-YYYY') AS applied_date
@@ -109,10 +123,21 @@ exports.gettotalinternship = async (req, res) => {
       });
     }
 
+    // ✅ Generate signed URLs
+    const updatedRows = await Promise.all(
+      result.rows.map(async (row) => {
+        if (row.intership_certificate) {
+          row.intership_certificate =
+            await getSignedVideoUrl(row.intership_certificate);
+        }
+        return row;
+      })
+    );
+
     return res.status(200).json({
       statusCode: 200,
       message: "Internship Applications Fetched Successfully",
-      data: result.rows
+      data: updatedRows
     });
 
   } catch (error) {
@@ -127,7 +152,7 @@ exports.gettotalinternship = async (req, res) => {
 
 exports.updateInternship = async (req, res) => {
   try {
-    const { internship_id, role, status, start_date } = req.body;
+    const { internship_id, role, status, start_date, end_date } = req.body;
 
     // ✅ Validation
     if (!internship_id) {
@@ -144,15 +169,39 @@ exports.updateInternship = async (req, res) => {
       });
     }
 
-    const result = await pool.query(
-      `UPDATE tbl_internship
-       SET role = $1,
-           start_date = $2,
-           status = $3
-       WHERE internship_id = $4
-       RETURNING *`,
-      [role, start_date, status, internship_id]
-    );
+    let certificateKey = null;
+
+    // ✅ Check if file uploaded
+    if (req.files?.intership_certificate?.length > 0) {
+      certificateKey = await uploadToS3(
+        req.files.intership_certificate[0],
+        "internships/certificates"
+      );
+    }
+
+    // ✅ Build dynamic query
+    let query = `
+      UPDATE tbl_internship
+      SET role = $1,
+          start_date = $2,
+          status = $3,
+          end_date = $4
+    `;
+
+    const values = [role, start_date, status, end_date];
+    let paramIndex = 5;
+
+    // If certificate uploaded, update column
+    if (certificateKey) {
+      query += `, intership_certificate = $${paramIndex}`;
+      values.push(certificateKey);
+      paramIndex++;
+    }
+
+    query += ` WHERE internship_id = $${paramIndex} RETURNING *`;
+    values.push(internship_id);
+
+    const result = await pool.query(query, values);
 
     if (result.rowCount === 0) {
       return res.status(404).json({
