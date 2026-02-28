@@ -124,7 +124,7 @@ exports.getMessages = async (req, res) => {
               m.message,
               m.file_url,
               m.message_type,
-              
+              m.file_url AS file,
              TO_CHAR(m.created_at AT TIME ZONE 'Asia/Kolkata', 'DD-MM-YYYY HH12-MI AM'),
               u.full_name,
               u.role
