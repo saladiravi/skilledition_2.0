@@ -305,8 +305,8 @@ exports.updateMessage = async (req, res) => {
       }
 
       return res.status(200).json({
-        message: "File updated successfully",
-        data: result.rows[0]
+        message: "File updated successfully"
+        
       });
     }
 
