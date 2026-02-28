@@ -13,7 +13,7 @@ router.post('/getChatList', verifyToken, allowRoles("admin","student","tutor"),c
 
 router.post(
   "/updatemessage",verifyToken, allowRoles("admin","student","tutor"),
-  upload.fields([{ name: "attachment", maxCount: 1 }]),
+  upload.fields([{ name: "file_url", maxCount: 1 }]),
   chatController.updateMessage
 );
 module.exports = router;

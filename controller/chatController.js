@@ -274,49 +274,76 @@ exports.updateMessage = async (req, res) => {
     let fileUrl = null;
     let messageType = "text";
 
-    if (req.files?.attachment?.length > 0) {
+    // ✅ If file uploaded
+    if (req.files?.file_url?.length > 0) {
 
       const uploadedKey = await uploadToS3(
-        req.files.attachment[0],
+        req.files.file_url[0],
         "chat/files"
       );
 
       fileUrl = uploadedKey;
 
-      const mimeType = req.files.attachment[0].mimetype;
+      const mimeType = req.files.file_url[0].mimetype;
 
       messageType = mimeType.startsWith("image/")
         ? "image"
         : "file";
-    }
 
-    const result = await pool.query(
-      `UPDATE tbl_chat_messages
-       SET message = $1,
-           file_url = COALESCE($2, file_url),
-           message_type = $3
-       WHERE chat_id = $4
-       RETURNING *`,
-      [message || null, fileUrl, messageType, chat_id]
-    );
+      const result = await pool.query(
+        `UPDATE tbl_chat_messages
+         SET message = NULL,
+             file_url = $1,
+             message_type = $2
+         WHERE chat_id = $3
+         RETURNING *`,
+        [fileUrl, messageType, chat_id]
+      );
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({
-        statusCode:404,
-        message: "Message not found"
+      if (result.rowCount === 0) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+
+      return res.status(200).json({
+        message: "File updated successfully",
+        data: result.rows[0]
       });
     }
 
-    res.status(200).json({
-      statusCode:200,
-      message: "Message updated successfully",
-      data: result.rows[0]
+    // ✅ If only message update
+    if (message) {
+
+      const result = await pool.query(
+        `UPDATE tbl_chat_messages
+         SET message = $1,
+             file_url = NULL,
+             message_type = 'text'
+         WHERE chat_id = $2
+         RETURNING *`,
+        [message, chat_id]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          statusCode:404,
+          message: "Message not found" });
+      }
+
+      return res.status(200).json({
+        statusCode:200,
+        message: "Message updated successfully"
+        
+      });
+    }
+
+    return res.status(400).json({
+      statusCode:400,
+      message: "Nothing to update"
     });
 
   } catch (error) {
     console.log(error);
     res.status(500).json({
-      statusCode:500,
       message: "Internal Server Error"
     });
   }
