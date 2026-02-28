@@ -1,4 +1,6 @@
 const pool = require("../config/db");
+const { uploadToS3, getSignedVideoUrl, deletefroms3 } = require('../utils/s3upload');
+
 
 exports.sendMessage = async (req, res) => {
   const { user_id, course_id, message } = req.body;
@@ -65,12 +67,34 @@ exports.sendMessage = async (req, res) => {
       chatRoomId = room.rows[0].chat_room_id;
     }
 
-    // 4️⃣ Insert message
+    // 4️⃣ Handle File / Image Upload (Optional)
+    let fileUrl = null;
+    let fileType = "text"; // default
+
+    if (req.files?.file_url?.length > 0) {
+
+      const uploadedKey = await uploadToS3(
+        req.files.file_url[0],
+        "chat/files"
+      );
+
+      fileUrl = uploadedKey;
+
+      const mimeType = req.files.file_url[0].mimetype;
+
+      if (mimeType.startsWith("image/")) {
+        fileType = "image";
+      } else {
+        fileType = "file";
+      }
+    }
+
+    // 5️⃣ Insert message
     await pool.query(
       `INSERT INTO tbl_chat_messages
-       (chat_room_id, sender_id, message)
-       VALUES ($1,$2,$3)`,
-      [chatRoomId, user_id, message]
+       (chat_room_id, sender_id, message, file_url, message_type)
+       VALUES ($1,$2,$3,$4,$5)`,
+      [chatRoomId, user_id, message || null, fileUrl, fileType]
     );
 
     res.status(200).json({
@@ -80,7 +104,7 @@ exports.sendMessage = async (req, res) => {
     });
 
   } catch (error) {
-   
+    console.log(error);
     res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
@@ -95,10 +119,13 @@ exports.getMessages = async (req, res) => {
 
   try {
 
-    const messages = await pool.query(
+    const messagesResult = await pool.query(
       `SELECT m.chat_id,
               m.message,
-              m.created_at,
+              m.file_url,
+              m.message_type,
+              
+             TO_CHAR(m.created_at AT TIME ZONE 'Asia/Kolkata', 'DD-MM-YYYY HH12-MI AM'),
               u.full_name,
               u.role
        FROM tbl_chat_messages m
@@ -108,16 +135,26 @@ exports.getMessages = async (req, res) => {
       [chat_room_id]
     );
 
+    const messages = messagesResult.rows;
+
+    // 🔥 Add signed URL for files/images
+    for (let msg of messages) {
+
+      if (msg.file_url && msg.message_type !== "text") {
+
+        const signedUrl = await getSignedVideoUrl(msg.file_url);
+
+        msg.file_url = signedUrl; // replace S3 key with signed URL
+      }
+    }
+
     res.status(200).json({
-      statusCode: 200,
-      messages: messages.rows
+      messages
     });
 
   } catch (error) {
-    res.status(500).json({
-      statusCode: 500,
-      message: "Internal Server Error"
-    });
+    console.log(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
