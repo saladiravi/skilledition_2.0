@@ -11,5 +11,9 @@ router.post('/sendmessage',upload.fields([
 router.post('/getMessages', verifyToken, allowRoles("admin","student","tutor"),chatController.getMessages);
 router.post('/getChatList', verifyToken, allowRoles("admin","student","tutor"),chatController.getChatList);
 
-
+router.post(
+  "/updatemessage",verifyToken, allowRoles("admin","student","tutor"),
+  upload.fields([{ name: "attachment", maxCount: 1 }]),
+  chatController.updateMessage
+);
 module.exports = router;

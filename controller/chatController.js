@@ -149,6 +149,7 @@ exports.getMessages = async (req, res) => {
     }
 
     res.status(200).json({
+      statusCode:200,
       messages
     });
 
@@ -259,6 +260,63 @@ exports.getChatList = async (req, res) => {
 
     res.status(500).json({
       statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
+
+
+exports.updateMessage = async (req, res) => {
+  const { chat_id, message } = req.body;
+
+  try {
+
+    let fileUrl = null;
+    let messageType = "text";
+
+    if (req.files?.attachment?.length > 0) {
+
+      const uploadedKey = await uploadToS3(
+        req.files.attachment[0],
+        "chat/files"
+      );
+
+      fileUrl = uploadedKey;
+
+      const mimeType = req.files.attachment[0].mimetype;
+
+      messageType = mimeType.startsWith("image/")
+        ? "image"
+        : "file";
+    }
+
+    const result = await pool.query(
+      `UPDATE tbl_chat_messages
+       SET message = $1,
+           file_url = COALESCE($2, file_url),
+           message_type = $3
+       WHERE chat_id = $4
+       RETURNING *`,
+      [message || null, fileUrl, messageType, chat_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        statusCode:404,
+        message: "Message not found"
+      });
+    }
+
+    res.status(200).json({
+      statusCode:200,
+      message: "Message updated successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      statusCode:500,
       message: "Internal Server Error"
     });
   }
