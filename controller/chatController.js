@@ -3,33 +3,41 @@ const { uploadToS3, getSignedVideoUrl, deletefroms3 } = require('../utils/s3uplo
 
 
 exports.sendMessage = async (req, res) => {
-  const { user_id, course_id, message } = req.body;
+  const { user_id, course_id, message, student_id } = req.body;
+
+  if (!user_id || !course_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "user_id and course_id are required"
+    });
+  }
 
   try {
-
-    // 1️⃣ Get role
+    // 1️⃣ Get User Role
     const userResult = await pool.query(
       `SELECT role FROM tbl_user WHERE user_id = $1`,
       [user_id]
     );
 
-    if (userResult.rows.length === 0)
+    if (userResult.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
         message: "User not found"
       });
+    }
 
     const role = userResult.rows[0].role;
-
     let chatRoomId;
 
-    // 2️⃣ If student → create room if not exists
+    // =====================================================
+    // 🟢 STUDENT LOGIC
+    // =====================================================
     if (role === "student") {
 
       const existingRoom = await pool.query(
         `SELECT chat_room_id 
          FROM tbl_chat_room 
-         WHERE course_id=$1 AND student_id=$2`,
+         WHERE course_id = $1 AND student_id = $2`,
         [course_id, user_id]
       );
 
@@ -37,8 +45,8 @@ exports.sendMessage = async (req, res) => {
         chatRoomId = existingRoom.rows[0].chat_room_id;
       } else {
         const newRoom = await pool.query(
-          `INSERT INTO tbl_chat_room (course_id, student_id)
-           VALUES ($1,$2)
+          `INSERT INTO tbl_chat_room (course_id, student_id, status)
+           VALUES ($1, $2, 'active')
            RETURNING chat_room_id`,
           [course_id, user_id]
         );
@@ -47,29 +55,40 @@ exports.sendMessage = async (req, res) => {
       }
     }
 
-    // 3️⃣ Tutor/Admin → must send using existing room
+    // =====================================================
+    // 🔵 TUTOR / ADMIN LOGIC
+    // =====================================================
     else {
+
+      if (!student_id) {
+        return res.status(400).json({
+          statusCode: 400,
+          message: "student_id is required for tutor/admin message"
+        });
+      }
 
       const room = await pool.query(
         `SELECT chat_room_id 
          FROM tbl_chat_room 
-         WHERE course_id=$1
-         LIMIT 1`,
-        [course_id]
+         WHERE course_id = $1 AND student_id = $2`,
+        [course_id, student_id]
       );
 
-      if (room.rows.length === 0)
+      if (room.rows.length === 0) {
         return res.status(404).json({
           statusCode: 404,
-          message: "Chat room not found"
+          message: "Chat room not found for this student"
         });
+      }
 
       chatRoomId = room.rows[0].chat_room_id;
     }
 
-    // 4️⃣ Handle File / Image Upload (Optional)
+    // =====================================================
+    // 📎 FILE / IMAGE UPLOAD
+    // =====================================================
     let fileUrl = null;
-    let fileType = "text"; // default
+    let fileType = "text";
 
     if (req.files?.file_url?.length > 0) {
 
@@ -89,23 +108,25 @@ exports.sendMessage = async (req, res) => {
       }
     }
 
-    // 5️⃣ Insert message
+    // =====================================================
+    // 💬 INSERT MESSAGE
+    // =====================================================
     await pool.query(
       `INSERT INTO tbl_chat_messages
-       (chat_room_id, sender_id, message, file_url, message_type)
-       VALUES ($1,$2,$3,$4,$5)`,
+       (chat_room_id, sender_id, message, file_url, message_type, status)
+       VALUES ($1, $2, $3, $4, $5, 'sent')`,
       [chatRoomId, user_id, message || null, fileUrl, fileType]
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       statusCode: 200,
       message: "Message sent successfully",
       chat_room_id: chatRoomId
     });
 
   } catch (error) {
-    console.log(error);
-    res.status(500).json({
+    console.error(error);
+    return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
     });
