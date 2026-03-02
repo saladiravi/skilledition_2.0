@@ -1,11 +1,11 @@
-const pool=require('../config/db');
+const pool = require('../config/db');
 
 
 exports.addasignment = async (req, res) => {
-    const { course_id, module_id,assignment_title,assignment_type,total_questions,total_marks,pass_percentage } = req.body;
+    const { course_id, module_id, assignment_title, assignment_type, total_questions, total_marks, pass_percentage } = req.body;
 
-     
-    if (!course_id || !module_id ) {
+
+    if (!course_id || !module_id) {
         return res.status(400).json({
             statusCode: 400,
             message: "Bad Request: Missing required fields"
@@ -26,35 +26,35 @@ exports.addasignment = async (req, res) => {
             });
         }
 
-            const existAssignment = await pool.query(
+        const existAssignment = await pool.query(
             `
             SELECT assignment_id
             FROM tbl_assignment
             WHERE module_id = $1
             `,
             [module_id]
-            );
+        );
 
-            if (existAssignment.rows.length > 0) {
+        if (existAssignment.rows.length > 0) {
             return res.status(409).json({
                 statusCode: 409,
                 message: "This module already has an assignment"
             });
-            }
+        }
         // Insert into tbl_assignment
         const assignmentRes = await pool.query(
             `INSERT INTO tbl_assignment (course_id, module_id, assignment_title,assignment_type,total_questions,total_marks,pass_percentage)
              VALUES ($1, $2, $3,$4,$5,$6,$7) 
              RETURNING assignment_id`,
-            [course_id, module_id, assignment_title,assignment_type,total_questions,total_marks,pass_percentage]
+            [course_id, module_id, assignment_title, assignment_type, total_questions, total_marks, pass_percentage]
         );
 
-    
+
 
         return res.status(200).json({
             statusCode: 200,
             message: "Assignment and questions added successfully",
-            assignment:assignmentRes.rows[0]
+            assignment: assignmentRes.rows[0]
         });
 
     } catch (error) {
@@ -272,15 +272,15 @@ exports.getAssignmentById = async (req, res) => {
             message: "Assignment fetched successfully",
             assignment: {
                 assignment_id: assignment.assignment_id,
-                assignment_title:assignment.assignment_title,
-                assignment_type:assignment.assignment_type,
-                total_questions:assignment.total_questions,
-                total_marks:assignment.total_marks,
-                pass_percentage:assignment.pass_percentage,
-                reason:assignment.reason,
-                status:assignment.status,
-                assignment_date:assignment.assignment_date,
-            
+                assignment_title: assignment.assignment_title,
+                assignment_type: assignment.assignment_type,
+                total_questions: assignment.total_questions,
+                total_marks: assignment.total_marks,
+                pass_percentage: assignment.pass_percentage,
+                reason: assignment.reason,
+                status: assignment.status,
+                assignment_date: assignment.assignment_date,
+
                 assignment_description: assignment.assignment_description,
                 questions: questions
             }
@@ -296,16 +296,16 @@ exports.getAssignmentById = async (req, res) => {
 };
 
 
-exports.getAssignments= async (req, res) => {
-   
+exports.getAssignments = async (req, res) => {
+
     try {
-         const assignmentData = await pool.query(
+        const assignmentData = await pool.query(
             `SELECT * FROM tbl_assignment`,
-         
+
         );
-       const assignment = assignmentData.rows[0];
-        
-       const questionData = await pool.query(
+        const assignment = assignmentData.rows[0];
+
+        const questionData = await pool.query(
             `SELECT question_id, question, a, b, c, d, answer 
              FROM tbl_questions 
            ` );
@@ -332,44 +332,44 @@ exports.getAssignments= async (req, res) => {
         });
     }
 };
- 
 
-exports.getassignmentsdetails=async(req,res)=>{
-    const {assignment_id} =req.body
-    if(!assignment_id){
+
+exports.getassignmentsdetails = async (req, res) => {
+    const { assignment_id } = req.body
+    if (!assignment_id) {
         return res.status(400).json({
-            statusCode:401,
-            message:'Missing Require Field'
+            statusCode: 401,
+            message: 'Missing Require Field'
         })
     }
-    try{
-        const exitassigment=await pool.query(`SELECT assignment_id FROM  tbl_assignment WHERE assignment_id=$1`,[assignment_id]);
-        if(exitassigment.rows.length === 0){
+    try {
+        const exitassigment = await pool.query(`SELECT assignment_id FROM  tbl_assignment WHERE assignment_id=$1`, [assignment_id]);
+        if (exitassigment.rows.length === 0) {
             return res.status(404).json({
-                statusCode:404,
-                message:'Not Found'
+                statusCode: 404,
+                message: 'Not Found'
             })
         }
-        const result=await pool.query(`SELECT * FROM tbl_assignment WHERE assignment_id=$1`,[assignment_id]);
+        const result = await pool.query(`SELECT * FROM tbl_assignment WHERE assignment_id=$1`, [assignment_id]);
         return res.status(200).json({
-            statusCode:200,
-            message:'Fetched Sucessfully',
-            assignement :result.rows[0]
+            statusCode: 200,
+            message: 'Fetched Sucessfully',
+            assignement: result.rows[0]
         })
-    }catch(error){
+    } catch (error) {
         return res.status(500).json({
-            statusCode:500,
-            message:'Internal Server Error'
+            statusCode: 500,
+            message: 'Internal Server Error'
         })
     }
 }
 
 
 exports.getTutorAssignmentDetails = async (req, res) => {
-  const { tutorId } = req.body;
+    const { tutorId } = req.body;
 
-  try {
-     const query = `
+    try {
+        const query = `
       SELECT
         c.course_id,
         c.course_title,
@@ -396,85 +396,85 @@ exports.getTutorAssignmentDetails = async (req, res) => {
         a.assignment_id
       ORDER BY c.course_id, m.module_id, a.assignment_id
     `;
-    const result = await pool.query(query, [tutorId]);
+        const result = await pool.query(query, [tutorId]);
 
-    const courseMap = {};
+        const courseMap = {};
 
-    result.rows.forEach(row => {
-      // COURSE LEVEL
-      if (!courseMap[row.course_id]) {
-        courseMap[row.course_id] = {
-          course_id: row.course_id,
-          course_title: row.course_title,
-          assignment_date: row.assignment_date, // ✅ keep as you said
-          status:row.status,
-          total_modules: new Set(),        // for counting
-          total_assignments: 0,
-          total_questions: 0,
-          course_total_marks: 0,
-          assignment_type: row.assignment_type,
-          pass_percentage: row.pass_percentage,
+        result.rows.forEach(row => {
+            // COURSE LEVEL
+            if (!courseMap[row.course_id]) {
+                courseMap[row.course_id] = {
+                    course_id: row.course_id,
+                    course_title: row.course_title,
+                    assignment_date: row.assignment_date, // ✅ keep as you said
+                    status: row.status,
+                    total_modules: new Set(),        // for counting
+                    total_assignments: 0,
+                    total_questions: 0,
+                    course_total_marks: 0,
+                    assignment_type: row.assignment_type,
+                    pass_percentage: row.pass_percentage,
 
-          modules: []
-        };
-      }
+                    modules: []
+                };
+            }
 
-      const course = courseMap[row.course_id];
+            const course = courseMap[row.course_id];
 
-      // count assignments
-      course.total_assignments += 1;
+            // count assignments
+            course.total_assignments += 1;
 
-      // add questions
-      course.total_questions += Number(row.total_questions);
-        course.course_total_marks += Number(row.total_marks || 0);
-      // MODULE LEVEL
-      let module = course.modules.find(m => m.module_id === row.module_id);
-      if (!module) {
-        module = {
-          module_id: row.module_id,
-          module_title: row.module_title,
-           module_total_marks: 0,
-             status:row.status,
-          assignments: []
-        };
-        course.modules.push(module);
+            // add questions
+            course.total_questions += Number(row.total_questions);
+            course.course_total_marks += Number(row.total_marks || 0);
+            // MODULE LEVEL
+            let module = course.modules.find(m => m.module_id === row.module_id);
+            if (!module) {
+                module = {
+                    module_id: row.module_id,
+                    module_title: row.module_title,
+                    module_total_marks: 0,
+                    status: row.status,
+                    assignments: []
+                };
+                course.modules.push(module);
 
-        // count unique modules
-        course.total_modules.add(row.module_id);
-      }
-        module.module_total_marks += Number(row.total_marks || 0); // ✅
-      // ASSIGNMENT LEVEL
-      module.assignments.push({
-        assignment_id: row.assignment_id,
-        assignment_title: row.assignment_title,
-        assignment_type: row.assignment_type,
-        total_questions: Number(row.total_questions),
-        total_marks: row.total_marks,
-        pass_percentage: row.pass_percentage,
-     
-        assignment_date: row.assignment_date
-      });
-    });
+                // count unique modules
+                course.total_modules.add(row.module_id);
+            }
+            module.module_total_marks += Number(row.total_marks || 0); // ✅
+            // ASSIGNMENT LEVEL
+            module.assignments.push({
+                assignment_id: row.assignment_id,
+                assignment_title: row.assignment_title,
+                assignment_type: row.assignment_type,
+                total_questions: Number(row.total_questions),
+                total_marks: row.total_marks,
+                pass_percentage: row.pass_percentage,
 
-    // convert Set → number
-    const finalData = Object.values(courseMap).map(course => ({
-      ...course,
-      total_modules: course.total_modules.size
-    }));
+                assignment_date: row.assignment_date
+            });
+        });
 
-    res.status(200).json({
-      statusCode:200,
-      message:'Fectched Sucessfully',
-      data: finalData
-    });
+        // convert Set → number
+        const finalData = Object.values(courseMap).map(course => ({
+            ...course,
+            total_modules: course.total_modules.size
+        }));
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      status: false,
-      message: "Server error"
-    });
-  }
+        res.status(200).json({
+            statusCode: 200,
+            message: 'Fectched Sucessfully',
+            data: finalData
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            status: false,
+            message: "Server error"
+        });
+    }
 };
 
 
@@ -482,140 +482,140 @@ exports.getTutorAssignmentDetails = async (req, res) => {
 
 
 exports.addAssignmentWithQuestions = async (req, res) => {
-  const {
-    course_id,
-    module_id,
-    assignment_title,
-    assignment_type,
-    total_questions,
-    total_marks,
-    pass_percentage,
-    questions
-  } = req.body;
+    const {
+        course_id,
+        module_id,
+        assignment_title,
+        assignment_type,
+        total_questions,
+        total_marks,
+        pass_percentage,
+        questions
+    } = req.body;
 
-  // 🔹 Type conversion (VERY IMPORTANT)
-  const courseId = Number(course_id);
-  const moduleId = module_id ? Number(module_id) : null;
-  const totalQuestions = Number(total_questions);
-  const totalMarks = total_marks ? Number(total_marks) : null;
+    // 🔹 Type conversion (VERY IMPORTANT)
+    const courseId = Number(course_id);
+    const moduleId = module_id ? Number(module_id) : null;
+    const totalQuestions = Number(total_questions);
+    const totalMarks = total_marks ? Number(total_marks) : null;
 
-  // 🔹 Basic validations
-  if (!courseId || !assignment_title || !totalQuestions) {
-    return res.status(400).json({
-      statusCode: 400,
-      message: "Missing or invalid required fields"
-    });
-  }
-
-  if (!Array.isArray(questions) || questions.length === 0) {
-    return res.status(400).json({
-      statusCode: 400,
-      message: "Questions array is required"
-    });
-  }
-
-  if (questions.length !== totalQuestions) {
-    return res.status(400).json({
-      statusCode: 400,
-      message: `You must add exactly ${totalQuestions} questions. You sent ${questions.length}.`
-    });
-  }
-
-  const client = await pool.connect();
-
-  try {
-    await client.query("BEGIN");
-
-    // 1️⃣ Validate course exists
-    const courseCheck = await client.query(
-      `SELECT course_id FROM tbl_course WHERE course_id = $1`,
-      [courseId]
-    );
-
-    if (courseCheck.rows.length === 0) {
-      throw new Error("Course not found");
+    // 🔹 Basic validations
+    if (!courseId || !assignment_title || !totalQuestions) {
+        return res.status(400).json({
+            statusCode: 400,
+            message: "Missing or invalid required fields"
+        });
     }
 
-    // 2️⃣ Check if assignment already exists for this module
+    if (!Array.isArray(questions) || questions.length === 0) {
+        return res.status(400).json({
+            statusCode: 400,
+            message: "Questions array is required"
+        });
+    }
+
+    if (questions.length !== totalQuestions) {
+        return res.status(400).json({
+            statusCode: 400,
+            message: `You must add exactly ${totalQuestions} questions. You sent ${questions.length}.`
+        });
+    }
+
+    const client = await pool.connect();
+
+    try {
+        await client.query("BEGIN");
+
+        // 1️⃣ Validate course exists
+        const courseCheck = await client.query(
+            `SELECT course_id FROM tbl_course WHERE course_id = $1`,
+            [courseId]
+        );
+
+        if (courseCheck.rows.length === 0) {
+            throw new Error("Course not found");
+        }
+
+        // 2️⃣ Check if assignment already exists for this module
         const existAssignment = await client.query(
-        `
+            `
         SELECT assignment_id
         FROM tbl_assignment
         WHERE module_id = $1
         `,
-        [moduleId]
+            [moduleId]
         );
 
         if (existAssignment.rows.length > 0) {
-        throw new Error("This module already has an assignment");
+            throw new Error("This module already has an assignment");
         }
 
-    // 2️⃣ Insert assignment (default status = Pending)
-    const assignmentRes = await client.query(
-      `INSERT INTO tbl_assignment
+        // 2️⃣ Insert assignment (default status = Pending)
+        const assignmentRes = await client.query(
+            `INSERT INTO tbl_assignment
        (course_id, module_id, assignment_title, assignment_type,
         total_questions, total_marks, pass_percentage, status)
        VALUES ($1,$2,$3,$4,$5,$6,$7,'Pending')
        RETURNING assignment_id`,
-      [
-        courseId,
-        moduleId,
-        assignment_title,
-        assignment_type,
-        totalQuestions,
-        totalMarks,
-        pass_percentage
-      ]
-    );
+            [
+                courseId,
+                moduleId,
+                assignment_title,
+                assignment_type,
+                totalQuestions,
+                totalMarks,
+                pass_percentage
+            ]
+        );
 
-    const assignment_id = assignmentRes.rows[0].assignment_id;
+        const assignment_id = assignmentRes.rows[0].assignment_id;
 
-    // 3️⃣ Insert questions (default status = Pending)
-    for (const q of questions) {
-      if (!q.question || !q.a || !q.b || !q.c || !q.d || !q.answer) {
-        throw new Error("Each question must contain question, options, and answer");
-      }
+        // 3️⃣ Insert questions (default status = Pending)
+        for (const q of questions) {
+            if (!q.question || !q.a || !q.b || !q.c || !q.d || !q.answer) {
+                throw new Error("Each question must contain question, options, and answer");
+            }
 
-      if (!['a', 'b', 'c', 'd'].includes(q.answer)) {
-        throw new Error("Answer must be one of a, b, c, d");
-      }
+            if (!['a', 'b', 'c', 'd'].includes(q.answer)) {
+                throw new Error("Answer must be one of a, b, c, d");
+            }
 
-      await client.query(
-        `INSERT INTO tbl_questions
+            await client.query(
+                `INSERT INTO tbl_questions
          (question, a, b, c, d, answer, assignment_id, status)
          VALUES ($1,$2,$3,$4,$5,$6,$7,'Pending')`,
-        [
-          q.question,
-          q.a,
-          q.b,
-          q.c,
-          q.d,
-          q.answer,
-          assignment_id
-        ]
-      );
+                [
+                    q.question,
+                    q.a,
+                    q.b,
+                    q.c,
+                    q.d,
+                    q.answer,
+                    assignment_id
+                ]
+            );
+        }
+
+        await client.query("COMMIT");
+
+        return res.status(200).json({
+            statusCode: 200,
+            message: "Assignment and questions added successfully",
+            assignment_id,
+            total_questions: totalQuestions
+        });
+
+    } catch (error) {
+        await client.query("ROLLBACK");
+
+
+        return res.status(500).json({
+            statusCode: 500,
+            message: error.message
+        });
+    } finally {
+        client.release();
     }
-
-    await client.query("COMMIT");
-
-    return res.status(200).json({
-      statusCode: 200,
-      message: "Assignment and questions added successfully",
-      assignment_id,
-      total_questions: totalQuestions
-    });
-
-  } catch (error) {
-    await client.query("ROLLBACK");
-  
-
-    return res.status(500).json({
-      statusCode: 500,
-      message: error.message
-    });
-  } finally {
-    client.release();
-  }
 };
 
 
@@ -1029,8 +1029,9 @@ exports.getfinalassignmentbyid = async (req, res) => {
         }
 
         return res.status(200).json({
-            message:'fetched sucessfully',
+
             statusCode: 200,
+            message: 'fetched sucessfully',
             data: result.rows[0]
         });
 
@@ -1045,7 +1046,14 @@ exports.getfinalassignmentbyid = async (req, res) => {
 
 
 exports.updatetutorfinalassingmentfeedback = async (req, res) => {
-    const { final_assignment_id, feedback } = req.body;
+    const { final_assignment_id, tutor_status, feedback } = req.body;
+
+    if (!final_assignment_id) {
+        return res.status(400).json({
+            statusCode: 400,
+            message: "final_assignment_id is required"
+        });
+    }
 
     try {
 
@@ -1053,10 +1061,10 @@ exports.updatetutorfinalassingmentfeedback = async (req, res) => {
             UPDATE tbl_student_final_assignment
             SET 
                 feedback = $1,
-                updated_time = NOW()
-            WHERE final_assignment_id = $2
+                tutor_status = $2
+            WHERE final_assignment_id = $3
             RETURNING *
-        `, [feedback, final_assignment_id]);
+        `, [feedback, tutor_status, final_assignment_id]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({
@@ -1066,11 +1074,9 @@ exports.updatetutorfinalassingmentfeedback = async (req, res) => {
         }
 
         return res.status(200).json({
-            
             statusCode: 200,
-              message:'fetched sucessfully',
-            message: "Feedback updated successfully"
-
+            message: "Tutor feedback updated successfully",
+            data: result.rows[0]
         });
 
     } catch (error) {
