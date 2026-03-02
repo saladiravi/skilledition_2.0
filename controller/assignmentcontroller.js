@@ -930,3 +930,154 @@ exports.deleteAssignmentIfPending = async (req, res) => {
         });
     }
 };
+
+
+
+
+exports.gettotalfinalassignment = async (req, res) => {
+    const { tutor_id } = req.body;
+
+    try {
+
+        const result = await pool.query(`
+            SELECT 
+                tsf.final_assignment_id,
+                tsf.assignment_title,
+                tsf.total_questions,
+                tsf.total_marks,
+                tsf.feedback,
+                TO_CHAR(tsf.submitted_at, 'DD-MM-YYYY') AS submitted_at,
+                tsf.grade,
+                tsf.tutor_status,
+                tc.course_id,
+                tc.course_title,
+                
+                student.full_name AS student_name,
+                tutor.full_name AS tutor_name
+
+            FROM tbl_student_final_assignment AS tsf
+
+            JOIN tbl_course AS tc 
+                ON tsf.course_id = tc.course_id
+
+            JOIN tbl_user AS student 
+                ON student.user_id = tsf.student_id
+
+            JOIN tbl_user AS tutor 
+                ON tutor.user_id = tc.tutor_id
+
+            WHERE tc.tutor_id = $1
+        `, [tutor_id]);
+
+        return res.status(200).json({
+            statusCode: 200,
+            data: result.rows
+        });
+
+    } catch (error) {
+
+        return res.status(500).json({
+            statusCode: 500,
+            message: 'Internal Server Error'
+        });
+    }
+};
+
+
+exports.getfinalassignmentbyid = async (req, res) => {
+    const { final_assignment_id } = req.body;
+
+    try {
+
+        const result = await pool.query(`
+            SELECT 
+                tsf.final_assignment_id,
+                tsf.assignment_title,
+                tsf.total_questions,
+                tsf.total_marks,
+                tsf.feedback,
+               TO_CHAR(tsf.submitted_at, 'DD-MM-YYYY') AS submitted_at,
+                tsf.grade,
+                tsf.tutor_status,
+                
+                tc.course_id,
+                tc.course_title,
+                
+                student.full_name AS student_name,
+                 student.email AS email,
+                tutor.full_name AS tutor_name
+
+            FROM tbl_student_final_assignment AS tsf
+
+            JOIN tbl_course AS tc 
+                ON tsf.course_id = tc.course_id
+
+            JOIN tbl_user AS student 
+                ON student.user_id = tsf.student_id
+
+            JOIN tbl_user AS tutor 
+                ON tutor.user_id = tc.tutor_id
+
+            WHERE tsf.final_assignment_id = $1
+        `, [final_assignment_id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                statusCode: 404,
+                message: "Assignment not found"
+            });
+        }
+
+        return res.status(200).json({
+            message:'fetched sucessfully',
+            statusCode: 200,
+            data: result.rows[0]
+        });
+
+    } catch (error) {
+
+        return res.status(500).json({
+            statusCode: 500,
+            message: 'Internal Server Error'
+        });
+    }
+};
+
+
+exports.updatetutorfinalassingmentfeedback = async (req, res) => {
+    const { final_assignment_id, feedback } = req.body;
+
+    try {
+
+        const result = await pool.query(`
+            UPDATE tbl_student_final_assignment
+            SET 
+                feedback = $1,
+                updated_time = NOW()
+            WHERE final_assignment_id = $2
+            RETURNING *
+        `, [feedback, final_assignment_id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                statusCode: 404,
+                message: "Assignment not found"
+            });
+        }
+
+        return res.status(200).json({
+            
+            statusCode: 200,
+              message:'fetched sucessfully',
+            message: "Feedback updated successfully"
+
+        });
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            statusCode: 500,
+            message: 'Internal Server Error'
+        });
+    }
+};
