@@ -1130,6 +1130,7 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
 
             JOIN tbl_user AS tutor 
                 ON tutor.user_id = tc.tutor_id
+            ORDER BY tsf.final_assignment_id ASC
         `);
 
         return res.status(200).json({
