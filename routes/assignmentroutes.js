@@ -24,6 +24,7 @@ router.post('/deleteAssignment',verifyToken, allowRoles("admin","student","tutor
 router.post('/getTutorFinalExamStatus',verifyToken, allowRoles("admin","student","tutor"),assignment.gettotalfinalassignment);
 router.post('/getfinalassignmentbyid',verifyToken, allowRoles("admin","student","tutor"),assignment.getfinalassignmentbyid);
 router.post('/updatetutorfinalassingmentfeedback',verifyToken, allowRoles("admin","student","tutor"),assignment.updatetutorfinalassingmentfeedback);
+router.post('/getfinalassignmentsbyadmin',verifyToken, allowRoles("admin","student","tutor"),assignment.getfinalassignmentsbyadmin);
 
 
 module.exports=router;

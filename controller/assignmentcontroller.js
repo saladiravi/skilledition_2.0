@@ -1090,3 +1090,58 @@ exports.updatetutorfinalassingmentfeedback = async (req, res) => {
         });
     }
 };
+
+exports.getfinalassignmentsbyadmin = async (req, res) => {
+
+    try {
+        const result = await pool.query(`
+            SELECT 
+                tsf.final_assignment_id,
+                tsf.assignment_title,
+                tsf.total_questions,
+                tsf.total_marks,
+                tsf.dtatus,
+                tsf.feedback,
+                TO_CHAR(tsf.submitted_at, 'DD-MM-YYYY') AS submitted_at,
+                TO_CHAR(tsf.created_at, 'DD-MM-YYYY') AS created_at,
+                
+                CASE 
+                    WHEN EXTRACT(DAY FROM tsf.created_at) <= 15 
+                    THEN TO_CHAR(tsf.created_at, 'YYYY-MM') || '-A'
+                    ELSE TO_CHAR(tsf.created_at, 'YYYY-MM') || '-B'
+                END AS batch,
+
+                tsf.grade,
+                tsf.tutor_status,
+                tc.course_id,
+                tc.course_title,
+                
+                student.full_name AS student_name,
+                student.email AS email,
+                tutor.full_name AS tutor_name
+
+            FROM tbl_student_final_assignment AS tsf
+
+            JOIN tbl_course AS tc 
+                ON tsf.course_id = tc.course_id
+
+            JOIN tbl_user AS student 
+                ON student.user_id = tsf.student_id
+
+            JOIN tbl_user AS tutor 
+                ON tutor.user_id = tc.tutor_id
+        `);
+
+        return res.status(200).json({
+            statusCode: 200,
+            message: 'fetched successfully',
+            data: result.rows
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            statusCode: 500,
+            message: 'Internal Server Error'
+        })
+    }
+}
