@@ -967,6 +967,7 @@ exports.gettotalfinalassignment = async (req, res) => {
                 ON tutor.user_id = tc.tutor_id
 
             WHERE tc.tutor_id = $1
+             AND tsf.status = 'Completed'
         `, [tutor_id]);
 
         return res.status(200).json({
