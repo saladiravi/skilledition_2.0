@@ -968,6 +968,8 @@ exports.gettotalfinalassignment = async (req, res) => {
 
             WHERE tc.tutor_id = $1
              AND tsf.status = 'Completed'
+
+             ORDER BY tsf.final_assignment_id ASC
         `, [tutor_id]);
 
         return res.status(200).json({
