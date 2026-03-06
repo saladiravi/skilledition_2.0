@@ -1701,11 +1701,17 @@ exports.getfinalquestions = async (req, res) => {
     }
 
     if (checklock.rows[0].is_unlocked === false) {
-      return res.status(403).json({
-        statusCode: 403,
+      return res.status(404).json({
+        statusCode: 404,
         message: 'Exam is locked'
       });
     }
+  if (checklock.rows[0].status === "Completed") {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Exam is Completed'
+      });
+    }  
     const assigment = await pool.query(`SELECT is_unlocked ,status,timmer,remaining_time  FROM tbl_student_final_assignment WHERE final_assignment_id=$1`, [final_assignment_id])
 
     // 2. Get Questions & Options
@@ -1907,8 +1913,8 @@ exports.getfinalexamresult = async (req, res) => {
  
 
     if (checklock.rows[0].is_unlocked === false) {
-      return res.status(403).json({
-        statusCode: 403,
+      return res.status(404).json({
+        statusCode: 404,
         message: 'Exam is locked'
       });
     }
