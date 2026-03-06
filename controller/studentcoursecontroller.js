@@ -1904,8 +1904,14 @@ exports.getfinalexamresult = async (req, res) => {
         message: 'Final assignment not found'
       });
     }
+ 
 
-
+    if (checklock.rows[0].is_unlocked === false) {
+      return res.status(403).json({
+        statusCode: 403,
+        message: 'Exam is locked'
+      });
+    }
 
     // 2. Get Questions & Options
     const questions = await pool.query(`
