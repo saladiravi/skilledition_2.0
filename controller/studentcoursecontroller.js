@@ -1688,7 +1688,7 @@ exports.getfinalquestions = async (req, res) => {
 
     // 1. Check assignment lock status
     const checklock = await pool.query(`
-      SELECT is_unlocked
+      SELECT is_unlocked,status
       FROM tbl_student_final_assignment
       WHERE final_assignment_id = $1
     `, [final_assignment_id]);
