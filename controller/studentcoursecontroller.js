@@ -334,9 +334,9 @@ exports.getstudentcourse = async (req, res) => {
 `, [course_id, student_id]);
 
     if (rows.length === 0) {
-      return res.json({
+      return res.status(404).json({
         statusCode: 404
-         
+        
       });
     }
 

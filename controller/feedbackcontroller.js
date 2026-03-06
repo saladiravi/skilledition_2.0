@@ -279,8 +279,8 @@ exports.getStudentCoursefeedback = async (req, res) => {
     );
 
     if (purchaseCheck.rows.length === 0) {
-      return res.status(403).json({
-        statusCode: 403
+      return res.status(404).json({
+        statusCode: 404
         
       });
     }
