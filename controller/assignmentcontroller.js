@@ -236,7 +236,7 @@ exports.addassignmentquestion = async (req, res) => {
 
 
 exports.getAssignmentById = async (req, res) => {
-    const { assignment_id } = req.body;
+    const { assignment_id, student_id } = req.body;
 
     try {
         // Check assignment exists
@@ -252,12 +252,12 @@ exports.getAssignmentById = async (req, res) => {
             });
         }
 
-        const progressCheck = await pool.query(
+            const progressCheck = await pool.query(
             `SELECT is_completed, is_unlocked
             FROM tbl_student_course_progress
             WHERE assignment_id = $1 AND student_id = $2`,
             [assignment_id, student_id]
-        );
+            );
 
         if (progressCheck.rows.length > 0) {
 
