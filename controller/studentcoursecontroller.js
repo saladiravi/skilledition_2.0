@@ -425,7 +425,7 @@ exports.getstudentcourse = async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({
         statusCode: 404
-        
+
       });
     }
 
@@ -1301,7 +1301,7 @@ exports.getexamstudent = async (req, res) => {
     });
 
 
-        await pool.query(`
+    await pool.query(`
           UPDATE tbl_student_final_assignment tfa
           SET is_unlocked = true
           WHERE tfa.student_id = $1
@@ -1318,7 +1318,7 @@ exports.getexamstudent = async (req, res) => {
           )
         `, [student_id]);
 
-        
+
     /* =======================
        5️⃣ FINAL RESPONSE
     ======================= */
@@ -1506,7 +1506,7 @@ exports.writeExam = async (req, res) => {
 
 
 exports.getAssignmentById = async (req, res) => {
-  const { assignment_id } = req.body;
+  const { assignment_id ,student_id} = req.body;
 
   try {
     // Check assignment exists
@@ -1522,6 +1522,32 @@ exports.getAssignmentById = async (req, res) => {
       });
     }
 
+    const progressCheck = await pool.query(
+      `SELECT is_completed, is_unlocked
+            FROM tbl_student_course_progress
+            WHERE assignment_id = $1 AND student_id = $2`,
+      [assignment_id, student_id]
+    );
+
+    if (progressCheck.rows.length > 0) {
+
+      const progress = progressCheck.rows[0];
+
+      if (progress.is_completed === true) {
+        return res.status(404).json({
+          statusCode: 404,
+          message: "Assignment already completed"
+        });
+      }
+
+      if (progress.is_unlocked === false) {
+        return res.status(404).json({
+          statusCode: 404,
+          message: "Assignment is locked"
+        });
+      }
+
+    }
     const assignment = assignmentData.rows[0];
     const fetchdata = await pool.query(`SELECT * FROM tbl_assignment WHERE assignment_id=$1`, [assignment_id]);
 
@@ -2029,12 +2055,12 @@ exports.getstudentassignmentresult = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message:'Result Fetched Sucessfully',
+      message: 'Result Fetched Sucessfully',
       data: assignment
     });
 
   } catch (error) {
-    
+
     return res.status(500).json({
       statusCode: 500,
       message: 'Internal Server Error'
@@ -2122,7 +2148,7 @@ exports.getCourseenroleDetails = async (req, res) => {
     if (courseResult.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404
-        
+
       });
     }
 

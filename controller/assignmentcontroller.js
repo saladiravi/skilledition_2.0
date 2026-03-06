@@ -236,7 +236,7 @@ exports.addassignmentquestion = async (req, res) => {
 
 
 exports.getAssignmentById = async (req, res) => {
-    const { assignment_id, student_id } = req.body;
+    const { assignment_id } = req.body;
 
     try {
         // Check assignment exists
@@ -250,33 +250,6 @@ exports.getAssignmentById = async (req, res) => {
                 statusCode: 404,
                 message: "Assignment Not Found"
             });
-        }
-
-            const progressCheck = await pool.query(
-            `SELECT is_completed, is_unlocked
-            FROM tbl_student_course_progress
-            WHERE assignment_id = $1 AND student_id = $2`,
-            [assignment_id, student_id]
-            );
-
-        if (progressCheck.rows.length > 0) {
-
-            const progress = progressCheck.rows[0];
-
-            if (progress.is_completed === true) {
-                return res.status(404).json({
-                    statusCode: 404,
-                    message: "Assignment already completed"
-                });
-            }
-
-            if (progress.is_unlocked === false) {
-                return res.status(404).json({
-                    statusCode: 404,
-                    message: "Assignment is locked"
-                });
-            }
-
         }
 
         const assignment = assignmentData.rows[0];
@@ -1106,7 +1079,7 @@ exports.updatetutorfinalassingmentfeedback = async (req, res) => {
         return res.status(200).json({
             statusCode: 200,
             message: "Tutor feedback updated successfully"
-
+            
         });
 
     } catch (error) {
