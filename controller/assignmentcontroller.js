@@ -252,6 +252,39 @@ exports.getAssignmentById = async (req, res) => {
             });
         }
 
+            const progressCheck = await pool.query(
+            `SELECT is_completed, is_unlocked
+                FROM tbl_student_course_progress
+                WHERE assignment_id = $1`,
+            [assignment_id]
+        );
+
+        if (progressCheck.rows.length > 0) {
+
+            const progress = progressCheck.rows[0];
+
+            if (progress.is_completed === true) {
+                return res.status(404).json({
+                    statusCode: 404,
+                    message: "Assignment already completed"
+                });
+            }
+
+            if (progress.is_unlocked === true) {
+                return res.status(404).json({
+                    statusCode: 404,
+                    message: "Assignment is currently unlocked and cannot be opened again"
+                });
+            }
+
+               if (progress.is_unlocked === false) {
+                return res.status(404).json({
+                    statusCode: 404,
+                    message: "Assignment is currently locked and cannot be opened again"
+                });
+            }
+        }
+
         const assignment = assignmentData.rows[0];
         const fetchdata = await pool.query(`SELECT * FROM tbl_assignment WHERE assignment_id=$1`, [assignment_id]);
 
