@@ -181,6 +181,79 @@ exports.getStudentMyCourse = async (req, res) => {
   }
 };
 
+// exports.getAllCoursesWithEnrollStatus = async (req, res) => {
+//   const { student_id } = req.body;
+
+//   try {
+//     if (!student_id) {
+//       return res.status(400).json({
+//         statusCode: 400,
+//         message: "student_id is required"
+//       });
+//     }
+
+//     const result = await pool.query(`
+//       SELECT
+//         tc.course_id,
+//         tc.course_title,
+//         tc.course_description,
+//         tc.price,
+//         tc.level,
+//         tc.category_id,
+//         cat.category_name,
+
+//         tsc.student_course_id,
+
+//         CASE 
+//           WHEN tsc.student_course_id IS NOT NULL 
+//           THEN true 
+//           ELSE false 
+//         END AS is_enrolled
+
+//       FROM tbl_course tc
+
+//       JOIN tbl_category cat
+//         ON tc.category_id = cat.category_id
+
+//       LEFT JOIN tbl_student_course tsc
+//         ON tsc.course_id = tc.course_id
+//        AND tsc.student_id = $1
+
+//       WHERE tc.status = 'Published'
+
+//       /* ✅ ALL assignments must be Published */
+//       AND NOT EXISTS (
+//         SELECT 1
+//         FROM tbl_assignment ta
+//         WHERE ta.course_id = tc.course_id
+//           AND ta.status <> 'Published'
+//       )
+
+//       /* optional: ensure course HAS assignments */
+//       AND EXISTS (
+//         SELECT 1
+//         FROM tbl_assignment ta
+//         WHERE ta.course_id = tc.course_id
+//       )
+
+//       ORDER BY tc.course_id ASC
+//     `, [student_id]);
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: "Fetched Successfully",
+//       result: result.rows
+//     });
+
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error"
+//     });
+//   }
+// };
+
 exports.getAllCoursesWithEnrollStatus = async (req, res) => {
   const { student_id } = req.body;
 
@@ -208,7 +281,13 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
           WHEN tsc.student_course_id IS NOT NULL 
           THEN true 
           ELSE false 
-        END AS is_enrolled
+        END AS is_enrolled,
+
+        /* ✅ Course Completed Check */
+        CASE
+          WHEN BOOL_AND(tscp.is_completed) = true THEN true
+          ELSE false
+        END AS is_course_completed
 
       FROM tbl_course tc
 
@@ -219,9 +298,12 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
         ON tsc.course_id = tc.course_id
        AND tsc.student_id = $1
 
+      LEFT JOIN tbl_student_course_progress tscp
+        ON tscp.course_id = tc.course_id
+       AND tscp.student_id = $1
+
       WHERE tc.status = 'Published'
 
-      /* ✅ ALL assignments must be Published */
       AND NOT EXISTS (
         SELECT 1
         FROM tbl_assignment ta
@@ -229,12 +311,21 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
           AND ta.status <> 'Published'
       )
 
-      /* optional: ensure course HAS assignments */
       AND EXISTS (
         SELECT 1
         FROM tbl_assignment ta
         WHERE ta.course_id = tc.course_id
       )
+
+      GROUP BY
+        tc.course_id,
+        tc.course_title,
+        tc.course_description,
+        tc.price,
+        tc.level,
+        tc.category_id,
+        cat.category_name,
+        tsc.student_course_id
 
       ORDER BY tc.course_id ASC
     `, [student_id]);
@@ -253,8 +344,6 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     });
   }
 };
-
-
 exports.getstudentcourse = async (req, res) => {
   const { course_id, student_id } = req.body;
 
