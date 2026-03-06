@@ -16,11 +16,11 @@ function formatDurationHMS(seconds) {
 
 exports.addfeedback = async (req, res) => {
   try {
-    const { student_id, tutor_id, course_id, rating, enjoy_most, review} = req.body;
+    const { student_id, tutor_id, course_id, rating, enjoy_most, review } = req.body;
 
     if (!student_id || !tutor_id || !rating) {
       return res.status(400).json({
-        statusCode:400,
+        statusCode: 400,
         message: "student_id, tutor_id and rating are required"
       });
     }
@@ -35,7 +35,7 @@ exports.addfeedback = async (req, res) => {
       studentCheck.rows[0].role !== 'student'
     ) {
       return res.status(400).json({
-        statusCode:400,
+        statusCode: 400,
         message: "Invalid student_id"
       });
     }
@@ -50,25 +50,25 @@ exports.addfeedback = async (req, res) => {
       tutorCheck.rows[0].role !== 'tutor'
     ) {
       return res.status(400).json({
-        statusCode:400,
+        statusCode: 400,
         message: "Invalid tutor_id"
       });
     }
 
     const result = await con.query(`INSERT INTO tbl_feedback (student_id, tutor_id, course_id, rating, enjoy_most, review) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [ student_id, tutor_id, course_id || null, rating, enjoy_most || null, review || null ]
+      [student_id, tutor_id, course_id || null, rating, enjoy_most || null, review || null]
     );
 
     return res.status(200).json({
-      statusCode:200,
+      statusCode: 200,
       message: "Feedback added successfully",
       data: result.rows[0]
     });
 
   } catch (error) {
- 
+
     return res.status(500).json({
-      statusCode:500,
+      statusCode: 500,
       message: "Internal server error"
     });
   }
@@ -80,7 +80,7 @@ exports.deleteFeedback = async (req, res) => {
 
     if (!feedback_id) {
       return res.status(400).json({
-        statusCode:400,
+        statusCode: 400,
         message: "feedback_id is required"
       });
     }
@@ -91,7 +91,7 @@ exports.deleteFeedback = async (req, res) => {
 
     if (check.rows.length === 0) {
       return res.status(404).json({
-        statusCode:404,
+        statusCode: 404,
         message: "Feedback not found"
       });
     }
@@ -101,14 +101,14 @@ exports.deleteFeedback = async (req, res) => {
     );
 
     return res.status(200).json({
-      statusCode:200,
+      statusCode: 200,
       message: "Feedback deleted successfully"
     });
 
   } catch (error) {
-     
+
     return res.status(500).json({
-      statusCode:500,
+      statusCode: 500,
       message: "Internal server error"
     });
   }
@@ -120,14 +120,14 @@ exports.updateFeedback = async (req, res) => {
 
     if (!feedback_id) {
       return res.status(400).json({
-        statusCode:400,
+        statusCode: 400,
         message: "feedback_id is required"
       });
     }
 
     if (rating === undefined && enjoy_most === undefined && review === undefined) {
       return res.status(400).json({
-        statusCode:400,
+        statusCode: 400,
         message: "At least one field (rating, enjoy_most, review) is required to update"
       });
     }
@@ -138,21 +138,21 @@ exports.updateFeedback = async (req, res) => {
 
     if (result.rows.length === 0) {
       return res.status(404).json({
-        statusCode:404,
+        statusCode: 404,
         message: "Feedback not found"
       });
     }
 
     return res.status(200).json({
-      statusCode:200,
+      statusCode: 200,
       message: "Feedback updated successfully",
       data: result.rows[0]
     });
 
   } catch (error) {
-   
+
     return res.status(500).json({
-      statusCode:'500',
+      statusCode: '500',
       message: "Internal server error"
     });
   }
@@ -164,12 +164,12 @@ exports.getTutorFeedbacks = async (req, res) => {
 
     if (!tutor_id) {
       return res.status(400).json({
-         statusCode:400,
+        statusCode: 400,
         message: "tutor_id is required"
       });
     }
 
-     const feedbackResult = await con.query(`SELECT f.feedback_id, f.rating, f.enjoy_most, f.review, f.response, f.feedback_created_at, u.user_id AS student_id, u.full_name AS student_name, c.course_id, c.course_title FROM tbl_feedback f JOIN tbl_user u ON f.student_id = u.user_id LEFT JOIN tbl_course c ON f.course_id = c.course_id WHERE f.tutor_id = $1 ORDER BY f.feedback_id DESC`,
+    const feedbackResult = await con.query(`SELECT f.feedback_id, f.rating, f.enjoy_most, f.review, f.response, f.feedback_created_at, u.user_id AS student_id, u.full_name AS student_name, c.course_id, c.course_title FROM tbl_feedback f JOIN tbl_user u ON f.student_id = u.user_id LEFT JOIN tbl_course c ON f.course_id = c.course_id WHERE f.tutor_id = $1 ORDER BY f.feedback_id DESC`,
       [tutor_id]
     );
 
@@ -178,7 +178,7 @@ exports.getTutorFeedbacks = async (req, res) => {
     );
 
     return res.status(200).json({
-      statusCode:200,
+      statusCode: 200,
       message: "Tutor feedbacks fetched successfully",
       total_feedbacks: feedbackResult.rows.length,
       rating_summary: ratingResult.rows[0],
@@ -186,9 +186,9 @@ exports.getTutorFeedbacks = async (req, res) => {
     });
 
   } catch (error) {
-   
+
     return res.status(500).json({
-       statusCode:500,
+      statusCode: 500,
       message: "Internal server error"
     });
   }
@@ -200,7 +200,7 @@ exports.respondToFeedback = async (req, res) => {
 
     if (!feedback_id || !response) {
       return res.status(400).json({
-        statusCode:400,
+        statusCode: 400,
         message: "feedback_id and response are required"
       });
     }
@@ -211,13 +211,13 @@ exports.respondToFeedback = async (req, res) => {
 
     if (result.rowCount === 0) {
       return res.status(404).json({
-        statusCode:404,
+        statusCode: 404,
         message: "Feedback not found"
       });
     }
 
     return res.status(200).json({
-      statusCode:200,
+      statusCode: 200,
       message: "Updated Successfully",
       data: result.rows[0]
     });
@@ -225,7 +225,7 @@ exports.respondToFeedback = async (req, res) => {
   } catch (error) {
     console.error("RESPOND FEEDBACK ERROR 🔴:", error);
     return res.status(500).json({
-      statusCode:500,
+      statusCode: 500,
       message: "Internal server error"
     });
   }
@@ -267,10 +267,23 @@ exports.getStudentCoursefeedback = async (req, res) => {
 
     if (!student_id || !course_id) {
       return res.status(400).json({
+        statusCode:400,
         message: "student_id and course_id are required"
       });
     }
+    const purchaseCheck = await con.query(
+      `SELECT student_course_id 
+       FROM tbl_student_course
+       WHERE student_id = $1 AND course_id = $2`,
+      [student_id, course_id]
+    );
 
+    if (purchaseCheck.rows.length === 0) {
+      return res.status(403).json({
+        statusCode: 403
+        
+      });
+    }
     const result = await con.query(
       `
       SELECT 
@@ -325,8 +338,8 @@ exports.getStudentCoursefeedback = async (req, res) => {
     // ✅ If course not found
     if (result.rows.length === 0) {
       return res.status(404).json({
-        statusCode: 404,
-        message: "Course not found"
+        statusCode: 404
+
       });
     }
 

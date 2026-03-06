@@ -335,8 +335,8 @@ exports.getstudentcourse = async (req, res) => {
 
     if (rows.length === 0) {
       return res.json({
-        statusCode: 200,
-        data: null
+        statusCode: 404
+         
       });
     }
 
@@ -2032,8 +2032,8 @@ exports.getCourseenroleDetails = async (req, res) => {
 
     if (courseResult.rows.length === 0) {
       return res.status(404).json({
-        statusCode: 404,
-        message: "Course not found"
+        statusCode: 404
+        
       });
     }
 
