@@ -252,11 +252,11 @@ exports.getAssignmentById = async (req, res) => {
             });
         }
 
-            const progressCheck = await pool.query(
+        const progressCheck = await pool.query(
             `SELECT is_completed, is_unlocked
-                FROM tbl_student_course_progress
-                WHERE assignment_id = $1`,
-            [assignment_id]
+            FROM tbl_student_course_progress
+            WHERE assignment_id = $1 AND student_id = $2`,
+            [assignment_id, student_id]
         );
 
         if (progressCheck.rows.length > 0) {
@@ -270,19 +270,13 @@ exports.getAssignmentById = async (req, res) => {
                 });
             }
 
-            if (progress.is_unlocked === true) {
+            if (progress.is_unlocked === false) {
                 return res.status(404).json({
                     statusCode: 404,
-                    message: "Assignment is currently unlocked and cannot be opened again"
+                    message: "Assignment is locked"
                 });
             }
 
-               if (progress.is_unlocked === false) {
-                return res.status(404).json({
-                    statusCode: 404,
-                    message: "Assignment is currently locked and cannot be opened again"
-                });
-            }
         }
 
         const assignment = assignmentData.rows[0];
@@ -1112,7 +1106,7 @@ exports.updatetutorfinalassingmentfeedback = async (req, res) => {
         return res.status(200).json({
             statusCode: 200,
             message: "Tutor feedback updated successfully"
-            
+
         });
 
     } catch (error) {
