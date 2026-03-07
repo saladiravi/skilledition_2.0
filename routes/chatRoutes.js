@@ -16,4 +16,8 @@ router.post(
   upload.fields([{ name: "file_url", maxCount: 1 }]),
   chatController.updateMessage
 );
+
+router.post('/updatepausechat',verifyToken, allowRoles("admin","student","tutor"),chatController.updatepausechat);
+
+
 module.exports = router;

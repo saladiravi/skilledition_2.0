@@ -84,6 +84,20 @@ exports.sendMessage = async (req, res) => {
       chatRoomId = room.rows[0].chat_room_id;
     }
 
+    const pauseCheck = await pool.query(
+      `SELECT pause_chat 
+       FROM tbl_chat_room
+       WHERE chat_room_id=$1`,
+      [chatRoomId]
+    );
+
+    if (pauseCheck.rows[0].pause_chat === true) {
+      return res.status(403).json({
+        statusCode: 403,
+        message: "Chat is paused. You cannot send messages."
+      });
+    }
+
     // =====================================================
     // 📎 FILE / IMAGE UPLOAD
     // =====================================================
@@ -170,7 +184,7 @@ exports.getMessages = async (req, res) => {
     }
 
     res.status(200).json({
-      statusCode:200,
+      statusCode: 200,
       messages
     });
 
@@ -431,9 +445,9 @@ exports.updateMessage = async (req, res) => {
       }
 
       return res.status(200).json({
-        statusCode:200,
+        statusCode: 200,
         message: "File updated successfully"
-        
+
       });
     }
 
@@ -452,27 +466,60 @@ exports.updateMessage = async (req, res) => {
 
       if (result.rowCount === 0) {
         return res.status(404).json({
-          statusCode:404,
-          message: "Message not found" });
+          statusCode: 404,
+          message: "Message not found"
+        });
       }
 
       return res.status(200).json({
-        statusCode:200,
+        statusCode: 200,
         message: "Message updated successfully"
-        
+
       });
     }
 
     return res.status(400).json({
-      statusCode:400,
+      statusCode: 400,
       message: "Nothing to update"
     });
 
   } catch (error) {
-    
+
     res.status(500).json({
-      statusCode:500,
+      statusCode: 500,
       message: "Internal Server Error"
     });
   }
 };
+
+
+
+exports.updatepausechat = async (req, res) => {
+  const { chat_room_id, pause_chat } = req.body;
+
+  try {
+
+    const result = await pool.query(
+      `UPDATE tbl_chat_room
+         SET pause_chat = $1
+           WHERE chat_room_id = $2
+         RETURNING *`,
+      [pause_chat, chat_room_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    return res.status(200).json({
+      message: "pause chat successfully",
+      data: result.rows[0]
+    });
+  }
+  catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: "Internal Server Error"
+    });
+  }
+}
