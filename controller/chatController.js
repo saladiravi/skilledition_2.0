@@ -154,6 +154,15 @@ exports.getMessages = async (req, res) => {
 
   try {
 
+    const chatRoomResult = await pool.query(
+      `SELECT pause_chat
+       FROM tbl_chat_room
+       WHERE chat_room_id = $1`,
+      [chat_room_id]
+    );
+
+    const pauseChat = chatRoomResult.rows[0]?.pause_chat || false;
+
     const messagesResult = await pool.query(
       `SELECT m.chat_id,
               m.message,
@@ -162,11 +171,11 @@ exports.getMessages = async (req, res) => {
               m.file_url AS file,
              TO_CHAR(m.created_at AT TIME ZONE 'Asia/Kolkata', 'DD-MM-YYYY HH12-MI AM'),
               u.full_name,
-              u.role,
-              tc.pause_chat
+              u.role
+              
        FROM tbl_chat_messages m
        JOIN tbl_user u ON m.sender_id = u.user_id
-         JOIN tbl_chat_room tc ON m.chat_room_id=tc.chat_room_id
+          
        WHERE m.chat_room_id = $1
        ORDER BY m.created_at ASC`,
       [chat_room_id]
@@ -187,6 +196,7 @@ exports.getMessages = async (req, res) => {
 
     res.status(200).json({
       statusCode: 200,
+       pause_chat: pauseChat,
       messages
     });
 
@@ -510,13 +520,14 @@ exports.updatepausechat = async (req, res) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ 
-        statusCode:404,
-        message: "Message not found" });
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Message not found"
+      });
     }
 
     return res.status(200).json({
-      statusCode:200,
+      statusCode: 200,
       message: "pause chat successfully",
       data: result.rows[0]
     });
@@ -524,7 +535,7 @@ exports.updatepausechat = async (req, res) => {
   catch (error) {
     console.log(error);
     res.status(500).json({
-      statusCode:500,
+      statusCode: 500,
       message: "Internal Server Error"
     });
   }
