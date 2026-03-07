@@ -28,6 +28,7 @@ router.post('/unlockfinalassignment',verifyToken,allowRoles("admin","student","t
 router.post('/updatedtime',verifyToken,allowRoles("admin","student","tutor"),studentcourse.updatedtime)
 
 router.post('/getcourseenroleDetails',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getCourseenroleDetails)
+router.post('/getstudentoverview',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getstudentoverview)
 
 
 module.exports=router
