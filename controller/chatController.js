@@ -153,7 +153,15 @@ exports.getMessages = async (req, res) => {
   const { chat_room_id } = req.body;
 
   try {
-
+    await pool.query(
+      `UPDATE tbl_chat_messages
+       SET message_seen = true
+       WHERE chat_room_id = $1
+       AND sender_id != $2
+       AND message_seen = false`,
+      [chat_room_id, user_id]
+    );
+    
     const chatRoomResult = await pool.query(
       `SELECT pause_chat
        FROM tbl_chat_room
@@ -493,22 +501,6 @@ exports.getChatList = async (req, res) => {
     }
 
 
-    // ===================================================
-    // 🔥 Update messages as seen
-    // ===================================================
-
-    await pool.query(
-      `UPDATE tbl_chat_messages
-       SET message_seen = true
-       WHERE sender_id != $1
-       AND message_seen = false`,
-      [user_id]
-    );
-
-
-    // ===================================================
-    // RESPONSE
-    // ===================================================
 
     res.status(200).json({
       statusCode: 200,
