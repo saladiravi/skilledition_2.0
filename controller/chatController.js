@@ -528,8 +528,8 @@ exports.updatepausechat = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: "pause chat successfully",
-      data: result.rows[0]
+      message: "pause chat successfully"
+     
     });
   }
   catch (error) {
