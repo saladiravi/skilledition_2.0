@@ -150,18 +150,18 @@ exports.sendMessage = async (req, res) => {
 
 
 exports.getMessages = async (req, res) => {
-  const { chat_room_id } = req.body;
+  const { chat_room_id ,user_id} = req.body;
 
   try {
-    await pool.query(
+  await pool.query(
       `UPDATE tbl_chat_messages
        SET message_seen = true
        WHERE chat_room_id = $1
-       AND sender_id != $2
+       AND sender_id <> $2
        AND message_seen = false`,
       [chat_room_id, user_id]
     );
-    
+
     const chatRoomResult = await pool.query(
       `SELECT pause_chat
        FROM tbl_chat_room
