@@ -510,10 +510,13 @@ exports.updatepausechat = async (req, res) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ message: "Message not found" });
+      return res.status(404).json({ 
+        statusCode:404,
+        message: "Message not found" });
     }
 
     return res.status(200).json({
+      statusCode:200,
       message: "pause chat successfully",
       data: result.rows[0]
     });
@@ -521,6 +524,7 @@ exports.updatepausechat = async (req, res) => {
   catch (error) {
     console.log(error);
     res.status(500).json({
+      statusCode:500,
       message: "Internal Server Error"
     });
   }
