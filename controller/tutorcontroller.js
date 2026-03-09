@@ -1725,8 +1725,8 @@ exports.getAllTutorbystatus = async (req, res) => {
           tp.royalty_percentage,
           tp.price,
           dv.short_bio,
-
-          TO_CHAR(t.submitted_at, 'DD/MM/YYYY, HH12:MI AM') AS submitted_at,
+ 
+          TO_CHAR(t.submitted_at AT TIME ZONE 'Asia/Kolkata', 'DD-MM-YYYY HH12-MI AM') AS submitted_at,
           t.country
 
         FROM tbl_tutor t
@@ -1774,7 +1774,8 @@ exports.getAllTutorbystatus = async (req, res) => {
           COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
           COUNT(DISTINCT te.tutor_education_id) AS education,
 
-          TO_CHAR(t.submitted_at, 'DD/MM/YYYY, HH12:MI AM') AS submitted_at,
+       
+          TO_CHAR(t.submitted_at AT TIME ZONE 'Asia/Kolkata', 'DD-MM-YYYY HH12-MI AM') AS submitted_at,
 
           tp.plan_type,
           tp.royalty_percentage,
