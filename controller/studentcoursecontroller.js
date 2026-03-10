@@ -2465,6 +2465,7 @@ exports.getstudentoverview = async (req, res) => {
       data: {
         courses: courseData,
         total_learning_time: totalLearningTime,
+        learningtime:learningTimeQuery,
         last_video: lastVideo.rows[0] || null,
         assignments: assignments.rows,
         mentors: mentors.rows
