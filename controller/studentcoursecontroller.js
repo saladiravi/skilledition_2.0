@@ -2418,8 +2418,7 @@ JOIN tbl_module_videos tmv
 
 WHERE sc.student_id = $1
 `;
-   const totalLearningTime =
-  learningTime.rows[0]?.total_learning_time || "00:00:00";
+ 
 
     // Run all queries together (faster)
    const [courses, lastVideo, assignments, mentors, learningTime] = await Promise.all([
@@ -2430,6 +2429,8 @@ WHERE sc.student_id = $1
         pool.query(learningTimeQuery, [student_id])
       ]);
 
+      const totalLearningTime =
+  learningTime.rows[0]?.total_learning_time || "00:00:00";
     // Calculate course progress
     const courseData = courses.rows.map(course => {
 
