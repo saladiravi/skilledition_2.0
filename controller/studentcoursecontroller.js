@@ -1919,12 +1919,12 @@ exports.getfinalexamresult = async (req, res) => {
       });
     }
 
-     if (checklock.rows[0].status === "Completed") {
-      return res.status(404).json({
-        statusCode: 404,
-        message: 'Final assignment already Completed'
-      });
-    }
+    //  if (checklock.rows[0].status === "Completed") {
+    //   return res.status(404).json({
+    //     statusCode: 404,
+    //     message: 'Final assignment already Completed'
+    //   });
+    // }
     // 2. Get Questions & Options
     const questions = await pool.query(`
       SELECT 
