@@ -1506,7 +1506,7 @@ exports.writeExam = async (req, res) => {
 
 
 exports.getAssignmentById = async (req, res) => {
-  const { assignment_id ,student_id} = req.body;
+  const { assignment_id, student_id } = req.body;
 
   try {
     // Check assignment exists
@@ -1706,12 +1706,12 @@ exports.getfinalquestions = async (req, res) => {
         message: 'Exam is locked'
       });
     }
-  if (checklock.rows[0].status === "Completed") {
+    if (checklock.rows[0].status === "Completed") {
       return res.status(404).json({
         statusCode: 404,
         message: 'Exam is Completed'
       });
-    }  
+    }
     const assigment = await pool.query(`SELECT is_unlocked ,status,timmer,remaining_time  FROM tbl_student_final_assignment WHERE final_assignment_id=$1`, [final_assignment_id])
 
     // 2. Get Questions & Options
@@ -1910,7 +1910,7 @@ exports.getfinalexamresult = async (req, res) => {
         message: 'Final assignment not found'
       });
     }
- 
+
 
     if (checklock.rows[0].is_unlocked === false) {
       return res.status(404).json({
@@ -2397,13 +2397,38 @@ exports.getstudentoverview = async (req, res) => {
       WHERE sc.student_id = $1
     `;
 
+
+    const learningTimeQuery = `
+SELECT 
+  COALESCE(
+    TO_CHAR(SUM(tmv.video_duration::interval), 'HH24:MI:SS'),
+    '00:00:00'
+  ) AS total_learning_time
+
+FROM tbl_student_course sc
+
+JOIN tbl_course tc
+  ON sc.course_id = tc.course_id
+
+JOIN tbl_module tm
+  ON tc.course_id = tm.course_id
+
+JOIN tbl_module_videos tmv
+  ON tm.module_id = tmv.module_id
+
+WHERE sc.student_id = $1
+`;
+   const totalLearningTime =
+  learningTime.rows[0]?.total_learning_time || "00:00:00";
+
     // Run all queries together (faster)
-    const [courses, lastVideo, assignments, mentors] = await Promise.all([
-      pool.query(courseQuery, [student_id]),
-      pool.query(lastVideoQuery, [student_id]),
-      pool.query(assignmentQuery, [student_id]),
-      pool.query(mentorQuery, [student_id])
-    ]);
+   const [courses, lastVideo, assignments, mentors, learningTime] = await Promise.all([
+        pool.query(courseQuery, [student_id]),
+        pool.query(lastVideoQuery, [student_id]),
+        pool.query(assignmentQuery, [student_id]),
+        pool.query(mentorQuery, [student_id]),
+        pool.query(learningTimeQuery, [student_id])
+      ]);
 
     // Calculate course progress
     const courseData = courses.rows.map(course => {
@@ -2432,6 +2457,7 @@ exports.getstudentoverview = async (req, res) => {
       message: "Fetched successfully",
       data: {
         courses: courseData,
+         total_learning_time: totalLearningTime,
         last_video: lastVideo.rows[0] || null,
         assignments: assignments.rows,
         mentors: mentors.rows
