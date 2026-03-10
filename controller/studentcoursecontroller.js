@@ -2279,137 +2279,172 @@ exports.getCourseenroleDetails = async (req, res) => {
 
 
 exports.getstudentoverview = async (req, res) => {
+
   const { student_id } = req.body;
+
+  if (!student_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "student_id is required"
+    });
+  }
 
   try {
 
-    // 1️⃣ Courses Section
-    const courses = await pool.query(`
+    // 1️⃣ Courses with progress
+    const courseQuery = `
       SELECT 
         tc.course_id,
         tc.course_title,
-        COUNT(tmv.module_video_id) AS total_videos,
-        COUNT(svp.module_video_id) FILTER (WHERE svp.watched = 'true') AS watched_videos
-      FROM tbl_course tc
-      JOIN tbl_module tm 
+        tu.full_name AS mentor_name,
+
+        COUNT(DISTINCT tmv.module_video_id) AS total_videos,
+
+        COUNT(DISTINCT svp.module_video_id)
+        FILTER (WHERE svp.is_completed = true) AS watched_videos
+
+      FROM tbl_student_course sc
+
+      JOIN tbl_course tc
+        ON sc.course_id = tc.course_id
+
+      JOIN tbl_module tm
         ON tc.course_id = tm.course_id
-      JOIN tbl_module_videos tmv 
+
+      JOIN tbl_module_videos tmv
         ON tm.module_id = tmv.module_id
-      LEFT JOIN tbl_student_course_progress svp 
-        ON tmv.module_video_id = svp.module_video_id 
+
+      LEFT JOIN tbl_student_course_progress svp
+        ON tmv.module_video_id = svp.module_video_id
         AND svp.student_id = $1
-      WHERE
-        (
-          tc.course_id IN (
-            SELECT course_id 
-            FROM tbl_student_course 
-            WHERE student_id = $1
-          )
-          OR
-          NOT EXISTS (
-            SELECT 1 
-            FROM tbl_student_course 
-            WHERE student_id = $1
-          )
-        )
-      GROUP BY tc.course_id, tc.course_title
+
+      JOIN tbl_user tu
+        ON tc.tutor_id = tu.user_id
+
+      WHERE sc.student_id = $1
+
+      GROUP BY tc.course_id, tc.course_title, tu.full_name
       ORDER BY tc.course_id DESC
-    `,[student_id]);
+    `;
 
-
-    // 2️⃣ Courses Watching
-    const watching = await pool.query(`
-      SELECT DISTINCT
-        tc.course_id,
-        tc.course_title
-      FROM tbl_student_course_progress svp
-      JOIN tbl_module_videos tmv 
-        ON svp.module_video_id = tmv.module_video_id
-      JOIN tbl_module tm 
-        ON tmv.module_id = tm.module_id
-      JOIN tbl_course tc 
-        ON tm.course_id = tc.course_id
-      WHERE svp.student_id = $1
-    `,[student_id]);
-
-
-    // 3️⃣ Learning Progress
-    const progress = await pool.query(`
-      SELECT
-        COUNT(DISTINCT DATE(completed_at)) AS days,
-        COUNT(module_video_id) AS sessions
-      FROM tbl_student_course_progress
-      WHERE student_id = $1
-    `,[student_id]);
-
-
-    // 4️⃣ Last Watched Video
-    const lastVideo = await pool.query(`
+    // 2️⃣ Last watched video
+    const lastVideoQuery = `
       SELECT 
-        tmv.video_title,
-        tc.course_title
+        tc.course_title,
+        tmv.video_title
+
       FROM tbl_student_course_progress svp
-      JOIN tbl_module_videos tmv 
+
+      JOIN tbl_module_videos tmv
         ON svp.module_video_id = tmv.module_video_id
-      JOIN tbl_module tm 
+
+      JOIN tbl_module tm
         ON tmv.module_id = tm.module_id
-      JOIN tbl_course tc 
+
+      JOIN tbl_course tc
         ON tm.course_id = tc.course_id
+
       WHERE svp.student_id = $1
+      AND svp.is_completed = true
+
       ORDER BY svp.student_course_progress_id DESC
       LIMIT 1
-    `,[student_id]);
+    `;
 
-
-    // 5️⃣ Assignments
-    const assignments = await pool.query(`
+    // 3️⃣ Latest assignments
+    const assignmentQuery = `
       SELECT 
         ta.assignment_title,
         ta.total_questions,
-        
+
         CASE 
           WHEN scp.is_completed = true THEN 'Completed'
           ELSE 'Pending'
         END AS status
-      FROM tbl_assignment ta
+
+      FROM tbl_student_course sc
+
+      JOIN tbl_module tm
+        ON sc.course_id = tm.course_id
+
+      JOIN tbl_assignment ta
+        ON tm.module_id = ta.module_id
+
       LEFT JOIN tbl_student_course_progress scp
         ON ta.assignment_id = scp.assignment_id
         AND scp.student_id = $1
+
+      WHERE sc.student_id = $1
+
       ORDER BY ta.assignment_date DESC
       LIMIT 3
-    `,[student_id]);
+    `;
 
-
-    // 6️⃣ Mentors (Tutors from Courses)
-    const mentors = await pool.query(`
+    // 4️⃣ Mentors
+    const mentorQuery = `
       SELECT DISTINCT
         tu.user_id,
-        tu.full_name AS mentor_name,
-        'Tutor' AS mentor_role
-      FROM tbl_course tc
-      JOIN tbl_user tu 
+        tu.full_name
+
+      FROM tbl_student_course sc
+
+      JOIN tbl_course tc
+        ON sc.course_id = tc.course_id
+
+      JOIN tbl_user tu
         ON tc.tutor_id = tu.user_id
-      LIMIT 5
-    `);
 
+      WHERE sc.student_id = $1
+    `;
 
-    return res.status(200).json({
-      statusCode:200,
-      courses:courses.rows,
-      courses_watching:watching.rows,
-      learning_progress:progress.rows[0] || {},
-      last_video:lastVideo.rows[0] || null,
-      assignments:assignments.rows,
-      mentors:mentors.rows
+    // Run all queries together (faster)
+    const [courses, lastVideo, assignments, mentors] = await Promise.all([
+      pool.query(courseQuery, [student_id]),
+      pool.query(lastVideoQuery, [student_id]),
+      pool.query(assignmentQuery, [student_id]),
+      pool.query(mentorQuery, [student_id])
+    ]);
+
+    // Calculate course progress
+    const courseData = courses.rows.map(course => {
+
+      const totalVideos = Number(course.total_videos);
+      const watchedVideos = Number(course.watched_videos);
+
+      const percentage =
+        totalVideos === 0
+          ? 0
+          : Math.round((watchedVideos / totalVideos) * 100);
+
+      return {
+        course_id: course.course_id,
+        course_title: course.course_title,
+        mentor_name: course.mentor_name,
+        total_videos: totalVideos,
+        watched_videos: watchedVideos,
+        percentage
+      };
+
     });
 
-  } catch(error) {
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Fetched successfully",
+      data: {
+        courses: courseData,
+        last_video: lastVideo.rows[0] || null,
+        assignments: assignments.rows,
+        mentors: mentors.rows
+      }
+    });
 
-    console.log(error);
+  } catch (error) {
+
+    console.error(error);
 
     return res.status(500).json({
-      statusCode:500,
-      message:'Internal Server Error'
+      statusCode: 500,
+      message: "Internal Server Error"
     });
 
   }
