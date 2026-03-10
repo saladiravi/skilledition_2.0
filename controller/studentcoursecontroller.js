@@ -2399,38 +2399,44 @@ exports.getstudentoverview = async (req, res) => {
 
 
     const learningTimeQuery = `
-SELECT 
-  COALESCE(
-    TO_CHAR(SUM(tmv.video_duration::interval), 'HH24:MI:SS'),
-    '00:00:00'
-  ) AS total_learning_time
+                  SELECT 
+            tc.course_id,
+            tc.duration,
+            tc.no_of_modules,
 
-FROM tbl_student_course sc
+            COALESCE(
+              TO_CHAR(SUM(tmv.video_duration::interval), 'HH24:MI:SS'),
+              '00:00:00'
+            ) AS total_learning_time
 
-JOIN tbl_course tc
-  ON sc.course_id = tc.course_id
+          FROM tbl_student_course sc
 
-JOIN tbl_module tm
-  ON tc.course_id = tm.course_id
+          JOIN tbl_course tc
+            ON sc.course_id = tc.course_id
 
-JOIN tbl_module_videos tmv
-  ON tm.module_id = tmv.module_id
+          JOIN tbl_module tm
+            ON tc.course_id = tm.course_id
 
-WHERE sc.student_id = $1
-`;
- 
+          JOIN tbl_module_videos tmv
+            ON tm.module_id = tmv.module_id
+
+          WHERE sc.student_id = $1
+
+          GROUP BY tc.course_id, tc.duration, tc.no_of_modules
+        `;
+
 
     // Run all queries together (faster)
-   const [courses, lastVideo, assignments, mentors, learningTime] = await Promise.all([
-        pool.query(courseQuery, [student_id]),
-        pool.query(lastVideoQuery, [student_id]),
-        pool.query(assignmentQuery, [student_id]),
-        pool.query(mentorQuery, [student_id]),
-        pool.query(learningTimeQuery, [student_id])
-      ]);
+    const [courses, lastVideo, assignments, mentors, learningTime] = await Promise.all([
+      pool.query(courseQuery, [student_id]),
+      pool.query(lastVideoQuery, [student_id]),
+      pool.query(assignmentQuery, [student_id]),
+      pool.query(mentorQuery, [student_id]),
+      pool.query(learningTimeQuery, [student_id])
+    ]);
 
-      const totalLearningTime =
-  learningTime.rows[0]?.total_learning_time || "00:00:00";
+    const totalLearningTime =
+      learningTime.rows[0]?.total_learning_time || "00:00:00";
     // Calculate course progress
     const courseData = courses.rows.map(course => {
 
@@ -2458,7 +2464,7 @@ WHERE sc.student_id = $1
       message: "Fetched successfully",
       data: {
         courses: courseData,
-         total_learning_time: totalLearningTime,
+        total_learning_time: totalLearningTime,
         last_video: lastVideo.rows[0] || null,
         assignments: assignments.rows,
         mentors: mentors.rows
