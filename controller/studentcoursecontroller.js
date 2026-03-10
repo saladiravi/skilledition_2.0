@@ -2397,36 +2397,35 @@ exports.getstudentoverview = async (req, res) => {
       WHERE sc.student_id = $1
     `;
 
-
+    // 5️⃣ Learning Time
     const learningTimeQuery = `
-                  SELECT 
-            tc.course_id,
-            tc.duration,
-            tc.no_of_modules,
+      SELECT 
+        tc.course_id,
+        tc.duration,
+        tc.no_of_modules,
 
-            COALESCE(
-              TO_CHAR(SUM(tmv.video_duration::interval), 'HH24:MI:SS'),
-              '00:00:00'
-            ) AS total_learning_time
+        COALESCE(
+          TO_CHAR(SUM(tmv.video_duration::interval), 'HH24:MI:SS'),
+          '00:00:00'
+        ) AS total_learning_time
 
-          FROM tbl_student_course sc
+      FROM tbl_student_course sc
 
-          JOIN tbl_course tc
-            ON sc.course_id = tc.course_id
+      JOIN tbl_course tc
+        ON sc.course_id = tc.course_id
 
-          JOIN tbl_module tm
-            ON tc.course_id = tm.course_id
+      JOIN tbl_module tm
+        ON tc.course_id = tm.course_id
 
-          JOIN tbl_module_videos tmv
-            ON tm.module_id = tmv.module_id
+      JOIN tbl_module_videos tmv
+        ON tm.module_id = tmv.module_id
 
-          WHERE sc.student_id = $1
+      WHERE sc.student_id = $1
 
-          GROUP BY tc.course_id, tc.duration, tc.no_of_modules
-        `;
+      GROUP BY tc.course_id, tc.duration, tc.no_of_modules
+    `;
 
-
-    // Run all queries together (faster)
+    // Run queries together
     const [courses, lastVideo, assignments, mentors, learningTime] = await Promise.all([
       pool.query(courseQuery, [student_id]),
       pool.query(lastVideoQuery, [student_id]),
@@ -2434,15 +2433,16 @@ exports.getstudentoverview = async (req, res) => {
       pool.query(mentorQuery, [student_id]),
       pool.query(learningTimeQuery, [student_id])
     ]);
-const totalLearningTime =
-  learningTime.rows[0]?.total_learning_time || "00:00:00";
-    // Calculate course progress
+
+    // Learning time data
     const learningData = learningTime.rows.map(row => ({
       course_id: row.course_id,
       duration: row.duration,
       no_of_modules: row.no_of_modules,
       total_learning_time: row.total_learning_time
     }));
+
+    // Calculate course progress
     const courseData = courses.rows.map(course => {
 
       const totalVideos = Number(course.total_videos);
@@ -2464,13 +2464,27 @@ const totalLearningTime =
 
     });
 
+    // If student did not purchase any course
+    if (courseData.length === 0) {
+      return res.status(200).json({
+        statusCode: 200,
+        message: "No courses purchased",
+        data: {
+          courses: [],
+          learningtime: [],
+          last_video: null,
+          assignments: [],
+          mentors: []
+        }
+      });
+    }
+
     return res.status(200).json({
       statusCode: 200,
       message: "Fetched successfully",
       data: {
         courses: courseData,
         learningtime: learningData,
-        learningtime: learningTimeQuery.rows[0],
         last_video: lastVideo.rows[0] || null,
         assignments: assignments.rows,
         mentors: mentors.rows
