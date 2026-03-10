@@ -2426,12 +2426,14 @@ exports.getstudentoverview = async (req, res) => {
     `;
 
     // Run queries together
-    const [courses, lastVideo, assignments, mentors, learningTime] = await Promise.all([
+    const availableCoursesQuery = ` SELECT tc.course_id, tc.course_title, COUNT(tmv.module_video_id) AS total_videos FROM tbl_course tc LEFT JOIN tbl_module tm ON tc.course_id = tm.course_id LEFT JOIN tbl_module_videos tmv ON tm.module_id = tmv.module_id GROUP BY tc.course_id, tc.course_title ORDER BY tc.course_id DESC `;
+    const [courses, lastVideo, assignments, mentors, learningTime, availableCourses] = await Promise.all([
       pool.query(courseQuery, [student_id]),
       pool.query(lastVideoQuery, [student_id]),
       pool.query(assignmentQuery, [student_id]),
       pool.query(mentorQuery, [student_id]),
-      pool.query(learningTimeQuery, [student_id])
+      pool.query(learningTimeQuery, [student_id]),
+      pool.query(availableCoursesQuery)
     ]);
 
     // Learning time data
@@ -2442,7 +2444,7 @@ exports.getstudentoverview = async (req, res) => {
       total_learning_time: row.total_learning_time
     }));
 
-    // Calculate course progress
+    // Course progress
     const courseData = courses.rows.map(course => {
 
       const totalVideos = Number(course.total_videos);
@@ -2466,15 +2468,19 @@ exports.getstudentoverview = async (req, res) => {
 
     // If student did not purchase any course
     if (courseData.length === 0) {
+
+      const availableCourseList = availableCourses.rows.map(course => ({
+        course_id: course.course_id,
+        course_title: course.course_title,
+        total_videos: Number(course.total_videos)
+      }));
+
       return res.status(200).json({
         statusCode: 200,
-        message: "No courses purchased",
+        message: "No purchased courses",
         data: {
-          courses: [],
-          learningtime: [],
-          last_video: null,
-          assignments: [],
-          mentors: []
+          course_watching: [],
+          available_courses: availableCourseList
         }
       });
     }
@@ -2483,7 +2489,7 @@ exports.getstudentoverview = async (req, res) => {
       statusCode: 200,
       message: "Fetched successfully",
       data: {
-        courses: courseData,
+        course_watching: courseData,
         learningtime: learningData,
         last_video: lastVideo.rows[0] || null,
         assignments: assignments.rows,
