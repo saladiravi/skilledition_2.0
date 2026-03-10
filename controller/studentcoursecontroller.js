@@ -2434,10 +2434,15 @@ exports.getstudentoverview = async (req, res) => {
       pool.query(mentorQuery, [student_id]),
       pool.query(learningTimeQuery, [student_id])
     ]);
-
-    const totalLearningTime =
-      learningTime.rows[0]?.total_learning_time || "00:00:00";
+const totalLearningTime =
+  learningTime.rows[0]?.total_learning_time || "00:00:00";
     // Calculate course progress
+    const learningData = learningTime.rows.map(row => ({
+      course_id: row.course_id,
+      duration: row.duration,
+      no_of_modules: row.no_of_modules,
+      total_learning_time: row.total_learning_time
+    }));
     const courseData = courses.rows.map(course => {
 
       const totalVideos = Number(course.total_videos);
@@ -2464,8 +2469,8 @@ exports.getstudentoverview = async (req, res) => {
       message: "Fetched successfully",
       data: {
         courses: courseData,
-        total_learning_time: totalLearningTime,
-        learningtime:learningTimeQuery,
+        learningtime: learningData,
+        learningtime: learningTimeQuery.rows[0],
         last_video: lastVideo.rows[0] || null,
         assignments: assignments.rows,
         mentors: mentors.rows
