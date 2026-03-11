@@ -1130,6 +1130,8 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
 
             JOIN tbl_user AS tutor 
                 ON tutor.user_id = tc.tutor_id
+
+                WHERE tsf.status = 'Completed'
             ORDER BY tsf.final_assignment_id ASC
         `);
 
@@ -1146,3 +1148,5 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
         })
     }
 }
+
+
