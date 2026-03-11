@@ -5,7 +5,20 @@ exports.addinternship = async (req, res) => {
   try {
     const { student_id, project_name, phone_number,github_url, description, web_url } = req.body;
 
+    const certificateCheck = await pool.query(
+      `SELECT certificate_id 
+       FROM tbl_certificates
+       WHERE student_id = $1
+       LIMIT 1`,
+      [student_id]
+    );
 
+    if (certificateCheck.rowCount === 0) {
+      return res.status(403).json({
+        statusCode: 403,
+        message: "You are not eligible to apply for internship. Certificate required."
+      });
+    }
 
 
     await pool.query(`
