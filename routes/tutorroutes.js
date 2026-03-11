@@ -20,8 +20,8 @@ router.post('/updateTutorProfessionalDetails',verifyToken, allowRoles("admin", "
 
 router.post('/getprofilepic', verifyToken, allowRoles("admin", "student", "tutor"), tutorcontroller.getTutorProfilePic);
 router.post('/gettutoronbardbyuserid', verifyToken, allowRoles("admin", "student", "tutor"), tutorcontroller.getTutorOnboarding);
-router.post('/addtutorcertificates', verifyToken, allowRoles("admin", "student", "tutor"), uploads.fields([{ name: "certificate_file", maxCount: 20 }]),validateCertificateFiles, tutorcontroller.addCertificates);
-router.post('/updatetutorcertificates', verifyToken, allowRoles("admin", "student", "tutor"), uploads.any(), validateCertificateFiles,tutorcontroller.updateTutorCertificates);
+router.post('/addtutorcertificates', verifyToken, allowRoles("admin", "student", "tutor"), uploads.fields([{ name: "certificate_file", maxCount: 20 }]), tutorcontroller.addCertificates);
+router.post('/updatetutorcertificates', verifyToken, allowRoles("admin", "student", "tutor"), uploads.any(),tutorcontroller.updateTutorCertificates);
 router.post('/addtutoreducation', verifyToken, allowRoles("admin", "student", "tutor"), tutorcontroller.addEducation);
 router.post('/updatetutoreducation', verifyToken, allowRoles("admin", "student", "tutor"), tutorcontroller.updateEducation);
 
