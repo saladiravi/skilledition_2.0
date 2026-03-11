@@ -35,6 +35,41 @@ const maxSize = 10 * 1024 * 1024; // 10MB
   next();
 };
 
+exports.updatevalidateCertificateFiles = (req, res, next) => {
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/jpg",
+    "application/pdf"
+  ];
+
+  const maxSize = 10 * 1024 * 1024;
+
+  if (!req.files || req.files.length === 0) {
+    return next(); // allow update without new files
+  }
+
+  for (const file of req.files) {
+    if (!allowedTypes.includes(file.mimetype)) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Only image and PDF files are allowed"
+      });
+    }
+
+    if (file.size > maxSize) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Certificate file size should not exceed 10MB"
+      });
+    }
+  }
+
+  next();
+};
+
+
+
 
 exports.validateProfilePic = (req, res, next) => {
   const allowedTypes = [
