@@ -1079,7 +1079,7 @@ exports.updatetutorfinalassingmentfeedback = async (req, res) => {
         return res.status(200).json({
             statusCode: 200,
             message: "Tutor feedback updated successfully"
-            
+
         });
 
     } catch (error) {
@@ -1104,7 +1104,8 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
                 tsf.feedback,
                 TO_CHAR(tsf.submitted_at, 'DD-MM-YYYY') AS submitted_at,
                 TO_CHAR(tsf.created_at, 'DD-MM-YYYY') AS created_at,
-                
+                TO_CHAR(tcr.issued_at, 'DD-MM-YYYY') AS Admin_submitted_at,
+
                 CASE 
                     WHEN EXTRACT(DAY FROM tsf.created_at) <= 15 
                     THEN TO_CHAR(tsf.created_at, 'YYYY-MM') || '-A'
@@ -1131,6 +1132,9 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
             JOIN tbl_user AS tutor 
                 ON tutor.user_id = tc.tutor_id
 
+            LEFT JOIN tbl_certificates AS tcr
+                ON tsf.student_id=tcr.student_id
+                
                 WHERE tsf.status = 'Completed'
             ORDER BY tsf.final_assignment_id ASC
         `);
@@ -1150,3 +1154,135 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
 }
 
 
+exports.updatefinalassigmentbyadmin = async (req, res) => {
+
+  const { final_assignment_id } = req.body;
+
+  try {
+
+    const updateAssignment = await pool.query(
+      `UPDATE tbl_student_final_assignment
+       SET admin_status = 'Submitted'
+       WHERE final_assignment_id = $1
+       RETURNING *`,
+      [final_assignment_id]
+    );
+
+    if (updateAssignment.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Assignment not found"
+      });
+    }
+
+    const assignment = updateAssignment.rows[0];
+
+    const student_id = assignment.student_id;
+    const course_id = assignment.course_id;
+
+    // Insert certificate
+    const insertCertificate = await pool.query(
+      `INSERT INTO tbl_certificates (student_id, course_id)
+       VALUES ($1,$2)
+       RETURNING certificate_id`,
+      [student_id, course_id]
+    );
+
+    const certificate_id = insertCertificate.rows[0].certificate_id;
+
+    const certificate_number =
+      `SKILLEDITION-${String(certificate_id).padStart(5, '0')}`;
+
+    // Update certificate_number
+    await pool.query(
+      `UPDATE tbl_certificates
+       SET certificate_number = $1
+       WHERE certificate_id = $2`,
+      [certificate_number, certificate_id]
+    );
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Assignment updated and certificate generated successfully",
+      certificate_number
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
+
+
+exports.getstudentcertificates = async (req, res) => {
+  const { student_id } = req.body;
+
+  try {
+
+    const result = await pool.query(`
+      SELECT  
+        tcr.certificate_number,
+    
+        TO_CHAR(tcr.issued_at, 'DD-MM-YYYY') AS issued_at,
+        tc.course_id,
+        tc.course_title,
+        tu.full_name
+      FROM tbl_certificates AS tcr
+      JOIN tbl_course AS tc 
+        ON tcr.course_id = tc.course_id
+      JOIN tbl_user AS tu 
+        ON tcr.student_id = tu.user_id
+      WHERE tcr.student_id = $1
+    `, [student_id]);
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Certificates fetched successfully",
+      data: result.rows
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
+
+
+exports.getallstudentcertificates = async (req, res) => {
+  try {
+
+    const result = await pool.query(`
+      SELECT  
+        tcr.certificate_number,
+        tcr.issued_at,
+        tc.course_id,
+        tc.course_title,
+        tu.full_name
+      FROM tbl_certificates AS tcr
+      JOIN tbl_course AS tc 
+        ON tcr.course_id = tc.course_id
+      JOIN tbl_user AS tu 
+        ON tcr.student_id = tu.user_id
+      ORDER BY tcr.certificate_id DESC
+    `);
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Certificates fetched successfully",
+      data: result.rows
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};

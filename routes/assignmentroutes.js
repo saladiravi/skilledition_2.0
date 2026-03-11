@@ -26,5 +26,10 @@ router.post('/getfinalassignmentbyid',verifyToken, allowRoles("admin","student",
 router.post('/updatetutorfinalassingmentfeedback',verifyToken, allowRoles("admin","student","tutor"),assignment.updatetutorfinalassingmentfeedback);
 router.get('/getfinalassignmentsbyadmin',verifyToken, allowRoles("admin","student","tutor"),assignment.getfinalassignmentsbyadmin);
 
+router.post('/updatefinalassigmentbyadmin',verifyToken, allowRoles("admin","student","tutor"),assignment.updatefinalassigmentbyadmin);
+router.post('/getstudentcertificates',verifyToken, allowRoles("admin","student","tutor"),assignment.getstudentcertificates);
+
+router.get('/getallstudentcertificates',verifyToken, allowRoles("admin","student","tutor"),assignment.getallstudentcertificates);
+
 
 module.exports=router;
