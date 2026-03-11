@@ -80,12 +80,12 @@ exports.validateProfilePic = (req, res, next) => {
 
   const maxSize = 100 * 1024; // 100KB
 
-  if (!req.files || !req.files.profile_pic) {
-    return res.status(400).json({
-        statusCode:400,
-      message: "Profile picture is required"
-    });
-  }
+  // if (!req.files || !req.files.profile_pic) {
+  //   return res.status(400).json({
+  //       statusCode:400,
+  //     message: "Profile picture is required"
+  //   });
+  // }
 
   const file = req.files.profile_pic[0];
 
