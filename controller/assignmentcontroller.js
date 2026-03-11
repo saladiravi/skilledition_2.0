@@ -1102,6 +1102,7 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
                 tsf.total_marks,
                 tsf.status,
                 tsf.feedback,
+                tsf.admin_status,
                 TO_CHAR(tsf.submitted_at, 'DD-MM-YYYY') AS submitted_at,
                 TO_CHAR(tsf.created_at, 'DD-MM-YYYY') AS created_at,
                 TO_CHAR(tcr.issued_at, 'DD-MM-YYYY') AS Admin_submitted_at,
