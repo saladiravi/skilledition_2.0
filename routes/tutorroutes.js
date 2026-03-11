@@ -10,13 +10,13 @@ const {updatevalidateCertificateFiles}= require('../utils/validatefiles');
 
 
 
-router.post('/addtutorabout', verifyToken, allowRoles("admin", "student", "tutor"), validateProfilePic,uploads.fields([
+router.post('/addtutorabout', verifyToken, allowRoles("admin", "student", "tutor"), uploads.fields([
   { name: 'profile_pic', maxCount: 10 },
 
-]), tutorcontroller.addtutorAbout);
-router.post('/updatetutorprofile', verifyToken, allowRoles("admin", "student", "tutor"), validateProfilePic,uploads.fields([
+]),validateProfilePic, tutorcontroller.addtutorAbout);
+router.post('/updatetutorprofile', verifyToken, allowRoles("admin", "student", "tutor"), uploads.fields([
   { name: 'profile_pic', maxCount: 10 },
-]), tutorcontroller.updateTutorProfilePic);
+]), validateProfilePic,tutorcontroller.updateTutorProfilePic);
 
 router.post('/updatetutorabout',verifyToken, allowRoles("admin", "student", "tutor"),tutorcontroller.updateTutorabout);
 router.post('/updateTutorProfessionalDetails',verifyToken, allowRoles("admin", "student", "tutor"),tutorcontroller.updateTutorProfessionalDetails);
