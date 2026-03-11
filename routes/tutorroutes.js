@@ -7,6 +7,8 @@ const { allowRoles } = require("../middleware/roleMiddleware");
 const {validateCertificateFiles} =require("../utils/validatefiles");
 const {validateProfilePic} =require('../utils/validatefiles');
 const {updatevalidateCertificateFiles}= require('../utils/validatefiles');
+const {validateDemoVideos} =require('../utils/validatefiles');
+
 
 
 
@@ -28,8 +30,8 @@ router.post('/updatetutorcertificates', verifyToken, allowRoles("admin", "studen
 router.post('/addtutoreducation', verifyToken, allowRoles("admin", "student", "tutor"), tutorcontroller.addEducation);
 router.post('/updatetutoreducation', verifyToken, allowRoles("admin", "student", "tutor"), tutorcontroller.updateEducation);
 
-router.post('/adddemovideos', verifyToken, allowRoles("admin", "student", "tutor"), uploads.fields([{ name: "video_file", maxCount: 20 }]), tutorcontroller.addDemoVideo);
-router.post('/updateDemovideo', verifyToken, allowRoles("admin", "student", "tutor"), uploads.fields([{ name: "video_file", maxCount: 20 }]), tutorcontroller.updateDemoVideo);
+router.post('/adddemovideos', verifyToken, allowRoles("admin", "student", "tutor"), uploads.fields([{ name: "video_file", maxCount: 20 }]), validateDemoVideos,tutorcontroller.addDemoVideo);
+router.post('/updateDemovideo', verifyToken, allowRoles("admin", "student", "tutor"), uploads.fields([{ name: "video_file", maxCount: 20 }]), validateDemoVideos,tutorcontroller.updateDemoVideo);
 router.post('/updatedemovideodescription', verifyToken, allowRoles("admin", "student", "tutor"), tutorcontroller.updateDemoVideoProfileDetails);
 router.post('/addpaymentplan', verifyToken, allowRoles("admin", "student", "tutor"), tutorcontroller.addpaymentplan);
 router.post('/updatepaymentplan', verifyToken, allowRoles("admin", "student", "tutor"),tutorcontroller.updatePaymentPlan);

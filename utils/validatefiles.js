@@ -105,3 +105,44 @@ exports.validateProfilePic = (req, res, next) => {
 
   next();
 };
+
+
+exports.validateDemoVideos = (req, res, next) => {
+  const allowedTypes = [
+    "video/mp4",
+    "video/mpeg",
+    "video/quicktime",   // .mov
+    "video/x-msvideo",   // .avi
+    "video/x-matroska",  // .mkv
+    "video/webm"
+  ];
+
+  const maxSize = 100 * 1024 * 1024; // 100MB
+
+  if (!req.files || !req.files.video_file || req.files.video_file.length === 0) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "Video file is required"
+    });
+  }
+
+  const files = req.files.video_file;
+
+  for (const file of files) {
+    if (!allowedTypes.includes(file.mimetype)) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Only video files are allowed (mp4, mov, avi, mkv, webm)"
+      });
+    }
+
+    if (file.size > maxSize) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Video file size should not exceed 100MB"
+      });
+    }
+  }
+
+  next();
+};
