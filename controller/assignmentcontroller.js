@@ -1064,7 +1064,9 @@ exports.updatetutorfinalassingmentfeedback = async (req, res) => {
             UPDATE tbl_student_final_assignment
             SET 
                 feedback = $1,
+                admin_status='Pending',
                 tutor_status = $2
+                
             WHERE final_assignment_id = $3
             RETURNING *
         `, [feedback, tutor_status, final_assignment_id]);
