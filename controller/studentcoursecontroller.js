@@ -1899,7 +1899,7 @@ exports.getfinalexamresult = async (req, res) => {
 
     // 1. Check assignment lock status
     const checklock = await pool.query(`
-      SELECT is_unlocked,status
+      SELECT is_unlocked,status,feedback
       FROM tbl_student_final_assignment
       WHERE final_assignment_id = $1
     `, [final_assignment_id]);
@@ -1919,13 +1919,7 @@ exports.getfinalexamresult = async (req, res) => {
       });
     }
 
-    //  if (checklock.rows[0].status === "Completed") {
-    //   return res.status(404).json({
-    //     statusCode: 404,
-    //     message: 'Final assignment already Completed'
-    //   });
-    // }
-    // 2. Get Questions & Options
+ 
     const questions = await pool.query(`
       SELECT 
         final_assignment_question_id,
@@ -1946,6 +1940,7 @@ exports.getfinalexamresult = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: 'Questions fetched successfully',
+      feedback: checklock.rows[0].feedback, 
       data: questions.rows
     });
 
