@@ -1256,25 +1256,53 @@ exports.getstudentcertificates = async (req, res) => {
 
   try {
 
+    if (!student_id) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "student_id is required"
+      });
+    }
+
+    // 1️⃣ Certificate List
     const result = await pool.query(`
       SELECT  
         tcr.certificate_number,
-    
         TO_CHAR(tcr.issued_at, 'DD-MM-YYYY') AS issued_at,
         tc.course_id,
         tc.course_title,
         tu.full_name
-      FROM tbl_certificates AS tcr
-      JOIN tbl_course AS tc 
+      FROM tbl_certificates tcr
+      JOIN tbl_course tc 
         ON tcr.course_id = tc.course_id
-      JOIN tbl_user AS tu 
+      JOIN tbl_user tu 
         ON tcr.student_id = tu.user_id
       WHERE tcr.student_id = $1
+    `, [student_id]);
+
+
+    // 2️⃣ Stats
+    const stats = await pool.query(`
+      SELECT
+        (SELECT COUNT(*) 
+         FROM tbl_student_course 
+         WHERE student_id = $1) AS purchased_courses,
+
+        (SELECT COUNT(*) 
+         FROM tbl_student_final_assignment 
+         WHERE student_id = $1 
+         AND is_unlocked = true) AS courses_completed,
+
+        (SELECT COUNT(*) 
+         FROM tbl_certificates 
+         WHERE student_id = $1) AS certificates_earned
     `, [student_id]);
 
     return res.status(200).json({
       statusCode: 200,
       message: "Certificates fetched successfully",
+
+      stats: stats.rows[0],
+
       data: result.rows
     });
 

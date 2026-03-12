@@ -2259,6 +2259,9 @@ const updateCourseStatusIfReady = async (course_id) => {
   const result = await pool.query(`
 
     SELECT
+       COUNT(DISTINCT tm.module_id) AS total_modules,
+
+      COUNT(DISTINCT ta.module_id) AS modules_with_assignment,
 
       COUNT(DISTINCT CASE
         WHEN tmv.status != 'Published' THEN tmv.module_video_id
@@ -2284,11 +2287,11 @@ const updateCourseStatusIfReady = async (course_id) => {
   `, [course_id]);
 
 
-  const { pending_videos, pending_assignments } = result.rows[0];
+  const {  total_modules, modules_with_assignment, pending_videos, pending_assignments } = result.rows[0];
 
 
   // ✅ If all approved → Publish course
-  if (pending_videos == 0 && pending_assignments == 0) {
+  if (pending_videos == 0 && pending_assignments == 0 &&  total_modules == modules_with_assignment) {
 
     await pool.query(
       `UPDATE tbl_course

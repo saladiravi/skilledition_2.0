@@ -330,9 +330,41 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
       ORDER BY tc.course_id ASC
     `, [student_id]);
 
+         const activeCourses = await pool.query(`
+      SELECT COUNT(*) AS active_courses
+      FROM tbl_student_course
+      WHERE student_id = $1
+    `,[student_id]);
+
+    /* 3️⃣ Learning Progress */
+    const progress = await pool.query(`
+      SELECT 
+        COALESCE(
+          ROUND(
+            (COUNT(*) FILTER (WHERE is_completed = true)::decimal / COUNT(*)) * 100
+          ,0),0
+        ) AS learning_progress
+      FROM tbl_student_course_progress
+      WHERE student_id = $1
+    `,[student_id]);
+
+    /* 4️⃣ Learner Satisfaction */
+    const rating = await pool.query(`
+      SELECT 
+        COALESCE(ROUND(AVG(rating),1),0) AS learner_satisfaction
+      FROM tbl_feedback
+      WHERE student_id = $1
+    `,[student_id]);
+
+
     return res.status(200).json({
       statusCode: 200,
       message: "Fetched Successfully",
+       stats: {
+        active_courses: activeCourses.rows[0].active_courses,
+        learning_progress: progress.rows[0].learning_progress,
+        learner_satisfaction: rating.rows[0].learner_satisfaction
+      },
       result: result.rows
     });
 
