@@ -1152,7 +1152,7 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
             JOIN tbl_user AS student 
                 ON student.user_id = tsf.student_id
 
-            JOIN tbl_student ts
+            LEFT JOIN tbl_student ts
              ON ts.user_id = student.user_id 
         
             JOIN tbl_user AS tutor 
