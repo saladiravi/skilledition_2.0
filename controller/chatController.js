@@ -644,3 +644,35 @@ exports.updatepausechat = async (req, res) => {
     });
   }
 }
+
+
+
+exports.getpauseChatList = async (req, res) => {
+  try {
+
+    const result = await pool.query(`
+      SELECT 
+        tcr.chat_room_id,
+        tcr.pause_chat,
+        stu.full_name AS student_name,
+        tut.full_name AS tutor_name,
+        tc.course_title
+      FROM tbl_chat_room tcr
+      JOIN tbl_course tc ON tcr.course_id = tc.course_id
+      JOIN tbl_user stu ON tcr.student_id = stu.user_id
+      JOIN tbl_user tut ON tc.tutor_id = tut.user_id
+      WHERE tcr.pause_chat = true
+    `);
+
+    return res.status(200).json({
+      statusCode: 200,
+      chatList: result.rows
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
