@@ -1096,6 +1096,25 @@ exports.updatetutorfinalassingmentfeedback = async (req, res) => {
 exports.getfinalassignmentsbyadmin = async (req, res) => {
 
     try {
+        // 📊 Stats Query
+        const stats = await pool.query(`
+            SELECT
+                COUNT(*) AS total_assignments,
+
+                COUNT(*) FILTER (
+                    WHERE admin_status = 'Submitted'
+                ) AS completed_assignments,
+
+                COUNT(*) FILTER (
+                    WHERE admin_status != 'Submitted'
+                ) AS pending_assignments,
+
+                COUNT(DISTINCT student_id) AS total_students
+
+            FROM tbl_student_final_assignment
+            WHERE status = 'Completed'
+        `);
+
         const result = await pool.query(`
             SELECT 
                 tsf.final_assignment_id,
@@ -1143,9 +1162,22 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
             ORDER BY tsf.final_assignment_id ASC
         `);
 
+        const s = stats.rows[0];
+
+        const completionPercentage =
+            s.total_assignments > 0
+                ? ((s.completed_assignments / s.total_assignments) * 100).toFixed(0)
+                : 0;
+
         return res.status(200).json({
             statusCode: 200,
             message: 'fetched successfully',
+            stats: {
+                total_assignments: s.total_assignments,
+                pending_review: s.pending_assignments,
+                completion_percentage: completionPercentage + "%",
+                students: s.total_students
+            },
             data: result.rows
         });
 
@@ -1159,112 +1191,112 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
 
 
 exports.updatefinalassigmentbyadmin = async (req, res) => {
-  const { final_assignment_id } = req.body;
+    const { final_assignment_id } = req.body;
 
-  try {
+    try {
 
-    // 1️⃣ Get assignment details
-    const assignmentResult = await pool.query(
-      `SELECT tutor_status, student_id, course_id
+        // 1️⃣ Get assignment details
+        const assignmentResult = await pool.query(
+            `SELECT tutor_status, student_id, course_id
        FROM tbl_student_final_assignment
        WHERE final_assignment_id = $1`,
-      [final_assignment_id]
-    );
+            [final_assignment_id]
+        );
 
-    if (assignmentResult.rows.length === 0) {
-      return res.status(404).json({
-        statusCode: 404,
-        message: "Assignment not found"
-      });
-    }
+        if (assignmentResult.rows.length === 0) {
+            return res.status(404).json({
+                statusCode: 404,
+                message: "Assignment not found"
+            });
+        }
 
-    const assignment = assignmentResult.rows[0];
+        const assignment = assignmentResult.rows[0];
 
-    // 2️⃣ Check tutor status
-    if (assignment.tutor_status === 'Tutor Pending') {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Tutor status is pending. Cannot update."
-      });
-    }
+        // 2️⃣ Check tutor status
+        if (assignment.tutor_status === 'Tutor Pending') {
+            return res.status(400).json({
+                statusCode: 400,
+                message: "Tutor status is pending. Cannot update."
+            });
+        }
 
-    // 3️⃣ Update admin status
-    await pool.query(
-      `UPDATE tbl_student_final_assignment
+        // 3️⃣ Update admin status
+        await pool.query(
+            `UPDATE tbl_student_final_assignment
        SET admin_status = 'Submitted'
        WHERE final_assignment_id = $1`,
-      [final_assignment_id]
-    );
+            [final_assignment_id]
+        );
 
-    const { student_id, course_id } = assignment;
+        const { student_id, course_id } = assignment;
 
-    // 4️⃣ Check if certificate already exists
-    const certificateCheck = await pool.query(
-      `SELECT certificate_id
+        // 4️⃣ Check if certificate already exists
+        const certificateCheck = await pool.query(
+            `SELECT certificate_id
        FROM tbl_certificates
        WHERE student_id = $1 AND course_id = $2`,
-      [student_id, course_id]
-    );
+            [student_id, course_id]
+        );
 
-    if (certificateCheck.rows.length > 0) {
-      return res.status(200).json({
-        statusCode: 200,
-        message: "Certificate already generated",
-        certificate_id: certificateCheck.rows[0].certificate_id
-      });
-    }
+        if (certificateCheck.rows.length > 0) {
+            return res.status(200).json({
+                statusCode: 200,
+                message: "Certificate already generated",
+                certificate_id: certificateCheck.rows[0].certificate_id
+            });
+        }
 
-    // 5️⃣ Insert certificate
-    const insertCertificate = await pool.query(
-      `INSERT INTO tbl_certificates (student_id, course_id)
+        // 5️⃣ Insert certificate
+        const insertCertificate = await pool.query(
+            `INSERT INTO tbl_certificates (student_id, course_id)
        VALUES ($1,$2)
        RETURNING certificate_id`,
-      [student_id, course_id]
-    );
+            [student_id, course_id]
+        );
 
-    const certificate_id = insertCertificate.rows[0].certificate_id;
+        const certificate_id = insertCertificate.rows[0].certificate_id;
 
-    const certificate_number =
-      `SKILLEDITION-${String(certificate_id).padStart(5, '0')}`;
+        const certificate_number =
+            `SKILLEDITION-${String(certificate_id).padStart(5, '0')}`;
 
-    // 6️⃣ Update certificate number
-    await pool.query(
-      `UPDATE tbl_certificates
+        // 6️⃣ Update certificate number
+        await pool.query(
+            `UPDATE tbl_certificates
        SET certificate_number = $1
        WHERE certificate_id = $2`,
-      [certificate_number, certificate_id]
-    );
+            [certificate_number, certificate_id]
+        );
 
-    return res.status(200).json({
-      statusCode: 200,
-      message: "Assignment updated and certificate generated successfully",
-      certificate_number
-    });
+        return res.status(200).json({
+            statusCode: 200,
+            message: "Assignment updated and certificate generated successfully",
+            certificate_number
+        });
 
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      statusCode: 500,
-      message: "Internal Server Error"
-    });
-  }
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            statusCode: 500,
+            message: "Internal Server Error"
+        });
+    }
 };
 
 
 exports.getstudentcertificates = async (req, res) => {
-  const { student_id } = req.body;
+    const { student_id } = req.body;
 
-  try {
+    try {
 
-    if (!student_id) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "student_id is required"
-      });
-    }
+        if (!student_id) {
+            return res.status(400).json({
+                statusCode: 400,
+                message: "student_id is required"
+            });
+        }
 
-    // 1️⃣ Certificate List
-    const result = await pool.query(`
+        // 1️⃣ Certificate List
+        const result = await pool.query(`
       SELECT  
         tcr.certificate_number,
         TO_CHAR(tcr.issued_at, 'DD-MM-YYYY') AS issued_at,
@@ -1280,8 +1312,8 @@ exports.getstudentcertificates = async (req, res) => {
     `, [student_id]);
 
 
-    // 2️⃣ Stats
-    const stats = await pool.query(`
+        // 2️⃣ Stats
+        const stats = await pool.query(`
       SELECT
         (SELECT COUNT(*) 
          FROM tbl_student_course 
@@ -1297,29 +1329,29 @@ exports.getstudentcertificates = async (req, res) => {
          WHERE student_id = $1) AS certificates_earned
     `, [student_id]);
 
-    return res.status(200).json({
-      statusCode: 200,
-      message: "Certificates fetched successfully",
+        return res.status(200).json({
+            statusCode: 200,
+            message: "Certificates fetched successfully",
 
-      stats: stats.rows[0],
+            stats: stats.rows[0],
 
-      data: result.rows
-    });
+            data: result.rows
+        });
 
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      statusCode: 500,
-      message: "Internal Server Error"
-    });
-  }
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            statusCode: 500,
+            message: "Internal Server Error"
+        });
+    }
 };
 
 
 exports.getallstudentcertificates = async (req, res) => {
-  try {
+    try {
 
-    const result = await pool.query(`
+        const result = await pool.query(`
       SELECT  
         tcr.certificate_number,
         tcr.issued_at,
@@ -1334,17 +1366,17 @@ exports.getallstudentcertificates = async (req, res) => {
       ORDER BY tcr.certificate_id DESC
     `);
 
-    return res.status(200).json({
-      statusCode: 200,
-      message: "Certificates fetched successfully",
-      data: result.rows
-    });
+        return res.status(200).json({
+            statusCode: 200,
+            message: "Certificates fetched successfully",
+            data: result.rows
+        });
 
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      statusCode: 500,
-      message: "Internal Server Error"
-    });
-  }
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            statusCode: 500,
+            message: "Internal Server Error"
+        });
+    }
 };
