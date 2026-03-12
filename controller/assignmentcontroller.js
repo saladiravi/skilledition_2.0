@@ -1141,7 +1141,7 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
                 
                 student.full_name AS student_name,
                 student.email AS email,
-                student.phone_number,
+                 ts.mobile_number,
                 tutor.full_name AS tutor_name
 
             FROM tbl_student_final_assignment AS tsf
@@ -1152,6 +1152,9 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
             JOIN tbl_user AS student 
                 ON student.user_id = tsf.student_id
 
+            JOIN tbl_student ts
+             ON ts.user_id = student.user_id 
+        
             JOIN tbl_user AS tutor 
                 ON tutor.user_id = tc.tutor_id
 
