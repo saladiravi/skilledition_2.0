@@ -1159,32 +1159,62 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
 
 
 exports.updatefinalassigmentbyadmin = async (req, res) => {
-
   const { final_assignment_id } = req.body;
 
   try {
 
-    const updateAssignment = await pool.query(
-      `UPDATE tbl_student_final_assignment
-       SET admin_status = 'Submitted'
-       WHERE final_assignment_id = $1
-       RETURNING *`,
+    // 1️⃣ Get assignment details
+    const assignmentResult = await pool.query(
+      `SELECT tutor_status, student_id, course_id
+       FROM tbl_student_final_assignment
+       WHERE final_assignment_id = $1`,
       [final_assignment_id]
     );
 
-    if (updateAssignment.rows.length === 0) {
+    if (assignmentResult.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
         message: "Assignment not found"
       });
     }
 
-    const assignment = updateAssignment.rows[0];
+    const assignment = assignmentResult.rows[0];
 
-    const student_id = assignment.student_id;
-    const course_id = assignment.course_id;
+    // 2️⃣ Check tutor status
+    if (assignment.tutor_status === 'Tutor Pending') {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Tutor status is pending. Cannot update."
+      });
+    }
 
-    // Insert certificate
+    // 3️⃣ Update admin status
+    await pool.query(
+      `UPDATE tbl_student_final_assignment
+       SET admin_status = 'Submitted'
+       WHERE final_assignment_id = $1`,
+      [final_assignment_id]
+    );
+
+    const { student_id, course_id } = assignment;
+
+    // 4️⃣ Check if certificate already exists
+    const certificateCheck = await pool.query(
+      `SELECT certificate_id
+       FROM tbl_certificates
+       WHERE student_id = $1 AND course_id = $2`,
+      [student_id, course_id]
+    );
+
+    if (certificateCheck.rows.length > 0) {
+      return res.status(200).json({
+        statusCode: 200,
+        message: "Certificate already generated",
+        certificate_id: certificateCheck.rows[0].certificate_id
+      });
+    }
+
+    // 5️⃣ Insert certificate
     const insertCertificate = await pool.query(
       `INSERT INTO tbl_certificates (student_id, course_id)
        VALUES ($1,$2)
@@ -1197,7 +1227,7 @@ exports.updatefinalassigmentbyadmin = async (req, res) => {
     const certificate_number =
       `SKILLEDITION-${String(certificate_id).padStart(5, '0')}`;
 
-    // Update certificate_number
+    // 6️⃣ Update certificate number
     await pool.query(
       `UPDATE tbl_certificates
        SET certificate_number = $1
