@@ -55,6 +55,23 @@ exports.addfeedback = async (req, res) => {
       });
     }
 
+    const unlockCheck = await con.query(
+      `SELECT is_unlocked
+       FROM tbl_student_final_assignment
+       WHERE student_id = $1
+       AND course_id = $2
+       AND is_unlocked = true`,
+      [student_id, course_id]
+    );
+
+    if (unlockCheck.rows.length === 0) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "You can give feedback only after complete the course and assignment"
+      });
+    }
+    
+
     const result = await con.query(`INSERT INTO tbl_feedback (student_id, tutor_id, course_id, rating, enjoy_most, review) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [student_id, tutor_id, course_id || null, rating, enjoy_most || null, review || null]
     );
