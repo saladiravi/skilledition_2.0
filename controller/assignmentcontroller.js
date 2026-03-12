@@ -1141,7 +1141,7 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
                 
                 student.full_name AS student_name,
                 student.email AS email,
-                 ts.mobile_number,
+                ts.mobile_number,
                 tutor.full_name AS tutor_name
 
             FROM tbl_student_final_assignment AS tsf
