@@ -2337,6 +2337,7 @@ exports.getstudentoverview = async (req, res) => {
     // 2️⃣ Last watched video
     const lastVideoQuery = `
       SELECT 
+        tc.course_id,
         tc.course_title,
         tmv.video_title
 
@@ -2391,7 +2392,8 @@ exports.getstudentoverview = async (req, res) => {
     const mentorQuery = `
       SELECT DISTINCT
         tu.user_id,
-        tu.full_name
+        tu.full_name,
+        tu.role
 
       FROM tbl_student_course sc
 
