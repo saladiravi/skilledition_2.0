@@ -2404,33 +2404,31 @@ exports.getstudentoverview = async (req, res) => {
       WHERE sc.student_id = $1
     `;
 
-    // 5️⃣ Learning Time
-    const learningTimeQuery = `
-      SELECT 
-        tc.course_id,
-        tc.duration,
-        tc.no_of_modules,
+     // 5️⃣ Learning Time
+   const learningTimeQuery = `
+        SELECT 
+          CONCAT(SUM(REPLACE(tc.duration,'days','')::int),'days') AS duration,
 
-        COALESCE(
-          TO_CHAR(SUM(tmv.video_duration::interval), 'HH24:MI:SS'),
-          '00:00:00'
-        ) AS total_learning_time
+          SUM(tc.no_of_modules) AS no_of_modules,
 
-      FROM tbl_student_course sc
+          COALESCE(
+            TO_CHAR(SUM(tmv.video_duration::interval),'HH24:MI:SS'),
+            '00:00:00'
+          ) AS total_learning_time
 
-      JOIN tbl_course tc
-        ON sc.course_id = tc.course_id
+        FROM tbl_student_course sc
 
-      JOIN tbl_module tm
-        ON tc.course_id = tm.course_id
+        JOIN tbl_course tc
+          ON sc.course_id = tc.course_id
 
-      JOIN tbl_module_videos tmv
-        ON tm.module_id = tmv.module_id
+        JOIN tbl_module tm
+          ON tc.course_id = tm.course_id
 
-      WHERE sc.student_id = $1
+        JOIN tbl_module_videos tmv
+          ON tm.module_id = tmv.module_id
 
-      GROUP BY tc.course_id, tc.duration, tc.no_of_modules
-    `;
+        WHERE sc.student_id = $1
+        `;
 
     const availableCoursesQuery = `
       SELECT 
