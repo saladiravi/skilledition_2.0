@@ -370,26 +370,27 @@ exports.getTutorAssignmentDetails = async (req, res) => {
 
     try {
 
-        const statsQuery = `
-            SELECT
-                COUNT(DISTINCT a.assignment_id) AS all_assignments,
-                COUNT(DISTINCT c.course_id) AS total_courses,
+        // const statsQuery = `
+        //     SELECT
+        //         COUNT(DISTINCT a.assignment_id) AS all_assignments,
+        //         COUNT(DISTINCT c.course_id) AS total_courses,
 
-                COUNT(*) FILTER (WHERE sca.status = 'Pending') AS pending_review,
-                COUNT(*) FILTER (WHERE sca.status = 'Graded') AS graded,
+        //         COUNT(*) FILTER (WHERE sca.status = 'Pending') AS pending_review,
+        //         COUNT(*) FILTER (WHERE sca.status = 'Graded') AS graded,
 
-                COALESCE(ROUND(AVG(sca.marks_obtained),2),0) AS average_score
+        //         COALESCE(ROUND(AVG(sca.marks_obtained),2),0) AS average_score
 
-            FROM tbl_course c
-            JOIN tbl_module m ON m.course_id = c.course_id
-            JOIN tbl_assignment a ON a.module_id = m.module_id
-            LEFT JOIN tbl_student_course_assignment sca 
-                ON sca.assignment_id = a.assignment_id
+        //     FROM tbl_course c
+        //     JOIN tbl_module m ON m.course_id = c.course_id
+        //     JOIN tbl_assignment a ON a.module_id = m.module_id
+        //     LEFT JOIN tbl_student_course_assignment sca 
+        //         ON sca.assignment_id = a.assignment_id
 
-            WHERE c.tutor_id = $1
-            `;
+        //     WHERE c.tutor_id = $1
+        //     `;
 
-        const statsResult = await pool.query(statsQuery, [tutorId]);
+        // const statsResult = await pool.query(statsQuery, [tutorId]);
+      
         const query = `
       SELECT
         c.course_id,
@@ -486,13 +487,13 @@ exports.getTutorAssignmentDetails = async (req, res) => {
         res.status(200).json({
             statusCode: 200,
             message: 'Fectched Sucessfully',
-            stats: {
-                all_assignments: statsResult.rows[0].all_assignments,
-                total_courses: statsResult.rows[0].total_courses,
-                pending_review: statsResult.rows[0].pending_review,
-                graded: statsResult.rows[0].graded,
-                average_score: statsResult.rows[0].average_score
-            },
+            // stats: {
+            //     all_assignments: statsResult.rows[0].all_assignments,
+            //     total_courses: statsResult.rows[0].total_courses,
+            //     pending_review: statsResult.rows[0].pending_review,
+            //     graded: statsResult.rows[0].graded,
+            //     average_score: statsResult.rows[0].average_score
+            // },
             data: finalData
         });
 
