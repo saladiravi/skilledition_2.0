@@ -370,27 +370,7 @@ exports.getTutorAssignmentDetails = async (req, res) => {
 
     try {
 
-        // const statsQuery = `
-        //     SELECT
-        //         COUNT(DISTINCT a.assignment_id) AS all_assignments,
-        //         COUNT(DISTINCT c.course_id) AS total_courses,
-
-        //         COUNT(*) FILTER (WHERE sca.status = 'Pending') AS pending_review,
-        //         COUNT(*) FILTER (WHERE sca.status = 'Graded') AS graded,
-
-        //         COALESCE(ROUND(AVG(sca.marks_obtained),2),0) AS average_score
-
-        //     FROM tbl_course c
-        //     JOIN tbl_module m ON m.course_id = c.course_id
-        //     JOIN tbl_assignment a ON a.module_id = m.module_id
-        //     LEFT JOIN tbl_student_course_assignment sca 
-        //         ON sca.assignment_id = a.assignment_id
-
-        //     WHERE c.tutor_id = $1
-        //     `;
-
-        // const statsResult = await pool.query(statsQuery, [tutorId]);
-      
+       
         const query = `
       SELECT
         c.course_id,
@@ -487,13 +467,6 @@ exports.getTutorAssignmentDetails = async (req, res) => {
         res.status(200).json({
             statusCode: 200,
             message: 'Fectched Sucessfully',
-            // stats: {
-            //     all_assignments: statsResult.rows[0].all_assignments,
-            //     total_courses: statsResult.rows[0].total_courses,
-            //     pending_review: statsResult.rows[0].pending_review,
-            //     graded: statsResult.rows[0].graded,
-            //     average_score: statsResult.rows[0].average_score
-            // },
             data: finalData
         });
 
@@ -968,6 +941,37 @@ exports.gettotalfinalassignment = async (req, res) => {
 
     try {
 
+                      const statsQuery = `
+                    SELECT
+                        COUNT(*) AS all_assignments,
+
+                        COUNT(DISTINCT tsf.course_id) AS total_courses,
+
+                        COUNT(*) FILTER (WHERE tsf.tutor_status = 'Pending') AS pending_review,
+
+                       COUNT(*) FILTER (
+                                WHERE tsf.grade IS NOT NULL 
+                                AND tsf.grade <> ''
+                            ) AS graded,
+
+                        COALESCE(
+                            ROUND(
+                                AVG(
+                                    (tsf.correct_answers::decimal / NULLIF(tsf.total_questions::decimal,0)) * 100
+                                ),2
+                            ),
+                        0) AS average_score
+
+                    FROM tbl_student_final_assignment tsf
+
+                    JOIN tbl_course tc 
+                        ON tc.course_id = tsf.course_id
+
+                    WHERE tc.tutor_id = $1
+                    `;
+
+        const statsResult = await pool.query(statsQuery, [tutor_id]);
+
         const result = await pool.query(`
             SELECT 
                 tsf.final_assignment_id,
@@ -1003,6 +1007,13 @@ exports.gettotalfinalassignment = async (req, res) => {
 
         return res.status(200).json({
             statusCode: 200,
+             stats: {
+                all_assignments: statsResult.rows[0].all_assignments,
+                total_courses: statsResult.rows[0].total_courses,
+                pending_review: statsResult.rows[0].pending_review,
+                graded: statsResult.rows[0].graded,
+                average_score: statsResult.rows[0].average_score
+            },
             data: result.rows
         });
 
