@@ -181,78 +181,6 @@ exports.getStudentMyCourse = async (req, res) => {
   }
 };
 
-// exports.getAllCoursesWithEnrollStatus = async (req, res) => {
-//   const { student_id } = req.body;
-
-//   try {
-//     if (!student_id) {
-//       return res.status(400).json({
-//         statusCode: 400,
-//         message: "student_id is required"
-//       });
-//     }
-
-//     const result = await pool.query(`
-//       SELECT
-//         tc.course_id,
-//         tc.course_title,
-//         tc.course_description,
-//         tc.price,
-//         tc.level,
-//         tc.category_id,
-//         cat.category_name,
-
-//         tsc.student_course_id,
-
-//         CASE 
-//           WHEN tsc.student_course_id IS NOT NULL 
-//           THEN true 
-//           ELSE false 
-//         END AS is_enrolled
-
-//       FROM tbl_course tc
-
-//       JOIN tbl_category cat
-//         ON tc.category_id = cat.category_id
-
-//       LEFT JOIN tbl_student_course tsc
-//         ON tsc.course_id = tc.course_id
-//        AND tsc.student_id = $1
-
-//       WHERE tc.status = 'Published'
-
-//       /* ✅ ALL assignments must be Published */
-//       AND NOT EXISTS (
-//         SELECT 1
-//         FROM tbl_assignment ta
-//         WHERE ta.course_id = tc.course_id
-//           AND ta.status <> 'Published'
-//       )
-
-//       /* optional: ensure course HAS assignments */
-//       AND EXISTS (
-//         SELECT 1
-//         FROM tbl_assignment ta
-//         WHERE ta.course_id = tc.course_id
-//       )
-
-//       ORDER BY tc.course_id ASC
-//     `, [student_id]);
-
-//     return res.status(200).json({
-//       statusCode: 200,
-//       message: "Fetched Successfully",
-//       result: result.rows
-//     });
-
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({
-//       statusCode: 500,
-//       message: "Internal Server Error"
-//     });
-//   }
-// };
 
 exports.getAllCoursesWithEnrollStatus = async (req, res) => {
   const { student_id } = req.body;
@@ -262,6 +190,18 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
       return res.status(400).json({
         statusCode: 400,
         message: "student_id is required"
+      });
+    }
+    
+    const checkStudent = await pool.query(
+      `SELECT user_id FROM tbl_user WHERE user_id = $1`,
+      [student_id]
+    );
+
+    if (checkStudent.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Student not found"
       });
     }
 
@@ -330,23 +270,24 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
       ORDER BY tc.course_id ASC
     `, [student_id]);
 
-         const activeCourses = await pool.query(`
-      SELECT COUNT(*) AS active_courses
-      FROM tbl_student_course
-      WHERE student_id = $1
-    `,[student_id]);
+    const activeCourses = await pool.query(`
+            SELECT COUNT(*) AS active_courses
+            FROM tbl_student_course
+            WHERE student_id = $1
+          `, [student_id]);
 
     /* 3️⃣ Learning Progress */
     const progress = await pool.query(`
-      SELECT 
-        COALESCE(
-          ROUND(
-            (COUNT(*) FILTER (WHERE is_completed = true)::decimal / COUNT(*)) * 100
-          ,0),0
-        ) AS learning_progress
-      FROM tbl_student_course_progress
-      WHERE student_id = $1
-    `,[student_id]);
+          SELECT 
+            COALESCE(
+              ROUND(
+                (COUNT(*) FILTER (WHERE is_completed = true)::decimal /
+                NULLIF(COUNT(*),0)) * 100
+              ,0)
+            ,0) AS learning_progress
+          FROM tbl_student_course_progress
+          WHERE student_id = $1
+        `, [student_id]);
 
     /* 4️⃣ Learner Satisfaction */
     const rating = await pool.query(`
@@ -354,13 +295,13 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
         COALESCE(ROUND(AVG(rating),1),0) AS learner_satisfaction
       FROM tbl_feedback
       WHERE student_id = $1
-    `,[student_id]);
+    `, [student_id]);
 
 
     return res.status(200).json({
       statusCode: 200,
       message: "Fetched Successfully",
-       stats: {
+      stats: {
         active_courses: activeCourses.rows[0].active_courses,
         learning_progress: progress.rows[0].learning_progress,
         learner_satisfaction: rating.rows[0].learner_satisfaction
@@ -1951,7 +1892,7 @@ exports.getfinalexamresult = async (req, res) => {
       });
     }
 
- 
+
     const questions = await pool.query(`
       SELECT 
         final_assignment_question_id,
@@ -1972,7 +1913,7 @@ exports.getfinalexamresult = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: 'Questions fetched successfully',
-      feedback: checklock.rows[0].feedback, 
+      feedback: checklock.rows[0].feedback,
       data: questions.rows
     });
 
