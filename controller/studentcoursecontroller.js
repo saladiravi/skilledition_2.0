@@ -192,7 +192,7 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
         message: "student_id is required"
       });
     }
-    
+
     const checkStudent = await pool.query(
       `SELECT user_id FROM tbl_user WHERE user_id = $1`,
       [student_id]
@@ -2264,6 +2264,7 @@ exports.getstudentoverview = async (req, res) => {
       SELECT 
         tc.course_id,
         tc.course_title,
+        tcat.category_name,
         tu.full_name AS mentor_name,
 
         COUNT(DISTINCT tmv.module_video_id) AS total_videos,
@@ -2272,9 +2273,12 @@ exports.getstudentoverview = async (req, res) => {
         FILTER (WHERE svp.is_completed = true) AS watched_videos
 
       FROM tbl_student_course sc
-
+      
       JOIN tbl_course tc
         ON sc.course_id = tc.course_id
+
+      JOIN tbl_category tcat
+        ON tc.category_id = tcat.category_id
 
       JOIN tbl_module tm
         ON tc.course_id = tm.course_id
@@ -2291,8 +2295,43 @@ exports.getstudentoverview = async (req, res) => {
 
       WHERE sc.student_id = $1
 
-      GROUP BY tc.course_id, tc.course_title, tu.full_name
+      GROUP BY tc.course_id, tc.course_title, tcat.category_name, tu.full_name
       ORDER BY tc.course_id DESC
+    `;
+
+    const coursesection = `
+      SELECT 
+        tc.course_id,
+        tc.course_title,
+        tcat.category_name,
+
+        COUNT(DISTINCT tmv.module_video_id) AS total_videos,
+
+        COUNT(DISTINCT svp.module_video_id)
+        FILTER (WHERE svp.is_completed = true) AS watched_videos
+
+      FROM tbl_student_course sc
+      
+      JOIN tbl_course tc
+        ON sc.course_id = tc.course_id
+
+      JOIN tbl_category tcat
+        ON tc.category_id = tcat.category_id
+
+      JOIN tbl_module tm
+        ON tc.course_id = tm.course_id
+
+      JOIN tbl_module_videos tmv
+        ON tm.module_id = tmv.module_id
+
+      LEFT JOIN tbl_student_course_progress svp
+        ON tmv.module_video_id = svp.module_video_id
+        AND svp.student_id = $1
+
+      WHERE sc.student_id = $1
+
+      GROUP BY tc.course_id, tc.course_title, tcat.category_name
+      ORDER BY tc.course_id ASC
     `;
 
     // 2️⃣ Last watched video
@@ -2393,14 +2432,35 @@ exports.getstudentoverview = async (req, res) => {
       GROUP BY tc.course_id, tc.duration, tc.no_of_modules
     `;
 
-    // Run queries together
-    const availableCoursesQuery = ` SELECT tc.course_id, tc.course_title, COUNT(tmv.module_video_id) AS total_videos FROM tbl_course tc LEFT JOIN tbl_module tm ON tc.course_id = tm.course_id LEFT JOIN tbl_module_videos tmv ON tm.module_id = tmv.module_id GROUP BY tc.course_id, tc.course_title ORDER BY tc.course_id DESC `;
-    const [courses, lastVideo, assignments, mentors, learningTime, availableCourses] = await Promise.all([
+    const availableCoursesQuery = `
+      SELECT 
+        tc.course_id,
+        tc.course_title,
+        tcat.category_name,
+        COUNT(tmv.module_video_id) AS total_videos
+
+      FROM tbl_course tc
+
+      JOIN tbl_category tcat
+        ON tc.category_id = tcat.category_id
+
+      LEFT JOIN tbl_module tm
+        ON tc.course_id = tm.course_id
+
+      LEFT JOIN tbl_module_videos tmv
+        ON tm.module_id = tmv.module_id
+
+      GROUP BY tc.course_id, tc.course_title, tcat.category_name
+      ORDER BY tc.course_id DESC
+    `;
+
+    const [courses, lastVideo, assignments, mentors, learningTime, coursection, availableCourses] = await Promise.all([
       pool.query(courseQuery, [student_id]),
       pool.query(lastVideoQuery, [student_id]),
       pool.query(assignmentQuery, [student_id]),
       pool.query(mentorQuery, [student_id]),
       pool.query(learningTimeQuery, [student_id]),
+      pool.query(coursesection, [student_id]),
       pool.query(availableCoursesQuery)
     ]);
 
@@ -2426,9 +2486,7 @@ exports.getstudentoverview = async (req, res) => {
       return {
         course_id: course.course_id,
         course_title: course.course_title,
-        mentor_name: course.mentor_name,
-        total_videos: totalVideos,
-        watched_videos: watchedVideos,
+        category_name: course.category_name,
         percentage
       };
 
@@ -2440,6 +2498,7 @@ exports.getstudentoverview = async (req, res) => {
       const availableCourseList = availableCourses.rows.map(course => ({
         course_id: course.course_id,
         course_title: course.course_title,
+        category_name: course.category_name,
         total_videos: Number(course.total_videos)
       }));
 
@@ -2458,6 +2517,7 @@ exports.getstudentoverview = async (req, res) => {
       message: "Fetched successfully",
       data: {
         course_watching: courseData,
+        course_section: coursection.rows,
         learningtime: learningData,
         last_video: lastVideo.rows[0] || null,
         assignments: assignments.rows,
