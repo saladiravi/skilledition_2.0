@@ -1385,7 +1385,7 @@ exports.getstudentcertificates = async (req, res) => {
 
             stats: stats.rows[0],
             progress:progress.rows,
-            data: result.rows
+            certificates_data: result.rows
         });
 
     } catch (error) {
