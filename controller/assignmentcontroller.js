@@ -369,6 +369,27 @@ exports.getTutorAssignmentDetails = async (req, res) => {
     const { tutorId } = req.body;
 
     try {
+
+        const statsQuery = `
+            SELECT
+                COUNT(DISTINCT a.assignment_id) AS all_assignments,
+                COUNT(DISTINCT c.course_id) AS total_courses,
+
+                COUNT(*) FILTER (WHERE sca.status = 'Pending') AS pending_review,
+                COUNT(*) FILTER (WHERE sca.status = 'Graded') AS graded,
+
+                COALESCE(ROUND(AVG(sca.marks_obtained),2),0) AS average_score
+
+            FROM tbl_course c
+            JOIN tbl_module m ON m.course_id = c.course_id
+            JOIN tbl_assignment a ON a.module_id = m.module_id
+            LEFT JOIN tbl_student_course_assignment sca 
+                ON sca.assignment_id = a.assignment_id
+
+            WHERE c.tutor_id = $1
+            `;
+
+        const statsResult = await pool.query(statsQuery, [tutorId]);
         const query = `
       SELECT
         c.course_id,
@@ -465,6 +486,13 @@ exports.getTutorAssignmentDetails = async (req, res) => {
         res.status(200).json({
             statusCode: 200,
             message: 'Fectched Sucessfully',
+            stats: {
+                all_assignments: statsResult.rows[0].all_assignments,
+                total_courses: statsResult.rows[0].total_courses,
+                pending_review: statsResult.rows[0].pending_review,
+                graded: statsResult.rows[0].graded,
+                average_score: statsResult.rows[0].average_score
+            },
             data: finalData
         });
 
@@ -1298,21 +1326,39 @@ exports.getstudentcertificates = async (req, res) => {
             });
         }
 
+        const progress = await pool.query(`
+                SELECT 
+                    tc.course_id,
+                    tc.course_title
+                FROM tbl_student_course sc
+                JOIN tbl_course tc 
+                    ON sc.course_id = tc.course_id
+                WHERE sc.student_id = $1
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM tbl_certificates tcr
+                    WHERE tcr.course_id = sc.course_id
+                    AND tcr.student_id = sc.student_id
+                )
+            `, [student_id]);
+
+
+
         // 1️⃣ Certificate List
         const result = await pool.query(`
-      SELECT  
-        tcr.certificate_number,
-        TO_CHAR(tcr.issued_at, 'DD-MM-YYYY') AS issued_at,
-        tc.course_id,
-        tc.course_title,
-        tu.full_name
-      FROM tbl_certificates tcr
-      JOIN tbl_course tc 
-        ON tcr.course_id = tc.course_id
-      JOIN tbl_user tu 
-        ON tcr.student_id = tu.user_id
-      WHERE tcr.student_id = $1
-    `, [student_id]);
+            SELECT  
+                tcr.certificate_number,
+                TO_CHAR(tcr.issued_at, 'DD-MM-YYYY') AS issued_at,
+                tc.course_id,
+                tc.course_title,
+                tu.full_name
+            FROM tbl_certificates tcr
+            JOIN tbl_course tc 
+                ON tcr.course_id = tc.course_id
+            JOIN tbl_user tu 
+                ON tcr.student_id = tu.user_id
+            WHERE tcr.student_id = $1
+            `, [student_id]);
 
 
         // 2️⃣ Stats
@@ -1337,7 +1383,7 @@ exports.getstudentcertificates = async (req, res) => {
             message: "Certificates fetched successfully",
 
             stats: stats.rows[0],
-
+            progress:progress.rows,
             data: result.rows
         });
 
