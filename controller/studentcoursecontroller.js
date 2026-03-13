@@ -2407,7 +2407,7 @@ exports.getstudentoverview = async (req, res) => {
      // 5️⃣ Learning Time
    const learningTimeQuery = `
         SELECT 
-          CONCAT(SUM(REPLACE(tc.duration,'days','')::int),'days') AS duration,
+         CONCAT(SUM(REGEXP_REPLACE(tc.duration, '[^0-9]', '', 'g')::int),' Days') AS duration,
 
           SUM(tc.no_of_modules) AS no_of_modules,
 
