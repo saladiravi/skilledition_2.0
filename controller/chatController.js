@@ -361,6 +361,7 @@ exports.getChatList = async (req, res) => {
               WHERE tcm.message_seen = false
               AND tcm.sender_id != $1
             ) AS unseen_count
+          MAX(tcm.created_at) AS last_message_time
 
          FROM tbl_student_course sc
 
@@ -386,7 +387,7 @@ exports.getChatList = async (req, res) => {
            u.full_name,
            cr.chat_room_id
 
-         ORDER BY sc.course_id DESC`,
+         ORDER BY last_message_time DESC NULLS LAST`,
         [user_id]
       );
     }
@@ -408,7 +409,7 @@ exports.getChatList = async (req, res) => {
               WHERE tcm.message_seen = false
               AND tcm.sender_id != $1
             ) AS unseen_count
-
+        MAX(tcm.created_at) AS last_message_time
          FROM tbl_student_course sc
 
          JOIN tbl_course c 
@@ -433,7 +434,7 @@ exports.getChatList = async (req, res) => {
            u.full_name,
            cr.chat_room_id
 
-         ORDER BY sc.course_id DESC`,
+         ORDER BY last_message_time DESC NULLS LAST`,
         [user_id]
       );
     }
@@ -460,7 +461,7 @@ exports.getChatList = async (req, res) => {
               WHERE tcm.message_seen = false
               AND tcm.sender_id != $1
             ) AS unseen_count
-
+        MAX(tcm.created_at) AS last_message_time
          FROM tbl_student_course sc
 
          JOIN tbl_course c 
@@ -488,7 +489,7 @@ exports.getChatList = async (req, res) => {
            s.full_name,
            cr.chat_room_id
 
-         ORDER BY sc.course_id DESC`,
+         ORDER BY last_message_time DESC NULLS LAST`,
         [user_id]
       );
     }
