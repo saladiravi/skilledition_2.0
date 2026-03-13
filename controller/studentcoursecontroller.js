@@ -2463,12 +2463,17 @@ exports.getstudentoverview = async (req, res) => {
     ]);
 
     // Learning time data
-    const learningData = learningTime.rows.map(row => ({
-      course_id: row.course_id,
-      duration: row.duration,
-      no_of_modules: row.no_of_modules,
-      total_learning_time: row.total_learning_time
-    }));
+  const learningData = learningTime.rows[0]
+  ? {
+      duration: learningTime.rows[0].duration,
+      no_of_modules: Number(learningTime.rows[0].no_of_modules),
+      total_learning_time: learningTime.rows[0].total_learning_time
+    }
+  : {
+      duration: "0 Days",
+      no_of_modules: 0,
+      total_learning_time: "00:00:00"
+    };
 
     // Course progress
     const courseData = courses.rows.map(course => {
