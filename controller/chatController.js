@@ -360,7 +360,7 @@ exports.getChatList = async (req, res) => {
             COUNT(tcm.chat_id) FILTER (
               WHERE tcm.message_seen = false
               AND tcm.sender_id != $1
-            ) AS unseen_count
+            ) AS unseen_count,
           MAX(tcm.created_at) AS last_message_time
 
          FROM tbl_student_course sc
@@ -408,7 +408,7 @@ exports.getChatList = async (req, res) => {
             COUNT(tcm.chat_id) FILTER (
               WHERE tcm.message_seen = false
               AND tcm.sender_id != $1
-            ) AS unseen_count
+            ) AS unseen_count,
         MAX(tcm.created_at) AS last_message_time
          FROM tbl_student_course sc
 
@@ -460,7 +460,7 @@ exports.getChatList = async (req, res) => {
             COUNT(tcm.chat_id) FILTER (
               WHERE tcm.message_seen = false
               AND tcm.sender_id != $1
-            ) AS unseen_count
+            ) AS unseen_count,
         MAX(tcm.created_at) AS last_message_time
          FROM tbl_student_course sc
 
