@@ -2579,7 +2579,20 @@ exports.getadminstudentmanagement = async (req, res) => {
                   ),
               0) AS average_score,
 
-              MAX(tsfa.created_at) AS last_active,
+              CASE
+        WHEN EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at)))) < 60
+          THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))))) || ' seconds ago'
+
+        WHEN EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at)))) < 3600
+          THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))) ) / 60) || ' minutes ago'
+
+        WHEN EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at)))) < 86400
+          THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))) ) / 3600) || ' hours ago'
+
+        ELSE
+          FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))) ) / 86400) || ' days ago'
+    END AS last_active,
+
 
               CASE 
                   WHEN EXTRACT(DAY FROM MAX(tsfa.created_at)) <= 15 
@@ -2597,6 +2610,9 @@ exports.getadminstudentmanagement = async (req, res) => {
 
           LEFT JOIN tbl_student_final_assignment tsfa
               ON tsfa.student_id = tu.user_id
+          
+          LEFT JOIN tbl_student_course_progress scp
+             ON scp.student_id = tu.user_id
 
           GROUP BY 
               tu.user_id,
