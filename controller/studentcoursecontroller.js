@@ -2620,7 +2620,7 @@ exports.getadminstudentmanagement = async (req, res) => {
               tu.email,
               ts.mobile_number
           `);
-      
+
     return res.status(200).json({
       statusCode: 200,
       message: 'fetched sucessfully',
@@ -2648,7 +2648,7 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
   }
 
   try {
- const studentCheck = await pool.query(
+    const studentCheck = await pool.query(
       `SELECT user_id, full_name FROM tbl_user WHERE user_id = $1`,
       [student_id]
     );
@@ -2823,10 +2823,37 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
       ORDER BY activity_time DESC
       LIMIT 5
     `;
+    const overallProgressQuery = `
+      SELECT 
+      COALESCE(
+        ROUND(
+          (
+            COUNT(DISTINCT scp.module_video_id)
+            FILTER (WHERE scp.is_completed = true)::decimal
+            /
+            NULLIF(COUNT(DISTINCT tmv.module_video_id),0)
+          ) * 100,
+        2),
+      0) AS overall_progress_percentage
 
+      FROM tbl_student_course sc
+
+      JOIN tbl_module tm
+        ON sc.course_id = tm.course_id
+
+      JOIN tbl_module_videos tmv
+        ON tm.module_id = tmv.module_id
+
+      LEFT JOIN tbl_student_course_progress scp
+        ON tmv.module_video_id = scp.module_video_id
+        AND scp.student_id = $1
+
+      WHERE sc.student_id = $1
+      `;
     // Run all queries together
-    const [profile, courses, assignments, activity] = await Promise.all([
+    const [profile,overall, courses, assignments, activity] = await Promise.all([
       pool.query(profileQuery, [student_id]),
+       pool.query(overallProgressQuery, [student_id]),
       pool.query(courseQuery, [student_id]),
       pool.query(assignmentQuery, [student_id]),
       pool.query(activityQuery, [student_id])
@@ -2837,6 +2864,7 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
       message: "Dashboard fetched successfully",
       data: {
         profile: profile.rows[0] || null,
+        verall_progress: overall.rows[0].overall_progress_percentage,
         courses: courses.rows,
         assignments: assignments.rows,
         recent_activity: activity.rows
