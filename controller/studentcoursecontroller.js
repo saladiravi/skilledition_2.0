@@ -2604,8 +2604,7 @@ exports.getadminstudentmanagement = async (req, res) => {
               tu.email,
               ts.mobile_number
           `);
-          const test=await pool.query( `SELECT * FROM tbl_student_course_progress tscp`);
-          console.log(test)
+      
     return res.status(200).json({
       statusCode: 200,
       message: 'fetched sucessfully',
@@ -2773,7 +2772,7 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
           ELSE 'Video Started'
         END AS activity_type,
 
-        COALESCE(scp.completed_at, scp.is_unlocked_at) AS activity_time
+       COALESCE(scp.completed_at, scp.unlocked_at) AS activity_time
 
       FROM tbl_student_course_progress scp
 
