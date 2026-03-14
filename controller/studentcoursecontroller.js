@@ -2561,7 +2561,8 @@ exports.getadminstudentmanagement = async (req, res) => {
 
   try {
     const query = await pool.query(`
-          SELECT 
+          SELECT
+              tu.user_id AS student_id, 
               tu.full_name,
               tu.email,
               ts.mobile_number,
@@ -2632,7 +2633,17 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
   }
 
   try {
+ const studentCheck = await pool.query(
+      `SELECT user_id, full_name FROM tbl_user WHERE user_id = $1`,
+      [student_id]
+    );
 
+    if (studentCheck.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Student not found"
+      });
+    }
     // Profile + Stats
     const profileQuery = `
       SELECT 
