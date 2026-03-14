@@ -2702,10 +2702,16 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
         tc.course_title,
         tcat.category_name,
 
-        COUNT(DISTINCT tmv.module_video_id) AS total_videos,
-
+   COALESCE(
+    ROUND(
+      (
         COUNT(DISTINCT svp.module_video_id)
-        FILTER (WHERE svp.is_completed = true) AS watched_videos
+        FILTER (WHERE svp.is_completed = true)::decimal
+        /
+        NULLIF(COUNT(DISTINCT tmv.module_video_id),0)
+      ) * 100, 
+    2),
+  0) AS progress_percentage
 
       FROM tbl_student_course sc
 
