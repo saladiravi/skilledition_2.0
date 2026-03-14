@@ -2772,13 +2772,21 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
         tcat.category_name,
         tmv.video_title,
 
-        CASE 
-          WHEN scp.is_completed = true THEN 'Video Completed'
-          WHEN scp.is_unlocked = true THEN 'Video Unlocked'
-          ELSE 'Video Started'
-        END AS activity_type,
+      
 
-       COALESCE(scp.completed_at, scp.unlocked_at) AS activity_time
+        CASE
+    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 60
+      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at)))) || ' seconds ago'
+
+    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 3600
+      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 60) || ' minutes ago'
+
+    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 86400
+      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 3600) || ' hours ago'
+
+    ELSE
+      FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 86400) || ' days ago'
+  END AS activity_time
 
       FROM tbl_student_course_progress scp
 
