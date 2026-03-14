@@ -2864,7 +2864,7 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
       message: "Dashboard fetched successfully",
       data: {
         profile: profile.rows[0] || null,
-        verall_progress: overall.rows[0].overall_progress_percentage,
+        overall_progress: overall.rows[0].overall_progress_percentage,
         courses: courses.rows,
         assignments: assignments.rows,
         recent_activity: activity.rows
