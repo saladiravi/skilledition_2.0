@@ -2525,7 +2525,7 @@ exports.getstudentoverview = async (req, res) => {
         data: {
           student_name: studentName,
           course_watching: [],
-          available_courses: availableCourseList
+          course_section: availableCourseList
         }
       });
     }
@@ -2534,7 +2534,7 @@ exports.getstudentoverview = async (req, res) => {
       statusCode: 200,
       message: "Fetched successfully",
       data: {
-       student_name: studentName,
+        student_name: studentName,
         course_watching: courseData,
         course_section: coursection.rows,
         learningtime: learningData,
@@ -2554,4 +2554,264 @@ exports.getstudentoverview = async (req, res) => {
     });
 
   }
+};
+
+
+exports.getadminstudentmanagement = async (req, res) => {
+
+  try {
+    const query = await pool.query(`
+          SELECT 
+              tu.full_name,
+              tu.email,
+              ts.mobile_number,
+
+              COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
+
+              COUNT(*) FILTER (WHERE tsfa.is_unlocked = true) AS completed_courses,
+
+              COALESCE(
+                  ROUND(
+                      AVG(
+                          (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
+                      ),2
+                  ),
+              0) AS average_score,
+
+              MAX(tsfa.created_at) AS last_active,
+
+              CASE 
+                  WHEN EXTRACT(DAY FROM MAX(tsfa.created_at)) <= 15 
+                  THEN TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-A'
+                  ELSE TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-B'
+              END AS batch
+
+          FROM tbl_student_course tsc
+
+          JOIN tbl_user tu 
+              ON tu.user_id = tsc.student_id
+
+          LEFT JOIN tbl_student ts
+              ON ts.user_id = tu.user_id
+
+          LEFT JOIN tbl_student_final_assignment tsfa
+              ON tsfa.student_id = tu.user_id
+
+          GROUP BY 
+              tu.user_id,
+              tu.full_name,
+              tu.email,
+              ts.mobile_number
+          `);
+          const test=await pool.query( `SELECT * FROM tbl_student_course_progress tscp`);
+          console.log(test)
+    return res.status(200).json({
+      statusCode: 200,
+      message: 'fetched sucessfully',
+      data: query.rows
+    })
+  } catch (error) {
+    return res.status(500).json({
+      statusCode: 500,
+      message: 'Internal Server Error'
+    })
+  }
+}
+
+
+
+exports.getadminstudentmanagementbyid = async (req, res) => {
+
+  const { student_id } = req.body;
+
+  if (!student_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "student_id is required"
+    });
+  }
+
+  try {
+
+    // Profile + Stats
+    const profileQuery = `
+      SELECT 
+          tu.full_name,
+          tu.email,
+          ts.mobile_number,
+
+          COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
+
+          COUNT(*) FILTER (WHERE tsfa.is_unlocked = true) AS completed_courses,
+
+          COUNT(DISTINCT tcert.certificate_id) AS certificates,
+
+          COALESCE(
+              ROUND(
+                  AVG(
+                      (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
+                  ),2
+              ),
+          0) AS average_score,
+
+          MAX(tsfa.created_at) AS last_active,
+
+          CASE 
+              WHEN EXTRACT(DAY FROM MAX(tsfa.created_at)) <= 15 
+              THEN TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-A'
+              ELSE TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-B'
+          END AS batch
+
+      FROM tbl_student_course tsc
+
+      JOIN tbl_user tu 
+          ON tu.user_id = tsc.student_id
+
+      LEFT JOIN tbl_student ts
+          ON ts.user_id = tu.user_id
+
+      LEFT JOIN tbl_student_final_assignment tsfa
+          ON tsfa.student_id = tu.user_id
+
+      LEFT JOIN tbl_certificates tcert
+          ON tcert.student_id = tu.user_id
+
+      WHERE tu.user_id = $1
+
+      GROUP BY 
+          tu.user_id,
+          tu.full_name,
+          tu.email,
+          ts.mobile_number
+    `;
+
+    // Courses with progress
+    const courseQuery = `
+      SELECT 
+        tc.course_id,
+        tc.course_title,
+        tcat.category_name,
+
+        COUNT(DISTINCT tmv.module_video_id) AS total_videos,
+
+        COUNT(DISTINCT svp.module_video_id)
+        FILTER (WHERE svp.is_completed = true) AS watched_videos
+
+      FROM tbl_student_course sc
+
+      JOIN tbl_course tc
+        ON sc.course_id = tc.course_id
+
+      JOIN tbl_category tcat
+        ON tc.category_id = tcat.category_id
+
+      JOIN tbl_module tm
+        ON tc.course_id = tm.course_id
+
+      JOIN tbl_module_videos tmv
+        ON tm.module_id = tmv.module_id
+
+      LEFT JOIN tbl_student_course_progress svp
+        ON tmv.module_video_id = svp.module_video_id
+        AND svp.student_id = $1
+
+      WHERE sc.student_id = $1
+
+      GROUP BY tc.course_id, tc.course_title, tcat.category_name
+    `;
+
+    // Assignments
+    const assignmentQuery = `
+      SELECT 
+        ta.assignment_title,
+        ta.total_questions,
+
+        CASE 
+          WHEN scp.is_completed = true THEN 'Completed'
+          ELSE 'Pending'
+        END AS status
+
+      FROM tbl_student_course sc
+
+      JOIN tbl_module tm
+        ON sc.course_id = tm.course_id
+
+      JOIN tbl_assignment ta
+        ON tm.module_id = ta.module_id
+
+      LEFT JOIN tbl_student_course_progress scp
+        ON ta.assignment_id = scp.assignment_id
+        AND scp.student_id = $1
+
+      WHERE sc.student_id = $1
+
+      ORDER BY ta.assignment_date DESC
+      LIMIT 3
+    `;
+
+    // Recent Activity
+    const activityQuery = `
+      SELECT 
+        tc.course_title,
+        tcat.category_name,
+        tmv.video_title,
+
+        CASE 
+          WHEN scp.is_completed = true THEN 'Video Completed'
+          WHEN scp.is_unlocked = true THEN 'Video Unlocked'
+          ELSE 'Video Started'
+        END AS activity_type,
+
+        COALESCE(scp.completed_at, scp.is_unlocked_at) AS activity_time
+
+      FROM tbl_student_course_progress scp
+
+      LEFT JOIN tbl_module_videos tmv
+        ON scp.module_video_id = tmv.module_video_id
+
+      LEFT JOIN tbl_module tm
+        ON scp.module_id = tm.module_id
+
+      LEFT JOIN tbl_course tc
+        ON scp.course_id = tc.course_id
+
+      LEFT JOIN tbl_category tcat
+        ON tc.category_id = tcat.category_id
+
+      WHERE scp.student_id = $1
+
+      ORDER BY activity_time DESC
+      LIMIT 5
+    `;
+
+    // Run all queries together
+    const [profile, courses, assignments, activity] = await Promise.all([
+      pool.query(profileQuery, [student_id]),
+      pool.query(courseQuery, [student_id]),
+      pool.query(assignmentQuery, [student_id]),
+      pool.query(activityQuery, [student_id])
+    ]);
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Dashboard fetched successfully",
+      data: {
+        profile: profile.rows[0] || null,
+        courses: courses.rows,
+        assignments: assignments.rows,
+        recent_activity: activity.rows
+      }
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+
+  }
+
 };

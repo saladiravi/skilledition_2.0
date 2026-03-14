@@ -30,5 +30,7 @@ router.post('/updatedtime',verifyToken,allowRoles("admin","student","tutor"),stu
 router.post('/getcourseenroleDetails',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getCourseenroleDetails)
 router.post('/getstudentoverview',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getstudentoverview)
 
+router.post('/getadminstudentmanagement',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getadminstudentmanagement)
+router.post('/getadminstudentmanagementbyid',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getadminstudentmanagementbyid)
 
 module.exports=router
