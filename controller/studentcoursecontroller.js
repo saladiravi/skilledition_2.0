@@ -2258,6 +2258,14 @@ exports.getstudentoverview = async (req, res) => {
   }
 
   try {
+    const studentname = await pool.query(
+      `SELECT full_name FROM tbl_user WHERE user_id=$1`,
+      [student_id]
+    );
+
+    const studentName = studentname.rows.length
+      ? studentname.rows[0].full_name
+      : null;
 
     // 1️⃣ Courses with progress
     const courseQuery = `
@@ -2339,6 +2347,7 @@ exports.getstudentoverview = async (req, res) => {
       SELECT 
         tc.course_id,
         tc.course_title,
+        tcat.category_name,
         tmv.video_title
 
       FROM tbl_student_course_progress svp
@@ -2351,6 +2360,9 @@ exports.getstudentoverview = async (req, res) => {
 
       JOIN tbl_course tc
         ON tm.course_id = tc.course_id
+        
+        JOIN tbl_category tcat
+      ON tc.category_id = tcat.category_id
 
       WHERE svp.student_id = $1
       AND svp.is_completed = true
@@ -2406,8 +2418,8 @@ exports.getstudentoverview = async (req, res) => {
       WHERE sc.student_id = $1
     `;
 
-     // 5️⃣ Learning Time
-   const learningTimeQuery = `
+    // 5️⃣ Learning Time
+    const learningTimeQuery = `
         SELECT 
         SUM(REGEXP_REPLACE(tc.duration, '[^0-9]', '', 'g')::int) AS duration,
 
@@ -2465,17 +2477,17 @@ exports.getstudentoverview = async (req, res) => {
     ]);
 
     // Learning time data
-  const learningData = learningTime.rows[0]
-  ? {
-      duration: learningTime.rows[0].duration,
-      no_of_modules: Number(learningTime.rows[0].no_of_modules),
-      total_learning_time: learningTime.rows[0].total_learning_time
-    }
-  : {
-      duration: "0 Days",
-      no_of_modules: 0,
-      total_learning_time: "00:00:00"
-    };
+    const learningData = learningTime.rows[0]
+      ? {
+        duration: learningTime.rows[0].duration,
+        no_of_modules: Number(learningTime.rows[0].no_of_modules),
+        total_learning_time: learningTime.rows[0].total_learning_time
+      }
+      : {
+        duration: "0 Days",
+        no_of_modules: 0,
+        total_learning_time: "00:00:00"
+      };
 
     // Course progress
     const courseData = courses.rows.map(course => {
@@ -2511,6 +2523,7 @@ exports.getstudentoverview = async (req, res) => {
         statusCode: 200,
         message: "No purchased courses",
         data: {
+          student_name: studentName,
           course_watching: [],
           available_courses: availableCourseList
         }
@@ -2521,6 +2534,7 @@ exports.getstudentoverview = async (req, res) => {
       statusCode: 200,
       message: "Fetched successfully",
       data: {
+       student_name: studentName,
         course_watching: courseData,
         course_section: coursection.rows,
         learningtime: learningData,
