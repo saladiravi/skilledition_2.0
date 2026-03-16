@@ -2680,7 +2680,19 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
               ),
           0) AS average_score,
 
-          MAX(tsfa.created_at) AS last_active,
+                CASE
+            WHEN EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) < 60
+                THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at)))) || ' seconds ago'
+
+            WHEN EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) < 3600
+                THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) / 60) || ' minutes ago'
+
+            WHEN EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) < 86400
+                THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) / 3600) || ' hours ago'
+
+            ELSE
+                FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) / 86400) || ' days ago'
+        END AS last_active,
 
           CASE 
               WHEN EXTRACT(DAY FROM MAX(tsfa.created_at)) <= 15 
