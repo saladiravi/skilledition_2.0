@@ -2820,8 +2820,8 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
       SELECT 
         tc.course_title,
         tcat.category_name,
-        tmv.video_title,
-    
+       
+      COALESCE(tmv.video_title, ta.assignment_title) AS video_title,
         CASE
     WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 60
       THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at)))) || ' seconds ago'
@@ -2840,6 +2840,9 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
 
       LEFT JOIN tbl_module_videos tmv
         ON scp.module_video_id = tmv.module_video_id
+
+      LEFT JOIN tbl_assignment ta
+         ON scp.assignment_id = ta.assignment_id  
 
       LEFT JOIN tbl_module tm
         ON scp.module_id = tm.module_id
