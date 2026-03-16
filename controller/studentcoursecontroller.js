@@ -2419,30 +2419,36 @@ exports.getstudentoverview = async (req, res) => {
     `;
 
     // 5️⃣ Learning Time
-    const learningTimeQuery = `
-        SELECT 
-        SUM(REGEXP_REPLACE(tc.duration, '[^0-9]', '', 'g')::int) AS duration,
-
-          SUM(tc.no_of_modules) AS no_of_modules,
-
-          COALESCE(
-            TO_CHAR(SUM(tmv.video_duration::interval),'HH24:MI:SS'),
-            '00:00:00'
-          ) AS total_learning_time
-
-        FROM tbl_student_course sc
-
-        JOIN tbl_course tc
-          ON sc.course_id = tc.course_id
-
-        JOIN tbl_module tm
-          ON tc.course_id = tm.course_id
-
-        JOIN tbl_module_videos tmv
-          ON tm.module_id = tmv.module_id
-
-        WHERE sc.student_id = $1
-        `;
+ const learningTimeQuery = `
+SELECT 
+  c.duration,
+  c.no_of_modules,
+  v.total_learning_time
+FROM
+(
+  SELECT 
+    SUM(REGEXP_REPLACE(tc.duration, '[^0-9]', '', 'g')::int) AS duration,
+    SUM(tc.no_of_modules) AS no_of_modules
+  FROM tbl_student_course sc
+  JOIN tbl_course tc
+    ON sc.course_id = tc.course_id
+  WHERE sc.student_id = $1
+) c
+CROSS JOIN
+(
+  SELECT 
+    COALESCE(
+      TO_CHAR(SUM(tmv.video_duration::interval),'HH24:MI:SS'),
+      '00:00:00'
+    ) AS total_learning_time
+  FROM tbl_student_course sc
+  JOIN tbl_module tm
+    ON sc.course_id = tm.course_id
+  JOIN tbl_module_videos tmv
+    ON tm.module_id = tmv.module_id
+  WHERE sc.student_id = $1
+) v
+`;
 
     const availableCoursesQuery = `
       SELECT 
