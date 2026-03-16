@@ -2145,7 +2145,7 @@ exports.gettutordetailsbyId = async (req, res) => {
 exports.tutordashboards=async(req,res)=>{
   const {tutor_id}=req.body
   try{
-      const checktutor=await pool.query(`SELECT role FROM tbl_user WHERE user_id=$1`,[tutor_id]);
+      const checktutor=await pool.query(`SELECT role,full_name FROM tbl_user WHERE user_id=$1`,[tutor_id]);
       if(checktutor.rows.length ===0){
         return res.status(404).json({
           statusCode:404,
@@ -2200,9 +2200,10 @@ exports.tutordashboards=async(req,res)=>{
       pool.query(recentAssignmentQuery, [tutor_id])
     ]);
     
-
+   const tutor_name = checktutor.rows[0].full_name;
     return res.status(200).json({
       statusCode:200,
+      tutor_name:tutor_name,
       stats: statsResult.rows[0],
       recent_assignments: recentAssignments.rows
     });
