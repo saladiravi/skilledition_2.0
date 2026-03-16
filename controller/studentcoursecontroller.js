@@ -2795,45 +2795,47 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
 
     // Recent Activity
     const activityQuery = `
-      SELECT 
-        tc.course_title,
-        tcat.category_name,
-        tmv.video_title,
+     SELECT 
+  tc.course_title,
+  tcat.category_name,
 
-      
+  COALESCE(tmv.video_title, ta.assignment_title) AS video_title,
 
-        CASE
-    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 60
-      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at)))) || ' seconds ago'
+  CASE
+    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.unlocked_at, scp.completed_at::timestamp))) < 60
+      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.unlocked_at, scp.completed_at::timestamp)))) || ' seconds ago'
 
-    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 3600
-      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 60) || ' minutes ago'
+    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.unlocked_at, scp.completed_at::timestamp))) < 3600
+      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.unlocked_at, scp.completed_at::timestamp))) / 60) || ' minutes ago'
 
-    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 86400
-      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 3600) || ' hours ago'
+    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.unlocked_at, scp.completed_at::timestamp))) < 86400
+      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.unlocked_at, scp.completed_at::timestamp))) / 3600) || ' hours ago'
 
     ELSE
-      FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 86400) || ' days ago'
+      FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.unlocked_at, scp.completed_at::timestamp))) / 86400) || ' days ago'
   END AS activity_time
 
-      FROM tbl_student_course_progress scp
+FROM tbl_student_course_progress scp
 
-      LEFT JOIN tbl_module_videos tmv
-        ON scp.module_video_id = tmv.module_video_id
+LEFT JOIN tbl_module_videos tmv
+  ON scp.module_video_id = tmv.module_video_id
 
-      LEFT JOIN tbl_module tm
-        ON scp.module_id = tm.module_id
+LEFT JOIN tbl_assignment ta
+  ON scp.assignment_id = ta.assignment_id
 
-      LEFT JOIN tbl_course tc
-        ON scp.course_id = tc.course_id
+LEFT JOIN tbl_module tm
+  ON scp.module_id = tm.module_id
 
-      LEFT JOIN tbl_category tcat
-        ON tc.category_id = tcat.category_id
+LEFT JOIN tbl_course tc
+  ON scp.course_id = tc.course_id
 
-      WHERE scp.student_id = $1
+LEFT JOIN tbl_category tcat
+  ON tc.category_id = tcat.category_id
 
-      ORDER BY activity_time DESC
-      LIMIT 5
+WHERE scp.student_id = $1
+
+ORDER BY COALESCE(scp.unlocked_at, scp.completed_at::timestamp) DESC
+LIMIT 5
     `;
     const overallProgressQuery = `
       SELECT 
