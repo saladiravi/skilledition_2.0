@@ -52,7 +52,7 @@ router.post('/gettutordetailsbystatus',verifyToken,allowRoles("admin", "student"
 router.post('/updateTutorStatus',verifyToken,allowRoles("admin", "student", "tutor"),tutorcontroller.updateTutorStatus);
 
 router.post('/gettutordetailsbystatusid',verifyToken,allowRoles("admin", "student", "tutor"),tutorcontroller.gettutordetailsbyId);
-
+router.post('/gettutorstudentdetailsbyid',verifyToken,allowRoles("admin", "student", "tutor"),tutorcontroller.gettutorstudentdetailsbyid);
 
 module.exports = router;
 

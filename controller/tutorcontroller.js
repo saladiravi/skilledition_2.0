@@ -2139,3 +2139,162 @@ exports.gettutordetailsbyId = async (req, res) => {
     });
   }
 };
+
+
+
+exports.gettutorstudentdetailsbyid = async (req, res) => {
+
+  const { student_id } = req.body;
+
+  if (!student_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "student_id is required"
+    });
+  }
+
+  try {
+    const studentCheck = await pool.query(
+      `SELECT user_id, full_name FROM tbl_user WHERE user_id = $1`,
+      [student_id]
+    );
+
+    if (studentCheck.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Student not found"
+      });
+    }
+
+    // Profile + Stats
+  const profileQuery = `
+        SELECT 
+            tu.full_name,
+            tu.email,
+            ts.mobile_number,
+
+            COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
+
+            COUNT(*) FILTER (WHERE tsfa.status = 'Completed') AS assignments_completed
+
+        FROM tbl_student_course tsc
+
+        JOIN tbl_user tu 
+            ON tu.user_id = tsc.student_id
+
+        LEFT JOIN tbl_student ts
+            ON ts.user_id = tu.user_id
+
+        LEFT JOIN tbl_student_final_assignment tsfa
+            ON tsfa.student_id = tu.user_id
+
+        LEFT JOIN tbl_certificates tcert
+            ON tcert.student_id = tu.user_id
+
+        WHERE tu.user_id = $1
+
+        GROUP BY 
+            tu.user_id,
+            tu.full_name,
+            tu.email,
+            ts.mobile_number
+        `;
+
+ 
+    const overallProgressQuery = `
+      SELECT 
+      COALESCE(
+        ROUND(
+          (
+            COUNT(DISTINCT scp.module_video_id)
+            FILTER (WHERE scp.is_completed = true)::decimal
+            /
+            NULLIF(COUNT(DISTINCT tmv.module_video_id),0)
+          ) * 100,
+        2),
+      0) AS overall_progress_percentage
+
+      FROM tbl_student_course sc
+
+      JOIN tbl_module tm
+        ON sc.course_id = tm.course_id
+
+      JOIN tbl_module_videos tmv
+        ON tm.module_id = tmv.module_id
+
+      LEFT JOIN tbl_student_course_progress scp
+        ON tmv.module_video_id = scp.module_video_id
+        AND scp.student_id = $1
+
+      WHERE sc.student_id = $1
+      `;
+
+    const activityQuery = `
+      SELECT 
+        tc.course_title,
+        tcat.category_name,
+        tmv.video_title,
+    
+        CASE
+    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 60
+      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at)))) || ' seconds ago'
+
+    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 3600
+      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 60) || ' minutes ago'
+
+    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 86400
+      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 3600) || ' hours ago'
+
+    ELSE
+      FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 86400) || ' days ago'
+  END AS activity_time
+
+      FROM tbl_student_course_progress scp
+
+      LEFT JOIN tbl_module_videos tmv
+        ON scp.module_video_id = tmv.module_video_id
+
+      LEFT JOIN tbl_module tm
+        ON scp.module_id = tm.module_id
+
+      LEFT JOIN tbl_course tc
+        ON scp.course_id = tc.course_id
+
+      LEFT JOIN tbl_category tcat
+        ON tc.category_id = tcat.category_id
+
+      WHERE scp.student_id = $1
+
+      ORDER BY activity_time DESC
+      LIMIT 5
+    `;
+        
+  // Run all queries together
+    const [profile, overall, activity] = await Promise.all([
+      pool.query(profileQuery, [student_id]),
+      pool.query(overallProgressQuery, [student_id]),
+      pool.query(activityQuery, [student_id])
+    ]);
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Dashboard fetched successfully",
+      data: {
+        profile: profile.rows[0] || null,
+        overall_progress: overall.rows[0].overall_progress_percentage,
+        recent_activity: activity.rows
+      }
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+
+  }
+
+};
