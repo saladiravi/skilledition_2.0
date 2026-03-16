@@ -2153,35 +2153,47 @@ exports.tutordashboards=async(req,res)=>{
         })
       }
     const statsQuery = `
-    SELECT
-    COUNT(DISTINCT c.course_id) AS total_courses,
-    COUNT(DISTINCT sc.student_id) AS active_students,
-    COUNT(*) FILTER (WHERE tsfa.tutor_status = 'Pending') AS assignments_pending,
-    ROUND(AVG(f.rating)::numeric,1) AS average_rating
-    FROM tbl_course c
-    LEFT JOIN tbl_student_course sc ON sc.course_id = c.course_id
-    LEFT JOIN tbl_student_final_assignment tsfa ON tsfa.course_id = c.course_id
-    LEFT JOIN tbl_feedback f ON f.course_id = c.course_id
-    WHERE c.tutor_id = $1
+        SELECT
+        COUNT(DISTINCT c.course_id) AS total_courses,
+
+        COUNT(DISTINCT sc.student_id) AS active_students,
+
+        COUNT(DISTINCT tsfa.final_assignment_id)
+        FILTER (WHERE tsfa.tutor_status = 'Pending') AS assignments_pending,
+
+        ROUND(AVG(DISTINCT f.rating)::numeric,1) AS average_rating
+
+        FROM tbl_course c
+
+        LEFT JOIN tbl_student_course sc
+        ON sc.course_id = c.course_id
+
+        LEFT JOIN tbl_student_final_assignment tsfa
+        ON tsfa.course_id = c.course_id
+
+        LEFT JOIN tbl_feedback f
+        ON f.course_id = c.course_id
+
+        WHERE c.tutor_id = $1
     `;
 
     const recentAssignmentQuery = `
-    SELECT
-    u.full_name AS student,
-    c.course_title,
-    tsfa.assignment_title,
-    TO_CHAR(tsfa.submitted_at,'DD/MM/YYYY') AS submitted,
-    CASE
-      WHEN tsfa.tutor_status = 'Pending' THEN 'Pending'
-      ELSE 'Graded'
-    END AS status
-    FROM tbl_student_final_assignment tsfa
-    JOIN tbl_user u ON tsfa.student_id = u.user_id
-    JOIN tbl_course c ON tsfa.course_id = c.course_id
-    WHERE c.tutor_id = $1
-    ORDER BY tsfa.submitted_at DESC
-    LIMIT 5
-    `;
+        SELECT
+        u.full_name AS student,
+        c.course_title,
+        tsfa.assignment_title,
+        TO_CHAR(tsfa.submitted_at,'DD/MM/YYYY') AS submitted,
+        CASE
+          WHEN tsfa.tutor_status = 'Pending' THEN 'Pending'
+          ELSE 'Graded'
+        END AS status
+        FROM tbl_student_final_assignment tsfa
+        JOIN tbl_user u ON tsfa.student_id = u.user_id
+        JOIN tbl_course c ON tsfa.course_id = c.course_id
+        WHERE c.tutor_id = $1
+        ORDER BY tsfa.submitted_at DESC
+        LIMIT 5
+        `;
 
     const [statsResult, recentAssignments] = await Promise.all([
       pool.query(statsQuery, [tutor_id]),
