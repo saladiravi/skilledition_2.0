@@ -401,8 +401,16 @@ exports.getTutorAssignmentDetails = async (req, res) => {
         const result = await pool.query(query, [tutorId]);
 
         const courseMap = {};
+        let totalAssignments = 0;
+        let totalQuestions = 0;
+        let pendingAssignments = 0;
+        let publishedAssignments = 0;
 
         result.rows.forEach(row => {
+             totalAssignments += 1;
+    totalQuestions += Number(row.total_questions);
+    if (row.status === 'Pending') pendingAssignments += 1;
+    if (row.status === 'Published') publishedAssignments += 1;
             // COURSE LEVEL
             if (!courseMap[row.course_id]) {
                 courseMap[row.course_id] = {
@@ -467,6 +475,12 @@ exports.getTutorAssignmentDetails = async (req, res) => {
         res.status(200).json({
             statusCode: 200,
             message: 'Fectched Sucessfully',
+               stats: {
+                total_assignments: totalAssignments,
+                published_assignments: publishedAssignments,
+                pending_assignments: pendingAssignments,
+                total_questions: totalQuestions
+            },
             data: finalData
         });
 
