@@ -70,7 +70,7 @@ exports.addfeedback = async (req, res) => {
         message: "You can give feedback only after complete the course and assignment"
       });
     }
-    
+
 
     const result = await con.query(`INSERT INTO tbl_feedback (student_id, tutor_id, course_id, rating, enjoy_most, review) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [student_id, tutor_id, course_id || null, rating, enjoy_most || null, review || null]
@@ -186,6 +186,19 @@ exports.getTutorFeedbacks = async (req, res) => {
       });
     }
 
+    const statsResult = await con.query(
+      `SELECT
+            ROUND(
+              (COUNT(*) FILTER (WHERE response IS NOT NULL)::decimal 
+              / NULLIF(COUNT(*),0)) * 100, 2
+            ) AS response_rate,
+            ROUND(AVG(rating)::numeric, 1) AS average_rating,
+            COUNT(*) AS total_reviews,
+            COUNT(*) FILTER (WHERE rating = 5) AS total_5_star
+        FROM tbl_feedback
+        WHERE tutor_id = $1`,
+      [tutor_id]
+    );
     const feedbackResult = await con.query(`SELECT f.feedback_id, f.rating, f.enjoy_most, f.review, f.response, f.feedback_created_at, u.user_id AS student_id, u.full_name AS student_name, c.course_id, c.course_title FROM tbl_feedback f JOIN tbl_user u ON f.student_id = u.user_id LEFT JOIN tbl_course c ON f.course_id = c.course_id WHERE f.tutor_id = $1 ORDER BY f.feedback_id DESC`,
       [tutor_id]
     );
@@ -197,6 +210,12 @@ exports.getTutorFeedbacks = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Tutor feedbacks fetched successfully",
+      stats: {
+        average_rating: stats.average_rating || 0,
+        total_reviews: Number(stats.total_reviews),
+        five_star: Number(stats.total_5_star),
+        response_rate: Number(stats.response_rate) || 0
+      },
       total_feedbacks: feedbackResult.rows.length,
       rating_summary: ratingResult.rows[0],
       data: feedbackResult.rows
@@ -284,7 +303,7 @@ exports.getStudentCoursefeedback = async (req, res) => {
 
     if (!student_id || !course_id) {
       return res.status(400).json({
-        statusCode:400,
+        statusCode: 400,
         message: "student_id and course_id are required"
       });
     }
@@ -298,7 +317,7 @@ exports.getStudentCoursefeedback = async (req, res) => {
     if (purchaseCheck.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404
-        
+
       });
     }
     const result = await con.query(
