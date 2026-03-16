@@ -214,114 +214,7 @@ exports.getMessages = async (req, res) => {
   }
 };
 
-
-
-// exports.getChatList = async (req, res) => {
-//   const { user_id } = req.body;
-
-//   try {
-//     // 1️⃣ Get role
-//     const userResult = await pool.query(
-//       `SELECT role FROM tbl_user WHERE user_id = $1`,
-//       [user_id]
-//     );
-
-//     if (userResult.rows.length === 0)
-//       return res.status(404).json({ message: "User not found" });
-
-//     const role = userResult.rows[0].role;
-
-//     let result;
-
-//     // ===================================================
-//     // 🎓 STUDENT
-//     // ===================================================
-//     if (role === "student") {
-
-//       result = await pool.query(
-//         `SELECT 
-//             sc.course_id,
-//             c.course_title,
-//             c.tutor_id,
-//             u.full_name AS tutor_name,
-//             cr.chat_room_id
-//          FROM tbl_student_course sc
-//          JOIN tbl_course c ON sc.course_id = c.course_id
-//          JOIN tbl_user u ON c.tutor_id = u.user_id
-//          LEFT JOIN tbl_chat_room cr
-//            ON cr.course_id = sc.course_id
-//            AND cr.student_id = sc.student_id
-//          WHERE sc.student_id = $1`,
-//         [user_id]
-//       );
-//     }
-
-//     // ===================================================
-//     // 👨‍🏫 TUTOR
-//     // ===================================================
-//     else if (role === "tutor") {
-
-//       result = await pool.query(
-//         `SELECT 
-//             sc.course_id,
-//             c.course_title,
-//             sc.student_id,
-//             u.full_name AS student_name,
-//             cr.chat_room_id
-//          FROM tbl_student_course sc
-//          JOIN tbl_course c ON sc.course_id = c.course_id
-//          JOIN tbl_user u ON sc.student_id = u.user_id
-//          LEFT JOIN tbl_chat_room cr
-//            ON cr.course_id = sc.course_id
-//            AND cr.student_id = sc.student_id
-//          WHERE c.tutor_id = $1`,
-//         [user_id]
-//       );
-//     }
-
-//     // ===================================================
-//     // 👑 ADMIN → Get ALL student-tutor chats
-//     // ===================================================
-//     else if (role === "admin") {
-
-//       result = await pool.query(
-//         `SELECT 
-//             sc.course_id,
-//             c.course_title,
-//             c.tutor_id,
-//             t.full_name AS tutor_name,
-//             sc.student_id,
-//             s.full_name AS student_name,
-//             cr.chat_room_id
-//          FROM tbl_student_course sc
-//          JOIN tbl_course c ON sc.course_id = c.course_id
-//          JOIN tbl_user t ON c.tutor_id = t.user_id
-//          JOIN tbl_user s ON sc.student_id = s.user_id
-//          LEFT JOIN tbl_chat_room cr
-//            ON cr.course_id = sc.course_id
-//            AND cr.student_id = sc.student_id`
-//       );
-//     }
-
-//     else {
-//       return res.status(404).json({ 
-//         statusCode:404,
-//         message: "Invalid role" 
-//       });
-//     }
-
-//     return res.status(200).json({
-//       statusCode: 200,
-//       chatList: result.rows
-//     });
-
-//   } catch (error) {
-
-//     res.status(500).json({ message: "Internal Server Error" });
-//   }
-// };
-
-
+ 
 exports.getChatList = async (req, res) => {
   const { user_id } = req.body;
 
@@ -677,3 +570,82 @@ exports.getpauseChatList = async (req, res) => {
     });
   }
 };
+
+
+exports.chatstats = async (req, res) => {
+  const { tutor_id } = req.body
+
+  try {
+    const checktutor=await pool.query(`SELECT role FROM tbl_user WHERE user_id=$1`,[tutor_id]);
+      if(checktutor.rows.length ===0){
+        return res.status(404).json({
+          statusCode:404,
+          message:'Tutor Not Found'
+        })
+      }
+    const statsQuery = `
+        SELECT
+        COUNT(DISTINCT cr.student_id) AS total_students,
+        COUNT(cr.chat_room_id) AS total_queries,
+
+        COUNT(*) FILTER (
+            WHERE EXISTS (
+                SELECT 1
+                FROM tbl_chat_messages m
+                WHERE m.chat_room_id = cr.chat_room_id
+                AND m.sender_id = $1
+            )
+        ) AS resolved,
+
+        COUNT(*) FILTER (
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM tbl_chat_messages m
+                WHERE m.chat_room_id = cr.chat_room_id
+                AND m.sender_id = $1
+            )
+        ) AS unresolved,
+
+        ROUND(
+        (
+        COUNT(*) FILTER (
+            WHERE EXISTS (
+                SELECT 1
+                FROM tbl_chat_messages m
+                WHERE m.chat_room_id = cr.chat_room_id
+                AND m.sender_id = $1
+            )
+        )::decimal
+        /
+        NULLIF(COUNT(cr.chat_room_id),0)
+        ) * 100 ,2
+        ) AS response_rate
+
+        FROM tbl_chat_room cr
+        JOIN tbl_course c
+        ON cr.course_id = c.course_id
+
+        WHERE c.tutor_id = $1
+        `;
+
+    const statsResult = await pool.query(statsQuery, [tutor_id]);
+    const stats = statsResult.rows[0];
+
+    return res.status(200).json({
+      statusCode:200,
+      message:'Fectched Sucessfully',
+      stats: {
+        total_students: Number(stats.total_students),
+        total_queries: Number(stats.total_queries),
+        unresolved: Number(stats.unresolved),
+        resolved: Number(stats.resolved),
+        response_rate: Number(stats.response_rate)
+      }
+    })
+  } catch (error) {
+    return res.status(500).json({
+      statusCode: 500,
+      message: 'Internal Server Error'
+    })
+  }
+}
