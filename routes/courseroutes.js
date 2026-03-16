@@ -45,6 +45,7 @@ router.post('/getadmincoursewithstatusid',verifyToken,allowRoles("admin","studen
 
 //tutor api
 router.post('/getstudenttotalcourseprogress',verifyToken,allowRoles("admin","student","tutor"),Course.getstudenttotalcourseprogress);
+router.post('/gettutorstudentdetailsbyid',verifyToken,allowRoles("admin", "student", "tutor"),Course.gettutorstudentdetailsbyid);
 
 
 module.exports = router;
