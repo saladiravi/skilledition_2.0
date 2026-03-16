@@ -206,7 +206,7 @@ exports.getTutorFeedbacks = async (req, res) => {
     const ratingResult = await con.query(`SELECT COUNT(*) FILTER (WHERE rating = 5) AS total_5_rating, COUNT(*) FILTER (WHERE rating = 4) AS total_4_rating, COUNT(*) FILTER (WHERE rating = 3) AS total_3_rating, COUNT(*) FILTER (WHERE rating = 2) AS total_2_rating, COUNT(*) FILTER (WHERE rating = 1) AS total_1_rating FROM tbl_feedback WHERE tutor_id = $1`,
       [tutor_id]
     );
-
+        const stats = statsResult.rows[0];
     return res.status(200).json({
       statusCode: 200,
       message: "Tutor feedbacks fetched successfully",
