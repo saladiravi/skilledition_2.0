@@ -14,6 +14,7 @@ const announcement=require('./routes/announcementroutes');
 const contactroutes=require('./routes/contactroutes');
 const internship=require('./routes/internshiproutes');
 const chatRoutes = require("./routes/chatRoutes");
+const internship=require('./routes/internshiproutes');
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/contact',contactroutes);
 app.use('/student',student);
 app.use('/internship',internship);
 app.use('/chat',chatRoutes);
+app.use('/notification',notification);
 
 
 app.listen(5000, () => {
