@@ -2576,9 +2576,7 @@ exports.getadminstudentmanagement = async (req, res) => {
 
         -- ✅ Active Students (purchased at least 1 course)
         COUNT(DISTINCT tsc.student_id) AS active_students,
-
-        -- ✅ Course Purchased Students (same as active)
-        COUNT(DISTINCT tsc.student_id) AS course_purchased_students,
+ 
 
         -- ✅ Avg Progress
         COALESCE(
@@ -2667,8 +2665,9 @@ exports.getadminstudentmanagement = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: 'fetched sucessfully',
-      data: query.rows,
-      stats: statsQuery.rows[0]
+      stats: statsQuery.rows[0],
+      data: query.rows
+      
     })
   } catch (error) {
     return res.status(500).json({
