@@ -2566,6 +2566,43 @@ CROSS JOIN
 exports.getadminstudentmanagement = async (req, res) => {
 
   try {
+
+       const statsQuery = await pool.query(`
+            SELECT
+        -- ✅ Total Students (only role = student)
+        COUNT(DISTINCT tu.user_id) FILTER (
+          WHERE tu.role = 'student'
+        ) AS total_students,
+
+        -- ✅ Active Students (purchased at least 1 course)
+        COUNT(DISTINCT tsc.student_id) AS active_students,
+
+        -- ✅ Course Purchased Students (same as active)
+        COUNT(DISTINCT tsc.student_id) AS course_purchased_students,
+
+        -- ✅ Avg Progress
+        COALESCE(
+          ROUND(
+            AVG(
+              (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
+            ), 2
+          ),
+        0) AS avg_progress,
+
+        -- ✅ Certificates Issued (from tbl_certificates)
+        COUNT(DISTINCT tc.certificate_id) AS certificates_issued
+
+      FROM tbl_user tu
+
+      LEFT JOIN tbl_student_course tsc 
+        ON tsc.student_id = tu.user_id
+
+      LEFT JOIN tbl_student_final_assignment tsfa 
+        ON tsfa.student_id = tu.user_id
+
+      LEFT JOIN tbl_certificates tc
+        ON tc.student_id = tu.user_id
+    `);
     const query = await pool.query(`
           SELECT
               tu.user_id AS student_id, 
@@ -2630,7 +2667,8 @@ exports.getadminstudentmanagement = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: 'fetched sucessfully',
-      data: query.rows
+      data: query.rows,
+      stats: statsQuery.rows[0]
     })
   } catch (error) {
     return res.status(500).json({
