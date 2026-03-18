@@ -1441,10 +1441,9 @@ exports.getallstudentcertificates = async (req, res) => {
                         WHERE tu.role = 'student'
                     ) AS total_students,
 
-                    -- ✅ Course Completion Count
-                    COUNT(*) FILTER (
-                        WHERE tsfa.is_unlocked = true
-                    ) AS course_completion,
+                  COUNT(DISTINCT tc.course_id) FILTER (
+                        WHERE tc.status = 'Published'
+                    ) AS no_of_courses,
 
                     -- ✅ Certificate Issued Students
                     COUNT(DISTINCT tcr.student_id) AS certificate_issued_students,
@@ -1467,8 +1466,10 @@ exports.getallstudentcertificates = async (req, res) => {
 
                 LEFT JOIN tbl_certificates tcr
                     ON tcr.student_id = tu.user_id
+                LEFT JOIN tbl_course tc
+                    ON tc.course_id = tcr.course_id
         `);
-        
+
         const result = await pool.query(`
         SELECT  
             tcr.certificate_id,
