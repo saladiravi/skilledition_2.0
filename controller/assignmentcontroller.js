@@ -371,7 +371,7 @@ exports.getTutorAssignmentDetails = async (req, res) => {
 
     try {
 
-       
+
         const query = `
       SELECT
         c.course_id,
@@ -408,10 +408,10 @@ exports.getTutorAssignmentDetails = async (req, res) => {
         let publishedAssignments = 0;
 
         result.rows.forEach(row => {
-             totalAssignments += 1;
-    totalQuestions += Number(row.total_questions);
-    if (row.status === 'Pending') pendingAssignments += 1;
-    if (row.status === 'Published') publishedAssignments += 1;
+            totalAssignments += 1;
+            totalQuestions += Number(row.total_questions);
+            if (row.status === 'Pending') pendingAssignments += 1;
+            if (row.status === 'Published') publishedAssignments += 1;
             // COURSE LEVEL
             if (!courseMap[row.course_id]) {
                 courseMap[row.course_id] = {
@@ -476,7 +476,7 @@ exports.getTutorAssignmentDetails = async (req, res) => {
         res.status(200).json({
             statusCode: 200,
             message: 'Fectched Sucessfully',
-               stats: {
+            stats: {
                 total_assignments: totalAssignments,
                 published_assignments: publishedAssignments,
                 pending_assignments: pendingAssignments,
@@ -956,7 +956,7 @@ exports.gettotalfinalassignment = async (req, res) => {
 
     try {
 
-                      const statsQuery = `
+        const statsQuery = `
                     SELECT
                         COUNT(*) AS all_assignments,
 
@@ -1022,7 +1022,7 @@ exports.gettotalfinalassignment = async (req, res) => {
 
         return res.status(200).json({
             statusCode: 200,
-             stats: {
+            stats: {
                 all_assignments: statsResult.rows[0].all_assignments,
                 total_courses: statsResult.rows[0].total_courses,
                 pending_review: statsResult.rows[0].pending_review,
@@ -1314,24 +1314,24 @@ exports.updatefinalassigmentbyadmin = async (req, res) => {
 
         const certificate_id = insertCertificate.rows[0].certificate_id;
 
-            const certificate_number =
-                `SKILLEDITION-${String(certificate_id).padStart(5, '0')}`;
+        const certificate_number =
+            `SKILLEDITION-${String(certificate_id).padStart(5, '0')}`;
 
-             // 6️⃣ Update certificate number
-                    await pool.query(
-                        `UPDATE tbl_certificates
+        // 6️⃣ Update certificate number
+        await pool.query(
+            `UPDATE tbl_certificates
                         SET certificate_number = $1
                         WHERE certificate_id = $2`,
-                        [certificate_number, certificate_id]
-                    );
+            [certificate_number, certificate_id]
+        );
 
-                  await sendNotification({
-                    sender_id: 17, // admin default
-                    receiver_id: student_id,
-                    type: 'certificate',
-                    message: `Your certificate has been generated for course ${course_id}`,
-                    type_id: certificate_id
-                });
+        await sendNotification({
+            sender_id: 17, // admin default
+            receiver_id: student_id,
+            type: 'certificate',
+            message: `Your certificate has been generated for course ${course_id}`,
+            type_id: certificate_id
+        });
 
         return res.status(200).json({
             statusCode: 200,
@@ -1418,7 +1418,7 @@ exports.getstudentcertificates = async (req, res) => {
             message: "Certificates fetched successfully",
 
             stats: stats.rows[0],
-            progress:progress.rows,
+            progress: progress.rows,
             certificates_data: result.rows
         });
 
@@ -1437,16 +1437,25 @@ exports.getallstudentcertificates = async (req, res) => {
 
         const result = await pool.query(`
       SELECT  
+        tcr.certificate_id,
         tcr.certificate_number,
-        tcr.issued_at,
+        TO_CHAR(tcr.issued_at, 'DD-MM-YYYY') AS issued_at,
+              CASE 
+                    WHEN EXTRACT(DAY FROM tsf.created_at) <= 15 
+                    THEN TO_CHAR(tsf.created_at, 'YYYY-MM') || '-A'
+                    ELSE TO_CHAR(tsf.created_at, 'YYYY-MM') || '-B'
+                END AS batch,
         tc.course_id,
         tc.course_title,
-        tu.full_name
+        tu.full_name,
+        tu.email
       FROM tbl_certificates AS tcr
       JOIN tbl_course AS tc 
         ON tcr.course_id = tc.course_id
       JOIN tbl_user AS tu 
         ON tcr.student_id = tu.user_id
+      JOIN tbl_student_final_assignment tsf 
+          ON tu.user_id=tsf.student_id  
       ORDER BY tcr.certificate_id DESC
     `);
 
