@@ -18,7 +18,7 @@ exports.getnotification = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: result.rows
+      notification_data: result.rows
     });
 
   } catch (error) {
