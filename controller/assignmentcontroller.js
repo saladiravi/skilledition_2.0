@@ -1448,14 +1448,17 @@ exports.getallstudentcertificates = async (req, res) => {
         tc.course_id,
         tc.course_title,
         tu.full_name,
-        tu.email
+        tu.email,
+        ts.mobile_number
       FROM tbl_certificates AS tcr
-      JOIN tbl_course AS tc 
-        ON tcr.course_id = tc.course_id
-      JOIN tbl_user AS tu 
-        ON tcr.student_id = tu.user_id
-      JOIN tbl_student_final_assignment tsf 
-          ON tu.user_id=tsf.student_id  
+        JOIN tbl_course AS tc 
+           ON tcr.course_id = tc.course_id
+        JOIN tbl_user AS tu 
+           ON tcr.student_id = tu.user_id
+        JOIN tbl_student_final_assignment tsf 
+           ON tu.user_id=tsf.student_id
+        JOIN tbl_student ts
+           ON tu.user_id=ts.user_id     
       ORDER BY tcr.certificate_id DESC
     `);
 
