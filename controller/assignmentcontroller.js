@@ -1434,7 +1434,41 @@ exports.getstudentcertificates = async (req, res) => {
 
 exports.getallstudentcertificates = async (req, res) => {
     try {
+        const statsQuery = await pool.query(`
+                SELECT
+                    -- ✅ Total Students
+                    COUNT(DISTINCT tu.user_id) FILTER (
+                        WHERE tu.role = 'student'
+                    ) AS total_students,
 
+                    -- ✅ Course Completion Count
+                    COUNT(*) FILTER (
+                        WHERE tsfa.is_unlocked = true
+                    ) AS course_completion,
+
+                    -- ✅ Certificate Issued Students
+                    COUNT(DISTINCT tcr.student_id) AS certificate_issued_students,
+
+                    -- ✅ Completion Ratio
+                    CASE 
+                        WHEN COUNT(*) FILTER (WHERE tsfa.is_unlocked = true) = 0 
+                        THEN 0
+                        ELSE ROUND(
+                            COUNT(DISTINCT tcr.certificate_id)::decimal 
+                            /
+                            COUNT(*) FILTER (WHERE tsfa.is_unlocked = true) * 100
+                        ,2)
+                    END AS completion_ratio
+
+                FROM tbl_user tu
+
+                LEFT JOIN tbl_student_final_assignment tsfa 
+                    ON tsfa.student_id = tu.user_id
+
+                LEFT JOIN tbl_certificates tcr
+                    ON tcr.student_id = tu.user_id
+        `);
+        
         const result = await pool.query(`
         SELECT  
             tcr.certificate_id,
@@ -1479,6 +1513,7 @@ exports.getallstudentcertificates = async (req, res) => {
         return res.status(200).json({
             statusCode: 200,
             message: "Certificates fetched successfully",
+             stats: statsQuery.rows[0],
             data: result.rows
         });
 
