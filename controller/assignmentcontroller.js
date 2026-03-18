@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { sendNotification } = require('../utils/notification');
 
 
 exports.addasignment = async (req, res) => {
@@ -1313,16 +1314,24 @@ exports.updatefinalassigmentbyadmin = async (req, res) => {
 
         const certificate_id = insertCertificate.rows[0].certificate_id;
 
-        const certificate_number =
-            `SKILLEDITION-${String(certificate_id).padStart(5, '0')}`;
+            const certificate_number =
+                `SKILLEDITION-${String(certificate_id).padStart(5, '0')}`;
 
-        // 6️⃣ Update certificate number
-        await pool.query(
-            `UPDATE tbl_certificates
-       SET certificate_number = $1
-       WHERE certificate_id = $2`,
-            [certificate_number, certificate_id]
-        );
+             // 6️⃣ Update certificate number
+                    await pool.query(
+                        `UPDATE tbl_certificates
+                        SET certificate_number = $1
+                        WHERE certificate_id = $2`,
+                        [certificate_number, certificate_id]
+                    );
+
+                  await sendNotification({
+                    sender_id: 17, // admin default
+                    receiver_id: student_id,
+                    type: 'certificate',
+                    message: `Your certificate has been generated for course ${course_id}`,
+                    type_id: certificate_id
+                });
 
         return res.status(200).json({
             statusCode: 200,

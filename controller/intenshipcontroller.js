@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { uploadToS3, getSignedVideoUrl, deletefroms3 } = require('../utils/s3upload');
+const { sendNotification } = require('../utils/notification');
 
 exports.addinternship = async (req, res) => {
   try {
@@ -222,6 +223,19 @@ exports.updateInternship = async (req, res) => {
         message: "Internship not found"
       });
     }
+
+
+      const internship = result.rows[0];
+      const student_id = internship.student_id;
+
+      // 🔔 Notification
+      await sendNotification({
+        sender_id: 17,
+        receiver_id: student_id,
+        type: 'internship',
+        message: `Your internship role has been updated to ${role}`,
+        type_id: internship_id
+      });
 
     return res.status(200).json({
       statusCode: 200,

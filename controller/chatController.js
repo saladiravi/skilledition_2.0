@@ -1,5 +1,7 @@
 const pool = require("../config/db");
 const { uploadToS3, getSignedVideoUrl, deletefroms3 } = require('../utils/s3upload');
+const { sendNotification } = require('../utils/notification');
+
 
 
 exports.sendMessage = async (req, res) => {
@@ -132,6 +134,45 @@ exports.sendMessage = async (req, res) => {
       [chatRoomId, user_id, message || null, fileUrl, fileType]
     );
 
+
+    // 6️⃣ Get receiver id
+    let receiverId;
+
+    if (role === "student") {
+
+      // get tutor of the course
+      const tutor = await pool.query(
+        `SELECT tutor_id 
+     FROM tbl_course
+     WHERE course_id=$1`,
+        [course_id]
+      );
+
+      receiverId = tutor.rows[0].tutor_id;
+
+    } else {
+
+      // tutor/admin sending → notify student
+      const student = await pool.query(
+        `SELECT student_id
+     FROM tbl_chat_room
+     WHERE chat_room_id=$1`,
+        [chatRoomId]
+      );
+
+      receiverId = student.rows[0].student_id;
+    }
+
+
+    // 7️⃣ Insert notification
+    await sendNotification({
+      sender_id: user_id,
+      receiver_id: receiverId,
+      type: 'chat',
+      message: message || 'New message received',
+      type_id: chatRoomId
+    });
+
     return res.status(200).json({
       statusCode: 200,
       message: "Message sent successfully",
@@ -150,10 +191,10 @@ exports.sendMessage = async (req, res) => {
 
 
 exports.getMessages = async (req, res) => {
-  const { chat_room_id ,user_id} = req.body;
+  const { chat_room_id, user_id } = req.body;
 
   try {
-  await pool.query(
+    await pool.query(
       `UPDATE tbl_chat_messages
        SET message_seen = true
        WHERE chat_room_id = $1
@@ -204,7 +245,7 @@ exports.getMessages = async (req, res) => {
 
     res.status(200).json({
       statusCode: 200,
-       pause_chat: pauseChat,
+      pause_chat: pauseChat,
       messages
     });
 
@@ -214,7 +255,7 @@ exports.getMessages = async (req, res) => {
   }
 };
 
- 
+
 exports.getChatList = async (req, res) => {
   const { user_id } = req.body;
 
@@ -527,7 +568,7 @@ exports.updatepausechat = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "pause chat successfully"
-     
+
     });
   }
   catch (error) {
@@ -576,13 +617,13 @@ exports.chatstats = async (req, res) => {
   const { tutor_id } = req.body
 
   try {
-    const checktutor=await pool.query(`SELECT role FROM tbl_user WHERE user_id=$1`,[tutor_id]);
-      if(checktutor.rows.length ===0){
-        return res.status(404).json({
-          statusCode:404,
-          message:'Tutor Not Found'
-        })
-      }
+    const checktutor = await pool.query(`SELECT role FROM tbl_user WHERE user_id=$1`, [tutor_id]);
+    if (checktutor.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Tutor Not Found'
+      })
+    }
     const statsQuery = `
         SELECT
         COUNT(DISTINCT cr.student_id) AS total_students,
@@ -632,8 +673,8 @@ exports.chatstats = async (req, res) => {
     const stats = statsResult.rows[0];
 
     return res.status(200).json({
-      statusCode:200,
-      message:'Fectched Sucessfully',
+      statusCode: 200,
+      message: 'Fectched Sucessfully',
       stats: {
         total_students: Number(stats.total_students),
         total_queries: Number(stats.total_queries),

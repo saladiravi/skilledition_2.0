@@ -30,3 +30,48 @@ exports.getnotification = async (req, res) => {
 };
 
  
+
+ exports.markNotificationAsRead = async (req, res) => {
+  const { notification_id } = req.body;
+
+  try {
+    // 1️⃣ Validate input
+    if (!notification_id) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "notification_id is required"
+      });
+    }
+
+    // 2️⃣ Update query
+    const result = await pool.query(
+      `UPDATE tbl_notifications
+       SET is_read = true
+       WHERE notification_id = $1
+       RETURNING *`,
+      [notification_id]
+    );
+
+    // 3️⃣ Check if notification exists
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Notification not found"
+      });
+    }
+
+    // 4️⃣ Success response
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Notification marked as read",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
