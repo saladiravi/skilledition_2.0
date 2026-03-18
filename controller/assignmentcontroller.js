@@ -1436,31 +1436,45 @@ exports.getallstudentcertificates = async (req, res) => {
     try {
 
         const result = await pool.query(`
-      SELECT  
-        tcr.certificate_id,
-        tcr.certificate_number,
-        TO_CHAR(tcr.issued_at, 'DD-MM-YYYY') AS issued_at,
-              CASE 
-                    WHEN EXTRACT(DAY FROM tsf.created_at) <= 15 
-                    THEN TO_CHAR(tsf.created_at, 'YYYY-MM') || '-A'
-                    ELSE TO_CHAR(tsf.created_at, 'YYYY-MM') || '-B'
-                END AS batch,
-        tc.course_id,
-        tc.course_title,
-        tu.full_name,
-        tu.email,
-        ts.mobile_number
-      FROM tbl_certificates AS tcr
-        JOIN tbl_course AS tc 
-           ON tcr.course_id = tc.course_id
-        JOIN tbl_user AS tu 
-           ON tcr.student_id = tu.user_id
-        JOIN tbl_student_final_assignment tsf 
-           ON tu.user_id=tsf.student_id
+        SELECT  
+            tcr.certificate_id,
+            tcr.certificate_number,
+            TO_CHAR(tcr.issued_at, 'DD-MM-YYYY') AS issued_at,
+
+            CASE 
+                WHEN EXTRACT(DAY FROM tsf.created_at) <= 15 
+                THEN TO_CHAR(tsf.created_at, 'YYYY-MM') || '-A'
+                ELSE TO_CHAR(tsf.created_at, 'YYYY-MM') || '-B'
+            END AS batch,
+
+            tc.course_id,
+            tc.course_title,
+            tu.full_name,
+            tu.email,
+            ts.mobile_number
+
+        FROM tbl_certificates AS tcr
+
+        JOIN tbl_course tc 
+            ON tcr.course_id = tc.course_id
+
+        JOIN tbl_user tu 
+            ON tcr.student_id = tu.user_id
+
+        -- ✅ FIX: get latest assignment per student
+        LEFT JOIN (
+            SELECT DISTINCT ON (student_id) 
+                student_id, created_at
+            FROM tbl_student_final_assignment
+            ORDER BY student_id, created_at DESC
+        ) tsf 
+            ON tsf.student_id = tu.user_id
+
         LEFT JOIN tbl_student ts
-           ON tu.user_id=ts.user_id     
-      ORDER BY tcr.certificate_id DESC
-    `);
+            ON tu.user_id = ts.user_id     
+
+        ORDER BY tcr.certificate_id DESC
+        `);
 
         return res.status(200).json({
             statusCode: 200,
