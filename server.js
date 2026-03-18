@@ -14,7 +14,8 @@ const announcement=require('./routes/announcementroutes');
 const contactroutes=require('./routes/contactroutes');
 const internship=require('./routes/internshiproutes');
 const chatRoutes = require("./routes/chatRoutes");
-const internship=require('./routes/internshiproutes');
+const notification=require('./routes/notificationroutes');
+
 
 const app = express();
 
