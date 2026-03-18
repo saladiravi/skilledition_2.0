@@ -63,8 +63,8 @@ exports.getnotification = async (req, res) => {
     // 4️⃣ Success response
     return res.status(200).json({
       statusCode: 200,
-      message: "Notification marked as read",
-      data: result.rows[0]
+      message: "Notification marked as read"
+  
     });
 
   } catch (error) {
