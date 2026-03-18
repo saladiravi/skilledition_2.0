@@ -7,6 +7,7 @@ const { allowRoles } = require("../middleware/roleMiddleware");
 
 router.post('/getnotification',verifyToken,allowRoles("admin","student","tutor"),notificationcontroller.getnotification);
 router.post('/markNotificationAsRead',verifyToken,allowRoles("admin","student","tutor"),notificationcontroller.markNotificationAsRead);
+router.post('/deleteNotification',verifyToken,allowRoles("admin","student","tutor"),notificationcontroller.deleteNotification);
 
 
 module.exports=router
