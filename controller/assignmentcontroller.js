@@ -1457,7 +1457,7 @@ exports.getallstudentcertificates = async (req, res) => {
            ON tcr.student_id = tu.user_id
         JOIN tbl_student_final_assignment tsf 
            ON tu.user_id=tsf.student_id
-        JOIN tbl_student ts
+        LEFT JOIN tbl_student ts
            ON tu.user_id=ts.user_id     
       ORDER BY tcr.certificate_id DESC
     `);
