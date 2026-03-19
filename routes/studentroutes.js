@@ -14,5 +14,8 @@ router.post(
   studentController.updateprofile
 );
 
+router.post('/studentdashboardlock',verifyToken,allowRoles("admin","student","tutor"),studentController.getStudentAccess
+);
+
 module.exports = router;
  

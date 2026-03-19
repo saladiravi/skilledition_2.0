@@ -147,95 +147,91 @@ exports.updateprofile = async (req, res) => {
 };
 
 
+exports.getStudentAccess = async (req, res) => {
+  const { student_id } = req.body;
 
+  try {
+    // ✅ 1. Validation
+    if (!student_id) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "student_id is required"
+      });
+    }
 
-// exports.updateprofile = async (req, res) => {
-//   try {
-//     const { user_id, full_name } = req.body;
+    // ✅ 2. Check student exists
+    const studentCheck = await pool.query(
+      `SELECT user_id FROM tbl_user WHERE user_id = $1 AND role = 'student'`,
+      [student_id]
+    );
 
-//     if (!user_id) {
-//       return res.status(400).json({
-//         statusCode: 400,
-//         message: "user_id is required"
-//       });
-//     }
+    if (studentCheck.rowCount === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Student not found"
+      });
+    }
 
-//     // 🔹 Check if student exists
-//     let checkStudent = await pool.query(
-//       `SELECT * FROM tbl_student WHERE user_id = $1`,
-//       [user_id]
-//     );
+    // ✅ 3. Locking Query
+    const result = await pool.query(`
+      SELECT
+          CASE 
+              WHEN sc.student_id IS NOT NULL THEN true
+              ELSE false
+          END AS is_purchased,
 
-//     // 🔥 If NOT exist → create empty student record
-//     if (checkStudent.rows.length === 0) {
-//       await pool.query(
-//         `INSERT INTO tbl_student (user_id) VALUES ($1)`,
-//         [user_id]
-//       );
+          CASE 
+              WHEN sc.student_id IS NOT NULL THEN true
+              ELSE false
+          END AS overview_unlocked,
 
-//       checkStudent = await pool.query(
-//         `SELECT * FROM tbl_student WHERE user_id = $1`,
-//         [user_id]
-//       );
-//     }
+          CASE 
+              WHEN sc.student_id IS NOT NULL THEN true
+              ELSE false
+          END AS course_unlocked,
 
-//     let profile_pic_key = checkStudent.rows[0].profile_image;
+          CASE 
+              WHEN sc.student_id IS NOT NULL THEN true
+              ELSE false
+          END AS chat_unlocked,
 
-//     if (req.file) {
-//       profile_pic_key = await uploadToS3(
-//         req.file,
-//         "users/profile_image"
-//       );
-//     }
+          CASE 
+              WHEN cert.student_id IS NOT NULL THEN true
+              ELSE false
+          END AS certificate_unlocked,
 
-//     // ✅ 1️⃣ Update full_name in tbl_user
-//     if (full_name) {
-//       await pool.query(
-//         `UPDATE tbl_user SET full_name = $1 WHERE user_id = $2`,
-//         [full_name, user_id]
-//       );
-//     }
+          CASE 
+              WHEN cert.student_id IS NOT NULL THEN true
+              ELSE false
+          END AS internship_unlocked
 
-//     // ✅ 2️⃣ Update tbl_student
-//     await pool.query(
-//       `
-//       UPDATE tbl_student
-//       SET 
-//           mobile_number = $1,
-//           gender = $2,
-//           date_of_birth = $3,
-//           college = $4,
-//           qualification = $5,
-//           year_of_passing = $6,
-//           address = $7,
-//           pincode = $8,
-//           profile_image = $9
-//       WHERE user_id = $10
-//       `,
-//       [
-//         req.body.mobile_number,
-//         req.body.gender,
-//         req.body.date_of_birth,
-//         req.body.college,
-//         req.body.qualification,
-//         req.body.year_of_passing,
-//         req.body.address,
-//         req.body.pincode,
-//         profile_pic_key,
-//         user_id
-//       ]
-//     );
+      FROM (SELECT $1::int AS student_id) input
 
-//     return res.status(200).json({
-//       statusCode: 200,
-//       message: "Profile updated successfully"
-//     });
+      LEFT JOIN (
+          SELECT DISTINCT student_id 
+          FROM tbl_student_course
+      ) sc
+        ON sc.student_id = input.student_id
 
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({
-//       statusCode: 500,
-//       message: "Internal Server Error"
-//     });
-//   }
-// };
+      LEFT JOIN (
+          SELECT DISTINCT student_id 
+          FROM tbl_certificates
+      ) cert
+        ON cert.student_id = input.student_id
+    `, [student_id]);
+
+    // ✅ 4. Success response
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Student access fetched successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
