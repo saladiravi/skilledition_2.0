@@ -175,12 +175,7 @@ exports.getStudentAccess = async (req, res) => {
     // ✅ 3. Locking Query
     const result = await pool.query(`
       SELECT
-          CASE 
-              WHEN sc.student_id IS NOT NULL THEN true
-              ELSE false
-          END AS is_purchased,
-
-          CASE 
+         CASE 
               WHEN sc.student_id IS NOT NULL THEN true
               ELSE false
           END AS overview_unlocked,
@@ -188,7 +183,7 @@ exports.getStudentAccess = async (req, res) => {
           CASE 
               WHEN sc.student_id IS NOT NULL THEN true
               ELSE false
-          END AS course_unlocked,
+          END AS assignment_unlocked,
 
           CASE 
               WHEN sc.student_id IS NOT NULL THEN true
