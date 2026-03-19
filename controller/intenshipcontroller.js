@@ -230,7 +230,7 @@ exports.updateInternship = async (req, res) => {
 
       // 🔔 Notification
       await sendNotification({
-        sender_id: 17,
+        sender_id: 15,
         receiver_id: student_id,
         type: 'internship',
         message: `Your internship role has been updated to ${role}`,
