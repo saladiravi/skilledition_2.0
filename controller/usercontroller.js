@@ -8,30 +8,114 @@ const jwt_secret = process.env.JWT_SECRET;
 
 
 
-exports.addUser = async (req, res) => {
-  const { full_name,email, password,role } = req.body;
+// exports.addUser = async (req, res) => {
+//   const { full_name,email, password,role } = req.body;
 
-  if (!full_name || !email  || !password,!role) {
+//   if (!full_name || !email  || !password || !role) {
+//     return res.status(400).json({
+//       statusCode: 400,
+//       message: 'Missing Require Fields',
+//     });
+//   }
+
+//   try {
+//     const emailExists = await pool.query(`SELECT email FROM tbl_user WHERE email=$1`,[email]);
+   
+//     if (emailExists.rows.length >0) {
+//       return res.status(409).json({
+//         statusCode: 409,
+//         message: 'Email already registered',
+//       });
+//     }
+
+//     const hashedpassword=await bcrypt.hash(password,10)
+//     const newUser = await pool.query(`INSERT INTO tbl_user(full_name,email,password,role) VALUES($1,$2,$3,$4) RETURNING *`,
+//         [full_name,email,hashedpassword,role]
+//     )
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: 'Registered successfully',
+//       data: newUser.rows[0],
+//     });
+
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: 'Internal server error',
+//     });
+//   }
+// };
+
+
+
+exports.addUser = async (req, res) => {
+  const { full_name, email, password, role } = req.body;
+
+  // ✅ Validation
+  if (!full_name || !email || !password || !role) {
     return res.status(400).json({
       statusCode: 400,
-      message: 'Missing Require Fields',
+      message: 'Missing Required Fields',
     });
   }
 
   try {
-    const emailExists = await pool.query(`SELECT email FROM tbl_user WHERE email=$1`,[email]);
-   
-    if (emailExists.rows.length >0) {
+    // ✅ Check email exists
+    const emailExists = await pool.query(
+      `SELECT email FROM tbl_user WHERE email=$1`,
+      [email]
+    );
+
+    if (emailExists.rows.length > 0) {
       return res.status(409).json({
         statusCode: 409,
         message: 'Email already registered',
       });
     }
 
-    const hashedpassword=await bcrypt.hash(password,10)
-    const newUser = await pool.query(`INSERT INTO tbl_user(full_name,email,password,role) VALUES($1,$2,$3,$4) RETURNING *`,
-        [full_name,email,hashedpassword,role]
-    )
+    // ✅ Hash password
+    const hashedpassword = await bcrypt.hash(password, 10);
+
+    let studentRegNumber = null;
+
+    // 🎯 Generate student_reg_number only for students
+    if (role === 'student') {
+
+      const lastStudent = await pool.query(`
+        SELECT student_reg_number 
+        FROM tbl_user
+        WHERE role = 'student' 
+        AND student_reg_number IS NOT NULL
+        ORDER BY student_reg_number DESC
+        LIMIT 1
+      `);
+
+      if (lastStudent.rows.length > 0) {
+        const lastReg = lastStudent.rows[0].student_reg_number; // SE-A001
+
+        // Extract number part
+        const numberPart = parseInt(lastReg.split('A')[1]);
+
+        const nextNumber = numberPart + 1;
+
+        // Format with leading zeros
+        studentRegNumber = `SE-A${String(nextNumber).padStart(3, '0')}`;
+
+      } else {
+        // First student
+        studentRegNumber = 'SE-A001';
+      }
+    }
+
+    // ✅ Insert user
+    const newUser = await pool.query(
+      `INSERT INTO tbl_user(full_name,email,password,role,student_reg_number) 
+       VALUES($1,$2,$3,$4,$5) 
+       RETURNING *`,
+      [full_name, email, hashedpassword, role, studentRegNumber]
+    );
 
     return res.status(200).json({
       statusCode: 200,
@@ -185,14 +269,8 @@ exports.getuser=async(req,res)=>{
   const {user_id} =req.body
   
   try{
-    //  const exittutor=await pool.query(`SELECT role FROM tbl_user WHERE user_id=$1 AND role=$2`,[user_id,'tutor']);
-    //  if(exittutor.rows.length ===0){
-    //   return res.status(404).json({
-    //     statusCode:404,
-    //     message:'Tutor Not Found'
-    //   })
-    //  }
-      const user=await pool.query(`SELECT full_name,role,status FROM tbl_user WHERE user_id=$1`,[user_id]);
+    
+      const user=await pool.query(`SELECT full_name,role,status,student_reg_number FROM tbl_user WHERE user_id=$1`,[user_id]);
       return res.status(200).json({
         statusCode:200,
         message:'Fetched Sucessfully',
