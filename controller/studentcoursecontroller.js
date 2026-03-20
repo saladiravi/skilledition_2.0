@@ -2563,6 +2563,121 @@ CROSS JOIN
 };
 
 
+// exports.getadminstudentmanagement = async (req, res) => {
+
+//   try {
+
+//        const statsQuery = await pool.query(`
+//             SELECT
+//         -- ✅ Total Students (only role = student)
+//         COUNT(DISTINCT tu.user_id) FILTER (
+//           WHERE tu.role = 'student'
+//         ) AS total_students,
+
+//         -- ✅ Active Students (purchased at least 1 course)
+//         COUNT(DISTINCT tsc.student_id) AS active_students,
+ 
+
+//         -- ✅ Avg Progress
+//         COALESCE(
+//           ROUND(
+//             AVG(
+//               (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
+//             ), 2
+//           ),
+//         0) AS avg_progress,
+
+//         -- ✅ Certificates Issued (from tbl_certificates)
+//         COUNT(DISTINCT tc.certificate_id) AS certificates_issued
+
+//       FROM tbl_user tu
+
+//       LEFT JOIN tbl_student_course tsc 
+//         ON tsc.student_id = tu.user_id
+
+//       LEFT JOIN tbl_student_final_assignment tsfa 
+//         ON tsfa.student_id = tu.user_id
+
+//       LEFT JOIN tbl_certificates tc
+//         ON tc.student_id = tu.user_id
+//     `);
+//     const query = await pool.query(`
+//           SELECT
+//               tu.user_id AS student_id, 
+//               tu.full_name,
+//               tu.email,
+//               ts.mobile_number,
+
+//               COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
+
+//               COUNT(*) FILTER (WHERE tsfa.is_unlocked = true) AS completed_courses,
+
+//               COALESCE(
+//                   ROUND(
+//                       AVG(
+//                           (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
+//                       ),2
+//                   ),
+//               0) AS average_score,
+
+//               CASE
+//         WHEN EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at)))) < 60
+//           THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))))) || ' seconds ago'
+
+//         WHEN EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at)))) < 3600
+//           THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))) ) / 60) || ' minutes ago'
+
+//         WHEN EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at)))) < 86400
+//           THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))) ) / 3600) || ' hours ago'
+
+//         ELSE
+//           FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))) ) / 86400) || ' days ago'
+//     END AS last_active,
+
+
+//               CASE 
+//                   WHEN EXTRACT(DAY FROM MAX(tsfa.created_at)) <= 15 
+//                   THEN TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-A'
+//                   ELSE TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-B'
+//               END AS batch
+
+//           FROM tbl_student_course tsc
+
+//           JOIN tbl_user tu 
+//               ON tu.user_id = tsc.student_id
+
+//           LEFT JOIN tbl_student ts
+//               ON ts.user_id = tu.user_id
+
+//           LEFT JOIN tbl_student_final_assignment tsfa
+//               ON tsfa.student_id = tu.user_id
+          
+//           LEFT JOIN tbl_student_course_progress scp
+//              ON scp.student_id = tu.user_id
+
+//           GROUP BY 
+//               tu.user_id,
+//               tu.full_name,
+//               tu.email,
+//               ts.mobile_number
+//           `);
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: 'fetched sucessfully',
+//       stats: statsQuery.rows[0],
+//       data: query.rows
+      
+//     })
+//   } catch (error) {
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: 'Internal Server Error'
+//     })
+//   }
+// }
+
+
 exports.getadminstudentmanagement = async (req, res) => {
 
   try {
@@ -2601,26 +2716,26 @@ exports.getadminstudentmanagement = async (req, res) => {
       LEFT JOIN tbl_certificates tc
         ON tc.student_id = tu.user_id
     `);
-    const query = await pool.query(`
-          SELECT
-              tu.user_id AS student_id, 
-              tu.full_name,
-              tu.email,
-              ts.mobile_number,
+  const query = await pool.query(`
+  SELECT
+      tu.user_id AS student_id, 
+      tu.full_name,
+      tu.email,
+      ts.mobile_number,
 
-              COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
+      COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
 
-              COUNT(*) FILTER (WHERE tsfa.is_unlocked = true) AS completed_courses,
+      COUNT(*) FILTER (WHERE tsfa.is_unlocked = true) AS completed_courses,
 
-              COALESCE(
-                  ROUND(
-                      AVG(
-                          (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
-                      ),2
-                  ),
-              0) AS average_score,
+      COALESCE(
+          ROUND(
+              AVG(
+                  (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
+              ),2
+          ),
+      0) AS average_score,
 
-              CASE
+      CASE
         WHEN EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at)))) < 60
           THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))))) || ' seconds ago'
 
@@ -2632,35 +2747,36 @@ exports.getadminstudentmanagement = async (req, res) => {
 
         ELSE
           FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))) ) / 86400) || ' days ago'
-    END AS last_active,
+      END AS last_active,
 
+      CASE 
+          WHEN EXTRACT(DAY FROM MAX(tsfa.created_at)) <= 15 
+          THEN TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-A'
+          ELSE TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-B'
+      END AS batch
 
-              CASE 
-                  WHEN EXTRACT(DAY FROM MAX(tsfa.created_at)) <= 15 
-                  THEN TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-A'
-                  ELSE TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-B'
-              END AS batch
+  FROM tbl_user tu   -- ✅ CHANGED HERE
 
-          FROM tbl_student_course tsc
+  LEFT JOIN tbl_student_course tsc 
+      ON tsc.student_id = tu.user_id
 
-          JOIN tbl_user tu 
-              ON tu.user_id = tsc.student_id
+  LEFT JOIN tbl_student ts
+      ON ts.user_id = tu.user_id
 
-          LEFT JOIN tbl_student ts
-              ON ts.user_id = tu.user_id
+  LEFT JOIN tbl_student_final_assignment tsfa
+      ON tsfa.student_id = tu.user_id
+  
+  LEFT JOIN tbl_student_course_progress scp
+     ON scp.student_id = tu.user_id
 
-          LEFT JOIN tbl_student_final_assignment tsfa
-              ON tsfa.student_id = tu.user_id
-          
-          LEFT JOIN tbl_student_course_progress scp
-             ON scp.student_id = tu.user_id
+  WHERE tu.role = 'student'   -- ✅ IMPORTANT
 
-          GROUP BY 
-              tu.user_id,
-              tu.full_name,
-              tu.email,
-              ts.mobile_number
-          `);
+  GROUP BY 
+      tu.user_id,
+      tu.full_name,
+      tu.email,
+      ts.mobile_number
+`);
 
     return res.status(200).json({
       statusCode: 200,
@@ -2676,6 +2792,7 @@ exports.getadminstudentmanagement = async (req, res) => {
     })
   }
 }
+
 
 
 
