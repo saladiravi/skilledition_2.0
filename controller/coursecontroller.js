@@ -243,6 +243,126 @@ exports.getcourseBytutor = async (req, res) => {
 
 
 
+// exports.addModulesWithVideos = async (req, res) => {
+//   const { course_id, modules } = req.body;
+
+//   if (!course_id || !modules) {
+//     return res.status(400).json({
+//       statusCode: 400,
+//       message: "course_id and modules are required"
+//     });
+//   }
+
+//   const parsedModules = JSON.parse(modules);
+//   const client = await pool.connect();
+
+//   try {
+//     await client.query("BEGIN");
+
+//     // 1️⃣ Check course
+//     const course = await client.query(
+//       `SELECT course_id FROM tbl_course WHERE course_id=$1`,
+//       [course_id]
+//     );
+
+//     if (course.rowCount === 0) {
+//       await client.query("ROLLBACK");
+//       return res.status(404).json({ message: "Course not found" });
+//     }
+
+//     let moduleResults = [];
+
+//     for (let i = 0; i < parsedModules.length; i++) {
+//       const module = parsedModules[i];
+
+//       // 2️⃣ Upload sheet (one per module)
+//       const sheet = req.files.find(
+//         file => file.fieldname === `sheet_files[${i}]`
+//       );
+
+//       let sheetFile = null;
+//       if (sheet) {
+//         sheetFile = await uploadToS3(sheet, "modules/sheets");
+//       }
+
+
+//       // 3️⃣ Insert module
+//       const moduleInsert = await client.query(
+//         `INSERT INTO tbl_module
+//          (course_id, module_title, module_description, sheet_file)
+//          VALUES ($1, $2, $3, $4)
+//          RETURNING module_id`,
+//         [course_id, module.module_title, module.module_description, sheetFile]
+//       );
+
+//       const module_id = moduleInsert.rows[0].module_id;
+//       let videoCount = 0;
+
+//       // 4️⃣ Insert videos for this module
+//       // Videos for module i
+//       const videos = req.files.filter(file =>
+//         file.fieldname.startsWith(`video_files[${i}]`)
+//       );
+
+
+//       for (const file of videos) {
+//         const durationSeconds = await getVideoDuration(file.path);
+//         const formattedDuration = formatDurationHMS(durationSeconds);
+
+//         const videoUrl = await uploadToS3(file, "modules/videos");
+//         const videoTitle = file.originalname.replace(/\.[^/.]+$/, "");
+
+//         await client.query(
+//           `INSERT INTO tbl_module_videos
+//            (module_id, video, video_title, video_duration, status)
+//            VALUES ($1, $2, $3, $4, 'Pending')`,
+//           [module_id, videoUrl, videoTitle, formattedDuration]
+//         );
+
+//         videoCount++;
+//       }
+
+//       moduleResults.push({
+//         module_id,
+//         videos_uploaded: videoCount
+//       });
+//     }
+//     // ✅ Update module count in tbl_course
+//     await client.query(
+//       `UPDATE tbl_course
+//       SET no_of_modules = (
+//         SELECT COUNT(*)
+//         FROM tbl_module
+//         WHERE course_id = $1
+//       )
+//       WHERE course_id = $1`,
+//       [course_id]
+//     );
+
+ 
+//     await client.query("COMMIT");
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: "Modules and videos added successfully",
+//       modules: moduleResults
+//     });
+
+//   } catch (error) {
+//     await client.query("ROLLBACK");
+//     console.error(error);
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error"
+//     });
+//   } finally {
+//     client.release();
+//   }
+// };
+
+
+
+
 exports.addModulesWithVideos = async (req, res) => {
   const { course_id, modules } = req.body;
 
@@ -305,22 +425,22 @@ exports.addModulesWithVideos = async (req, res) => {
       );
 
 
-      for (const file of videos) {
-        const durationSeconds = await getVideoDuration(file.path);
-        const formattedDuration = formatDurationHMS(durationSeconds);
+    await Promise.all(
+        videos.map(async (file) => {
+          const durationSeconds = await getVideoDuration(file.path);
+          const formattedDuration = formatDurationHMS(durationSeconds);
 
-        const videoUrl = await uploadToS3(file, "modules/videos");
-        const videoTitle = file.originalname.replace(/\.[^/.]+$/, "");
+          const videoUrl = await uploadToS3(file, "modules/videos");
+          const videoTitle = file.originalname.replace(/\.[^/.]+$/, "");
 
-        await client.query(
-          `INSERT INTO tbl_module_videos
-           (module_id, video, video_title, video_duration, status)
-           VALUES ($1, $2, $3, $4, 'Pending')`,
-          [module_id, videoUrl, videoTitle, formattedDuration]
-        );
-
-        videoCount++;
-      }
+          await client.query(
+            `INSERT INTO tbl_module_videos
+            (module_id, video, video_title, video_duration, status)
+            VALUES ($1, $2, $3, $4, 'Pending')`,
+            [module_id, videoUrl, videoTitle, formattedDuration]
+          );
+        })
+      );
 
       moduleResults.push({
         module_id,
@@ -359,6 +479,7 @@ exports.addModulesWithVideos = async (req, res) => {
     client.release();
   }
 };
+
 
 
 exports.getcoursewithmoduledetails = async (req, res) => {
