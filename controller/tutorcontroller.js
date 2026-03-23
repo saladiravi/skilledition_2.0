@@ -1986,7 +1986,8 @@ exports.gettutordetailsbyId = async (req, res) => {
           t.years_of_experience AS experience,
           t.subject_to_teach,
           t.status,
-          t.submitted_at,
+          TO_CHAR(t.submitted_at,'DD/MM/YYYY') AS submitted_at,
+        
 
           COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
           COUNT(DISTINCT te.tutor_education_id) AS education,
@@ -2024,7 +2025,7 @@ exports.gettutordetailsbyId = async (req, res) => {
           t.subject_to_teach,
           t.status,
           t.country,
-          t.submitted_at,
+           
           tp.plan_type,
           tp.royalty_percentage,
           tp.price,
@@ -2046,7 +2047,7 @@ exports.gettutordetailsbyId = async (req, res) => {
           t.years_of_experience AS experience,
           t.subject_to_teach,
           t.status,
-          t.submitted_at,
+          TO_CHAR(t.submitted_at,'DD/MM/YYYY') AS submitted_at,
 
           COUNT(DISTINCT tc.tutor_certificate_id) AS certifications,
           COUNT(DISTINCT te.tutor_education_id) AS education,
@@ -2084,7 +2085,7 @@ exports.gettutordetailsbyId = async (req, res) => {
           t.subject_to_teach,
           t.status,
           t.country,
-          t.submitted_at,
+         
           tp.plan_type,
           tp.royalty_percentage,
           tp.price,
