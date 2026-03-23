@@ -2975,7 +2975,7 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
         ON tc.category_id = tcat.category_id
 
       WHERE scp.student_id = $1
-
+      AND scp.is_completed = true
       ORDER BY activity_time DESC
       LIMIT 5
     `;
