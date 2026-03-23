@@ -2993,7 +2993,7 @@ LEFT JOIN tbl_category tcat
   ON tc.category_id = tcat.category_id
 
 WHERE scp.student_id = $1
-
+AND scp.is_completed = true
 ORDER BY COALESCE(scp.unlocked_at, scp.completed_at::timestamp) DESC
 LIMIT 5
     `;
