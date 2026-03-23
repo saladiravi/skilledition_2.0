@@ -6,7 +6,7 @@ exports.validateCertificateFiles = (req, res, next) => {
     "application/pdf"
   ];
 
-const maxSize = 10 * 1024 * 1024; // 10MB
+const maxSize = 5 * 1024 * 1024; // 5MB
 
   if (!req.files || !req.files.certificate_file) {
     return res.status(400).json({
@@ -78,7 +78,7 @@ exports.validateProfilePic = (req, res, next) => {
     "image/jpg"
   ];
 
-  const maxSize = 100 * 1024; // 100KB
+  const maxSize = 50 * 1024; // 50KB
 
   // if (!req.files || !req.files.profile_pic) {
   //   return res.status(400).json({

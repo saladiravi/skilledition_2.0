@@ -804,7 +804,7 @@ exports.getTutorOnboarding = async (req, res) => {
       tutor.profile_pic_url = await getSignedVideoUrl(tutor.profile_pic);
     }
 
-    const tutors = await pool.query(`SELECT full_name FROM tbl_user WHERE user_id=$1`, [user_id])
+    const tutors = await pool.query(`SELECT full_name,email FROM tbl_user WHERE user_id=$1`, [user_id])
 
     // 2️⃣ Education details
     const educationRes = await pool.query(
@@ -843,6 +843,7 @@ exports.getTutorOnboarding = async (req, res) => {
           short_bio,
           teaching_style,
           student_can_expect,
+          demo_video_reject_reason,
           demo_video_created_at
         FROM tbl_demo_videos
         WHERE tutor_id = $1
@@ -882,7 +883,8 @@ exports.getTutorOnboarding = async (req, res) => {
       statusCode: 200,
       message: 'Fetched sucessfully',
       tutor: {
-        fullname: tutors.rows[0],
+        fullname: tutors.rows[0].full_name,
+        email:tutors.rows[0].email,
         tutor_details: tutor,
         education: educationRes.rows,
         certificates,
