@@ -2439,8 +2439,8 @@ CROSS JOIN
   SELECT 
     COALESCE(
       CONCAT(
-        EXTRACT(HOUR FROM SUM(tmv.video_duration::interval)), 'h',
-        EXTRACT(MINUTE FROM SUM(tmv.video_duration::interval)), 'm'
+        EXTRACT(HOUR FROM SUM(tmv.video_duration::interval)), 'H:',
+        EXTRACT(MINUTE FROM SUM(tmv.video_duration::interval)), 'M'
       ),
       '0H:0M'
     ) AS total_learning_time
