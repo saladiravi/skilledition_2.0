@@ -102,13 +102,13 @@ exports.updateTutorabout = async (req, res) => {
       UPDATE tbl_tutor
       SET
          
-        country = COALESCE($4, country),
-        subject_to_teach = COALESCE($5, subject_to_teach),
-        speak_language = COALESCE($6, speak_language),
-        phone_number = COALESCE($7, phone_number),
-        level = COALESCE($8, level)
+        country = COALESCE($1, country),
+        subject_to_teach = COALESCE($2, subject_to_teach),
+        speak_language = COALESCE($3, speak_language),
+        phone_number = COALESCE($4, phone_number),
+        level = COALESCE($5, level)
        
-      WHERE tutor_id = $9
+      WHERE tutor_id = $6
       RETURNING *;
     `;
 
