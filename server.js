@@ -16,6 +16,8 @@ const internship=require('./routes/internshiproutes');
 const chatRoutes = require("./routes/chatRoutes");
 const notification=require('./routes/notificationroutes');
 const dashboard =require('./routes/dashboardroutes');
+const sanitizeInput =require('./middleware/sanitizeInput');
+
 
 
 
@@ -23,6 +25,7 @@ const app = express();
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); 
 app.use(express.json());
+app.use(sanitizeInput);
 app.use(cors()); 
 
 app.use('/userroutes',user);

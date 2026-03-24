@@ -1637,7 +1637,7 @@ exports.getAllTutors = async (req, res) => {
             te.degree,
             t.country,
             t.level,
-            t.phone_number,
+            u.phone_number,
             u.status
             
         FROM tbl_tutor t
@@ -1770,7 +1770,6 @@ exports.getTutorById = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("getTutorById error:", error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal server error"
