@@ -907,10 +907,13 @@ exports.getTutorOnboarding = async (req, res) => {
   const { user_id } = req.body;
 
   try {
-    // 1️⃣ Tutor + User (JOIN)
+    // 1️⃣ Get user + tutor (LEFT JOIN)
     const tutorRes = await pool.query(
       `
       SELECT 
+        u.user_id,
+        u.full_name,
+        u.email,
         t.tutor_id,
         t.country,
         t.subject_to_teach,
@@ -920,28 +923,42 @@ exports.getTutorOnboarding = async (req, res) => {
         t.years_of_experience,
         t.professional_background,
         t.achievements,
-        t.user_id,
-        t.level,
-        u.full_name,
-        u.email
-      FROM tbl_tutor t
-      JOIN tbl_user u ON t.user_id = u.user_id
-      WHERE t.user_id = $1
+        t.level
+      FROM tbl_user u
+      LEFT JOIN tbl_tutor t ON t.user_id = u.user_id
+      WHERE u.user_id = $1
       `,
       [user_id]
     );
 
+    // ❌ No user at all
     if (tutorRes.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Tutor not found for this user_id"
+        message: "User not found"
       });
     }
 
     let tutor = tutorRes.rows[0];
+
+    // ✅ If tutor not created yet
+    if (!tutor.tutor_id) {
+      return res.status(200).json({
+        success: true,
+        message: "User exists but tutor onboarding not completed",
+        tutor: {
+          tutor_details: tutor, // contains full_name, email
+          education: [],
+          certificates: [],
+          demo_video: null,
+          payment_plan: null
+        }
+      });
+    }
+
     const tutor_id = tutor.tutor_id;
 
-    // ✅ Profile pic signed URL
+    // ✅ Profile pic URL
     if (tutor.profile_pic) {
       tutor.profile_pic_url = await getSignedVideoUrl(tutor.profile_pic);
     }
@@ -1022,16 +1039,16 @@ exports.getTutorOnboarding = async (req, res) => {
     const payment_plan =
       paymentPlanRes.rows.length > 0 ? paymentPlanRes.rows[0] : null;
 
-    // ✅ Final Response
+    // ✅ Final response
     return res.status(200).json({
-      statusCode: 200,
+      success: true,
       message: "Fetched successfully",
       tutor: {
         tutor_details: tutor,
         education: educationRes.rows,
-        certificates: certificates,
-        demo_video: demo_video,
-        payment_plan: payment_plan
+        certificates,
+        demo_video,
+        payment_plan
       }
     });
 
