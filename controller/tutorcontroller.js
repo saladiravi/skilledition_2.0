@@ -934,7 +934,7 @@ exports.getTutorOnboarding = async (req, res) => {
     // ❌ No user at all
     if (tutorRes.rows.length === 0) {
       return res.status(404).json({
-        success: false,
+        statusCode: 404,
         message: "User not found"
       });
     }
@@ -944,11 +944,11 @@ exports.getTutorOnboarding = async (req, res) => {
     // ✅ If tutor not created yet
     if (!tutor.tutor_id) {
       return res.status(200).json({
-        success: true,
+        statusCode: 200,
         message: "User exists but tutor onboarding not completed",
         fullname: tutor.full_name,
         tutor: {
-           
+
           tutor_details: tutor, // contains full_name, email
           education: [],
           certificates: [],
@@ -1043,8 +1043,9 @@ exports.getTutorOnboarding = async (req, res) => {
 
     // ✅ Final response
     return res.status(200).json({
-      success: true,
+      statusCode: 200,
       message: "Fetched successfully",
+      fullname: tutor.full_name,
       tutor: {
         tutor_details: tutor,
         education: educationRes.rows,
@@ -2004,7 +2005,7 @@ exports.updateTutorStatus = async (req, res) => {
     let tutorValues = [];
 
     // 🟢 APPROVE
-    if (status === 'Published' || status==='Pending') {
+    if (status === 'Published' || status === 'Pending') {
       tutorQuery = `
         UPDATE tbl_tutor
         SET status = $1,
@@ -2034,7 +2035,7 @@ exports.updateTutorStatus = async (req, res) => {
         RETURNING tutor_id, user_id, status
       `;
       tutorValues = [status, reject_reason, tutor_id];
-    } 
+    }
     else {
       return res.status(400).json({
         statusCode: 400,
@@ -2278,16 +2279,16 @@ exports.gettutordetailsbyId = async (req, res) => {
 
 
 
-exports.tutordashboards=async(req,res)=>{
-  const {tutor_id}=req.body
-  try{
-      const checktutor=await pool.query(`SELECT role,full_name FROM tbl_user WHERE user_id=$1`,[tutor_id]);
-      if(checktutor.rows.length ===0){
-        return res.status(404).json({
-          statusCode:404,
-          message:'Tutor Not Found'
-        })
-      }
+exports.tutordashboards = async (req, res) => {
+  const { tutor_id } = req.body
+  try {
+    const checktutor = await pool.query(`SELECT role,full_name FROM tbl_user WHERE user_id=$1`, [tutor_id]);
+    if (checktutor.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Tutor Not Found'
+      })
+    }
     const statsQuery = `
         SELECT
         COUNT(DISTINCT c.course_id) AS total_courses,
@@ -2335,19 +2336,19 @@ exports.tutordashboards=async(req,res)=>{
       pool.query(statsQuery, [tutor_id]),
       pool.query(recentAssignmentQuery, [tutor_id])
     ]);
-    
-   const tutor_name = checktutor.rows[0].full_name;
+
+    const tutor_name = checktutor.rows[0].full_name;
     return res.status(200).json({
-      statusCode:200,
-      tutor_name:tutor_name,
+      statusCode: 200,
+      tutor_name: tutor_name,
       stats: statsResult.rows[0],
       recent_assignments: recentAssignments.rows
     });
-  }catch(error){
-    
+  } catch (error) {
+
     return res.status(500).json({
-      statusCode:500,
-      message:'Internal Server Error'
+      statusCode: 500,
+      message: 'Internal Server Error'
     })
   }
 }
