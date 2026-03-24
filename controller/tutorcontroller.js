@@ -750,213 +750,54 @@ exports.updateEducation = async (req, res) => {
   }
 };
 
-exports.getTutorOnboarding = async (req, res) => {
-  const { user_id } = req.body;
-
-  try {
-    // 1️⃣ Get tutor basic details
-    const tutorRes = await pool.query(
-      `
-     SELECT
-        tutor_id,
-        first_name,
-        last_name,
-        email,
-        country,
-        subject_to_teach,
-        speak_language,
-        phone_number,
-        profile_pic,
-        years_of_experience,
-        professional_background,
-        achievements,
-        user_id,
-        level
-      FROM tbl_tutor
-      WHERE user_id = $1
-      `,
-      [user_id]
-    );
-
-    if (tutorRes.rows.length === 0) {
-      return res.json({
-        success: false,
-        message: "Tutor not found for this user_id"
-      });
-    }
-
-    let tutor = tutorRes.rows[0];
-    const tutor_id = tutor.tutor_id;
-
-    // Convert profile_pic to signed URL if exists
-    if (tutor.profile_pic) {
-      tutor.profile_pic_url = await getSignedVideoUrl(tutor.profile_pic);
-    }
-
-    const tutors = await pool.query(`SELECT full_name,email FROM tbl_user WHERE user_id=$1`, [user_id])
-
-    // 2️⃣ Education details
-    const educationRes = await pool.query(
-      `SELECT tutor_education_id,degree, institution, specialization, year_of_passout
-       FROM tbl_tutor_education
-       WHERE tutor_id = $1`,
-      [tutor_id]
-    );
-
-    // 3️⃣ Certificates
-    const certificateRes = await pool.query(
-      `SELECT tutor_certificate_id,certificate_name, issued_by, date_of_issue, certificate_file
-       FROM tbl_tutor_certificates
-       WHERE tutor_id = $1`,
-      [tutor_id]
-    );
-
-    // Convert certificate files to signed URLs
-    const certificates = await Promise.all(
-      certificateRes.rows.map(async (cert) => {
-        if (cert.certificate_file) {
-          cert.certificate_file_url = await getSignedVideoUrl(cert.certificate_file);
-        }
-        return cert;
-      })
-    );
-
-    // 4️⃣ Demo video
-    const demoVideoRes = await pool.query(
-      ` SELECT
-          demo_video_id,
-          tutor_id,
-          video_title,
-          video_description,
-          video_file,
-          short_bio,
-          teaching_style,
-          student_can_expect,
-          demo_video_reject_reason,
-          demo_video_created_at
-        FROM tbl_demo_videos
-        WHERE tutor_id = $1
-        `,
-      [tutor_id]
-    );
-
-    let demo_video = null;
-    if (demoVideoRes.rows.length > 0) {
-      demo_video = demoVideoRes.rows[0];
-      if (demo_video.video_file) {
-        demo_video.video_file_url = await getSignedVideoUrl(demo_video.video_file);
-      }
-    }
-    const paymentPlanRes = await pool.query(
-      `
-      SELECT
-        p.payment_plan_id,
-        p.plan_type,
-        p.price,
-        p.royalty_percentage,
-        p.status,
-        t.upi_id
-      FROM tbl_tutor_payment_plan p
-      JOIN tbl_tutor t ON t.tutor_id = p.tutor_id
-      WHERE p.tutor_id = $1
-      ORDER BY p.payment_plan_id DESC
-      LIMIT 1
-      `,
-      [tutor_id]
-    );
-
-    const payment_plan =
-      paymentPlanRes.rows.length > 0 ? paymentPlanRes.rows[0] : null;
-
-    return res.status(200).json({
-      statusCode: 200,
-      message: 'Fetched sucessfully',
-      tutor: {
-        fullname: tutors.rows[0].full_name,
-        email:tutors.rows[0].email,
-        tutor_details: tutor,
-        education: educationRes.rows,
-        certificates,
-        demo_video,
-        payment_plan
-      }
-    });
-
-  } catch (err) {
-    console.error("Get tutor error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: err.message
-    });
-  }
-};
-
 // exports.getTutorOnboarding = async (req, res) => {
 //   const { user_id } = req.body;
 
 //   try {
-//     // 1️⃣ Get user + tutor (LEFT JOIN)
+//     // 1️⃣ Get tutor basic details
 //     const tutorRes = await pool.query(
 //       `
-//       SELECT 
-//         u.user_id,
-//         u.full_name,
-//         u.email,
-//         t.tutor_id,
-//         t.country,
-//         t.subject_to_teach,
-//         t.speak_language,
-//         t.phone_number,
-//         t.profile_pic,
-//         t.years_of_experience,
-//         t.professional_background,
-//         t.achievements,
-//         t.level
-//       FROM tbl_user u
-//       LEFT JOIN tbl_tutor t ON t.user_id = u.user_id
-//       WHERE u.user_id = $1
+//      SELECT
+//         tutor_id,
+//         first_name,
+//         last_name,
+//         email,
+//         country,
+//         subject_to_teach,
+//         speak_language,
+//         phone_number,
+//         profile_pic,
+//         years_of_experience,
+//         professional_background,
+//         achievements,
+//         user_id,
+//         level
+//       FROM tbl_tutor
+//       WHERE user_id = $1
 //       `,
 //       [user_id]
 //     );
 
-//     // ❌ No user at all
 //     if (tutorRes.rows.length === 0) {
-//       return res.status(404).json({
-//         statusCode: 404,
-//         message: "User not found"
+//       return res.json({
+//         success: false,
+//         message: "Tutor not found for this user_id"
 //       });
 //     }
 
 //     let tutor = tutorRes.rows[0];
-
-//     // ✅ If tutor not created yet
-//     if (!tutor.tutor_id) {
-//       return res.status(200).json({
-//         statusCode: 200,
-//         message: "User exists but tutor onboarding not completed",
-//         fullname: tutor.full_name,
-//         tutor: {
-
-//           tutor_details: tutor, // contains full_name, email
-//           education: [],
-//           certificates: [],
-//           demo_video: null,
-//           payment_plan: null
-//         }
-//       });
-//     }
-
 //     const tutor_id = tutor.tutor_id;
 
-//     // ✅ Profile pic URL
+//     // Convert profile_pic to signed URL if exists
 //     if (tutor.profile_pic) {
 //       tutor.profile_pic_url = await getSignedVideoUrl(tutor.profile_pic);
 //     }
 
-//     // 2️⃣ Education
+//     const tutors = await pool.query(`SELECT full_name,email FROM tbl_user WHERE user_id=$1`, [user_id])
+
+//     // 2️⃣ Education details
 //     const educationRes = await pool.query(
-//       `SELECT tutor_education_id, degree, institution, specialization, year_of_passout
+//       `SELECT tutor_education_id,degree, institution, specialization, year_of_passout
 //        FROM tbl_tutor_education
 //        WHERE tutor_id = $1`,
 //       [tutor_id]
@@ -964,12 +805,13 @@ exports.getTutorOnboarding = async (req, res) => {
 
 //     // 3️⃣ Certificates
 //     const certificateRes = await pool.query(
-//       `SELECT tutor_certificate_id, certificate_name, issued_by, date_of_issue, certificate_file
+//       `SELECT tutor_certificate_id,certificate_name, issued_by, date_of_issue, certificate_file
 //        FROM tbl_tutor_certificates
 //        WHERE tutor_id = $1`,
 //       [tutor_id]
 //     );
 
+//     // Convert certificate files to signed URLs
 //     const certificates = await Promise.all(
 //       certificateRes.rows.map(async (cert) => {
 //         if (cert.certificate_file) {
@@ -979,36 +821,32 @@ exports.getTutorOnboarding = async (req, res) => {
 //       })
 //     );
 
-//     // 4️⃣ Demo Video
+//     // 4️⃣ Demo video
 //     const demoVideoRes = await pool.query(
-//       `
-//       SELECT
-//         demo_video_id,
-//         tutor_id,
-//         video_title,
-//         video_description,
-//         video_file,
-//         short_bio,
-//         teaching_style,
-//         student_can_expect,
-//         demo_video_reject_reason,
-//         demo_video_created_at
-//       FROM tbl_demo_videos
-//       WHERE tutor_id = $1
-//       `,
+//       ` SELECT
+//           demo_video_id,
+//           tutor_id,
+//           video_title,
+//           video_description,
+//           video_file,
+//           short_bio,
+//           teaching_style,
+//           student_can_expect,
+//           demo_video_reject_reason,
+//           demo_video_created_at
+//         FROM tbl_demo_videos
+//         WHERE tutor_id = $1
+//         `,
 //       [tutor_id]
 //     );
 
 //     let demo_video = null;
 //     if (demoVideoRes.rows.length > 0) {
 //       demo_video = demoVideoRes.rows[0];
-
 //       if (demo_video.video_file) {
 //         demo_video.video_file_url = await getSignedVideoUrl(demo_video.video_file);
 //       }
 //     }
-
-//     // 5️⃣ Payment Plan
 //     const paymentPlanRes = await pool.query(
 //       `
 //       SELECT
@@ -1030,12 +868,12 @@ exports.getTutorOnboarding = async (req, res) => {
 //     const payment_plan =
 //       paymentPlanRes.rows.length > 0 ? paymentPlanRes.rows[0] : null;
 
-//     // ✅ Final response
 //     return res.status(200).json({
 //       statusCode: 200,
-//       message: "Fetched successfully",
-//       fullname: tutor.full_name,
+//       message: 'Fetched sucessfully',
 //       tutor: {
+//         fullname: tutors.rows[0].full_name,
+//         email:tutors.rows[0].email,
 //         tutor_details: tutor,
 //         education: educationRes.rows,
 //         certificates,
@@ -1045,14 +883,176 @@ exports.getTutorOnboarding = async (req, res) => {
 //     });
 
 //   } catch (err) {
-     
+//     console.error("Get tutor error:", err);
 //     return res.status(500).json({
-//        statusCode: 500,
+//       success: false,
 //       message: "Server error",
 //       error: err.message
 //     });
 //   }
 // };
+
+exports.getTutorOnboarding = async (req, res) => {
+  const { user_id } = req.body;
+
+  try {
+    // 1️⃣ Get user + tutor (LEFT JOIN)
+    const tutorRes = await pool.query(
+      `
+      SELECT 
+        u.user_id,
+        u.full_name,
+        u.email,
+        t.tutor_id,
+        t.country,
+        t.subject_to_teach,
+        t.speak_language,
+        t.phone_number,
+        t.profile_pic,
+        t.years_of_experience,
+        t.professional_background,
+        t.achievements,
+        t.level
+      FROM tbl_user u
+      LEFT JOIN tbl_tutor t ON t.user_id = u.user_id
+      WHERE u.user_id = $1
+      `,
+      [user_id]
+    );
+
+    // ❌ No user at all
+    if (tutorRes.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "User not found"
+      });
+    }
+
+    let tutor = tutorRes.rows[0];
+
+    // ✅ If tutor not created yet
+    if (!tutor.tutor_id) {
+      return res.status(200).json({
+        statusCode: 200,
+        message: "User exists but tutor onboarding not completed",
+        fullname: tutor.full_name,
+        tutor: {
+
+          tutor_details: tutor, // contains full_name, email
+          education: [],
+          certificates: [],
+          demo_video: null,
+          payment_plan: null
+        }
+      });
+    }
+
+    const tutor_id = tutor.tutor_id;
+
+    // ✅ Profile pic URL
+    if (tutor.profile_pic) {
+      tutor.profile_pic_url = await getSignedVideoUrl(tutor.profile_pic);
+    }
+
+    // 2️⃣ Education
+    const educationRes = await pool.query(
+      `SELECT tutor_education_id, degree, institution, specialization, year_of_passout
+       FROM tbl_tutor_education
+       WHERE tutor_id = $1`,
+      [tutor_id]
+    );
+
+    // 3️⃣ Certificates
+    const certificateRes = await pool.query(
+      `SELECT tutor_certificate_id, certificate_name, issued_by, date_of_issue, certificate_file
+       FROM tbl_tutor_certificates
+       WHERE tutor_id = $1`,
+      [tutor_id]
+    );
+
+    const certificates = await Promise.all(
+      certificateRes.rows.map(async (cert) => {
+        if (cert.certificate_file) {
+          cert.certificate_file_url = await getSignedVideoUrl(cert.certificate_file);
+        }
+        return cert;
+      })
+    );
+
+    // 4️⃣ Demo Video
+    const demoVideoRes = await pool.query(
+      `
+      SELECT
+        demo_video_id,
+        tutor_id,
+        video_title,
+        video_description,
+        video_file,
+        short_bio,
+        teaching_style,
+        student_can_expect,
+        demo_video_reject_reason,
+        demo_video_created_at
+      FROM tbl_demo_videos
+      WHERE tutor_id = $1
+      `,
+      [tutor_id]
+    );
+
+    let demo_video = null;
+    if (demoVideoRes.rows.length > 0) {
+      demo_video = demoVideoRes.rows[0];
+
+      if (demo_video.video_file) {
+        demo_video.video_file_url = await getSignedVideoUrl(demo_video.video_file);
+      }
+    }
+
+    // 5️⃣ Payment Plan
+    const paymentPlanRes = await pool.query(
+      `
+      SELECT
+        p.payment_plan_id,
+        p.plan_type,
+        p.price,
+        p.royalty_percentage,
+        p.status,
+        t.upi_id
+      FROM tbl_tutor_payment_plan p
+      JOIN tbl_tutor t ON t.tutor_id = p.tutor_id
+      WHERE p.tutor_id = $1
+      ORDER BY p.payment_plan_id DESC
+      LIMIT 1
+      `,
+      [tutor_id]
+    );
+
+    const payment_plan =
+      paymentPlanRes.rows.length > 0 ? paymentPlanRes.rows[0] : null;
+
+    // ✅ Final response
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Fetched successfully",
+      fullname: tutor.full_name,
+      tutor: {
+        tutor_details: tutor,
+        education: educationRes.rows,
+        certificates,
+        demo_video,
+        payment_plan
+      }
+    });
+
+  } catch (err) {
+     
+    return res.status(500).json({
+       statusCode: 500,
+      message: "Server error",
+      error: err.message
+    });
+  }
+};
 
 exports.addDemoVideo = async (req, res) => {
   try {
