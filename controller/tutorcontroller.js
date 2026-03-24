@@ -1056,9 +1056,9 @@ exports.getTutorOnboarding = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Get tutor onboarding error:", err);
+     
     return res.status(500).json({
-      success: false,
+       statusCode: 500,
       message: "Server error",
       error: err.message
     });
