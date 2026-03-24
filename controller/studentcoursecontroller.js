@@ -2442,7 +2442,7 @@ CROSS JOIN
         EXTRACT(HOUR FROM SUM(tmv.video_duration::interval)), 'h',
         EXTRACT(MINUTE FROM SUM(tmv.video_duration::interval)), 'm'
       ),
-      '0h0m'
+      '0H:0M'
     ) AS total_learning_time
   FROM tbl_student_course sc
   JOIN tbl_module tm
