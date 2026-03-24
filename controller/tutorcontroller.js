@@ -8,9 +8,7 @@ const { uploadToS3, getSignedVideoUrl } = require('../utils/s3upload');
 
 exports.addtutorAbout = async (req, res) => {
   const {
-    first_name,
-    last_name,
-    email,
+   
     country,
     subject_to_teach,
     speak_language,
@@ -20,7 +18,7 @@ exports.addtutorAbout = async (req, res) => {
   } = req.body;
 
   if (
-    !first_name || !last_name || !email ||
+     
     !country || !subject_to_teach || !speak_language ||
     !phone_number || !user_id
   ) {
@@ -35,16 +33,14 @@ exports.addtutorAbout = async (req, res) => {
 
     const query = `
       INSERT INTO tbl_tutor
-      (first_name, last_name, email, country, subject_to_teach, speak_language,
+      (country, subject_to_teach, speak_language,
        phone_number, user_id,level)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      VALUES ($1,$2,$3,$4,$5,$6)
       RETURNING *;
     `;
 
     const values = [
-      first_name,
-      last_name,
-      email,
+      
       country,
       subject_to_teach,
       speak_language,
@@ -74,9 +70,6 @@ exports.updateTutorabout = async (req, res) => {
   try {
     const {
       tutor_id,
-      first_name,
-      last_name,
-      email,
       country,
       subject_to_teach,
       speak_language,
@@ -108,9 +101,7 @@ exports.updateTutorabout = async (req, res) => {
     const updateQuery = `
       UPDATE tbl_tutor
       SET
-        first_name = COALESCE($1, first_name),
-        last_name = COALESCE($2, last_name),
-        email = COALESCE($3, email),
+         
         country = COALESCE($4, country),
         subject_to_teach = COALESCE($5, subject_to_teach),
         speak_language = COALESCE($6, speak_language),
@@ -122,9 +113,7 @@ exports.updateTutorabout = async (req, res) => {
     `;
 
     const values = [
-      first_name,
-      last_name,
-      email,
+     
       country,
       subject_to_teach,
       speak_language,
