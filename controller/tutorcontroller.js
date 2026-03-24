@@ -947,6 +947,7 @@ exports.getTutorOnboarding = async (req, res) => {
         success: true,
         message: "User exists but tutor onboarding not completed",
         tutor: {
+          fullname:tutor.rows[0].full_name,
           tutor_details: tutor, // contains full_name, email
           education: [],
           certificates: [],
