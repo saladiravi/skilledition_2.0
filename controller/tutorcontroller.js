@@ -8,11 +8,9 @@ const { uploadToS3, getSignedVideoUrl } = require('../utils/s3upload');
 
 exports.addtutorAbout = async (req, res) => {
   const {
-   
-    country,
+     country,
     subject_to_teach,
     speak_language,
-    phone_number,
     level,
     user_id
   } = req.body;
@@ -20,7 +18,7 @@ exports.addtutorAbout = async (req, res) => {
   if (
      
     !country || !subject_to_teach || !speak_language ||
-    !phone_number || !user_id
+     !user_id
   ) {
     return res.status(400).json({
       statusCode: 400,
@@ -34,17 +32,15 @@ exports.addtutorAbout = async (req, res) => {
     const query = `
       INSERT INTO tbl_tutor
       (country, subject_to_teach, speak_language,
-       phone_number, user_id,level)
-      VALUES ($1,$2,$3,$4,$5,$6)
+        user_id,level)
+      VALUES ($1,$2,$3,$4,$5)
       RETURNING *;
     `;
 
     const values = [
-      
       country,
       subject_to_teach,
       speak_language,
-      phone_number,
       user_id,
       level
     ];
@@ -73,7 +69,6 @@ exports.updateTutorabout = async (req, res) => {
       country,
       subject_to_teach,
       speak_language,
-      phone_number,
       level
     } = req.body;
 
@@ -101,23 +96,19 @@ exports.updateTutorabout = async (req, res) => {
     const updateQuery = `
       UPDATE tbl_tutor
       SET
-         
         country = COALESCE($1, country),
         subject_to_teach = COALESCE($2, subject_to_teach),
         speak_language = COALESCE($3, speak_language),
-        phone_number = COALESCE($4, phone_number),
-        level = COALESCE($5, level)
+        level = COALESCE($4, level)
        
-      WHERE tutor_id = $6
+      WHERE tutor_id = $5
       RETURNING *;
     `;
 
     const values = [
-     
-      country,
+       country,
       subject_to_teach,
       speak_language,
-      phone_number,
       level,
       tutor_id
     ];
@@ -907,7 +898,7 @@ exports.getTutorOnboarding = async (req, res) => {
         t.country,
         t.subject_to_teach,
         t.speak_language,
-        t.phone_number,
+        u.phone_number,
         t.profile_pic,
         t.years_of_experience,
         t.professional_background,
