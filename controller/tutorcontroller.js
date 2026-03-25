@@ -1968,7 +1968,7 @@ exports.gettutordetailsbyId = async (req, res) => {
           u.email,
           t.subject_to_teach,
           t.status,
-          TO_CHAR(t.rejected_at, 'Mon DD, YYYY, HH12:MI AM') AS rejected_date,
+          TO_CHAR(t.rejected_at, 'Mon DD, YYYY') AS rejected_date,
           t.reject_reason,
           t.professional_bio AS description
         FROM tbl_tutor t
