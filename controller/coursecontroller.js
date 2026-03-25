@@ -339,7 +339,7 @@ exports.getcourseBytutor = async (req, res) => {
 //       [course_id]
 //     );
 
- 
+
 //     await client.query("COMMIT");
 
 //     return res.status(200).json({
@@ -425,7 +425,7 @@ exports.addModulesWithVideos = async (req, res) => {
       );
 
 
-    await Promise.all(
+      await Promise.all(
         videos.map(async (file) => {
           const durationSeconds = await getVideoDuration(file.path);
           const formattedDuration = formatDurationHMS(durationSeconds);
@@ -459,7 +459,7 @@ exports.addModulesWithVideos = async (req, res) => {
       [course_id]
     );
 
- 
+
     await client.query("COMMIT");
 
     return res.status(200).json({
@@ -856,19 +856,39 @@ exports.gettotalcourse = async (req, res) => {
       }
 
       // ---------- VIDEO ----------
-      if (row.module_video_id && module) {
-        const signedUrl = await getSignedVideoUrl(row.video);
-        module.videos.push({
-          module_video_id: row.module_video_id,
-          video_url: signedUrl,
-          video: row.video,
-          video_title: row.video_title,
-          status: row.video_status,
-          reason: row.reason,
-          video_duration: row.video_duration
-        });
-      }
+      // if (row.module_video_id && module) {
+      //   const signedUrl = await getSignedVideoUrl(row.video);
+      //   module.videos.push({
+      //     module_video_id: row.module_video_id,
+      //     video_url: signedUrl,
+      //     video: row.video,
+      //     video_title: row.video_title,
+      //     status: row.video_status,
+      //     reason: row.reason,
+      //     video_duration: row.video_duration
+      //   });
+      // }
 
+      if (row.module_video_id && module) {
+
+        const videoExists = module.videos.find(
+          v => v.module_video_id === row.module_video_id
+        );
+
+        if (!videoExists) {
+          const signedUrl = await getSignedVideoUrl(row.video);
+
+          module.videos.push({
+            module_video_id: row.module_video_id,
+            video_url: signedUrl,
+            video: row.video,
+            video_title: row.video_title,
+            status: row.video_status,
+            reason: row.reason,
+            video_duration: row.video_duration
+          });
+        }
+      }
       // ---------- STUDENT ----------
       if (row.student_id) {
         const exists = course.students.find(
@@ -904,30 +924,30 @@ exports.gettotalcourse = async (req, res) => {
 
 
     // ---------- FILTER VIDEOS BY STATUS PRIORITY ----------
-for (const course of Object.values(coursesMap)) {
-  for (const module of course.modules) {
+    for (const course of Object.values(coursesMap)) {
+      for (const module of course.modules) {
 
-    const rejected = module.videos.filter(v => v.status === 'Rejected');
-    const pending = module.videos.filter(v => v.status === 'Pending');
-    const published = module.videos.filter(v => v.status === 'Published');
+        const rejected = module.videos.filter(v => v.status === 'Rejected');
+        const pending = module.videos.filter(v => v.status === 'Pending');
+        const published = module.videos.filter(v => v.status === 'Published');
 
-    // Priority: Rejected > Pending > Published
-    if (rejected.length > 0) {
-      module.videos = rejected;
-    } 
-    else if (pending.length > 0) {
-      module.videos = pending;
-    } 
-    else {
-      module.videos = published;
+        // Priority: Rejected > Pending > Published
+        if (rejected.length > 0) {
+          module.videos = rejected;
+        }
+        else if (pending.length > 0) {
+          module.videos = pending;
+        }
+        else {
+          module.videos = published;
+        }
+      }
+
+      // ---------- NO STUDENTS -> NULL ----------
+      if (course.students.length === 0) {
+        course.students = null;
+      }
     }
-  }
-
-  // ---------- NO STUDENTS -> NULL ----------
-  if (course.students.length === 0) {
-    course.students = null;
-  }
-}
 
     return res.status(200).json({
       statusCode: 200,
@@ -1086,18 +1106,18 @@ exports.updateModuleVideos = async (req, res) => {
 
       updatedCount++;
     }
-const course_id = moduleCheck.rows[0].course_id;
-// ✅ Update module count in tbl_course
-await client.query(
-  `UPDATE tbl_course
+    const course_id = moduleCheck.rows[0].course_id;
+    // ✅ Update module count in tbl_course
+    await client.query(
+      `UPDATE tbl_course
    SET no_of_modules = (
      SELECT COUNT(*)
      FROM tbl_module
      WHERE course_id = $1
    )
    WHERE course_id = $1`,
-  [course_id]
-);
+      [course_id]
+    );
 
     await client.query("COMMIT");
 
@@ -1470,8 +1490,8 @@ exports.getTutorCoursesWithModules = async (req, res) => {
     });
 
     res.status(200).json({
-      statusCode:200,
-      message:'Fetched Sucessfully',
+      statusCode: 200,
+      message: 'Fetched Sucessfully',
       data: Object.values(coursesMap)
     });
 
@@ -1568,7 +1588,7 @@ exports.getAdminCourseList = async (req, res) => {
 //   try {
 
 //     const query = `
-     
+
 //   SELECT
 
 //     -- COURSE
@@ -2209,21 +2229,21 @@ exports.getadmintotalcourse = async (req, res) => {
       );
 
 
-          if (
-          !module &&
-          row.module_id &&
-          (row.module_video_id || row.assignment_id)
-        ) {
+      if (
+        !module &&
+        row.module_id &&
+        (row.module_video_id || row.assignment_id)
+      ) {
 
-          module = {
+        module = {
 
-            module_id: row.module_id,
-            module_title: row.module_title,
-            status: row.video_status,
+          module_id: row.module_id,
+          module_title: row.module_title,
+          status: row.video_status,
 
-            videos: [],
-            assignments: []
-          };
+          videos: [],
+          assignments: []
+        };
 
         course.modules.push(module);
       }
@@ -2242,7 +2262,7 @@ exports.getadmintotalcourse = async (req, res) => {
 
 
       /* ---------- ASSIGNMENT ---------- */
-   /* ---------- ASSIGNMENT ---------- */
+      /* ---------- ASSIGNMENT ---------- */
       if (row.assignment_id && module) {
 
         let assignment = module.assignments.find(
@@ -2278,7 +2298,7 @@ exports.getadmintotalcourse = async (req, res) => {
     }
 
 
-      const result = Object.values(courses);
+    const result = Object.values(courses);
 
     if (result.length === 0) {
       return res.status(200).json({
@@ -2408,11 +2428,11 @@ const updateCourseStatusIfReady = async (course_id) => {
   `, [course_id]);
 
 
-  const {  total_modules, modules_with_assignment, pending_videos, pending_assignments } = result.rows[0];
+  const { total_modules, modules_with_assignment, pending_videos, pending_assignments } = result.rows[0];
 
 
   // ✅ If all approved → Publish course
-  if (pending_videos == 0 && pending_assignments == 0 &&  total_modules == modules_with_assignment) {
+  if (pending_videos == 0 && pending_assignments == 0 && total_modules == modules_with_assignment) {
 
     await pool.query(
       `UPDATE tbl_course
@@ -2484,7 +2504,7 @@ exports.getModuleVideoById = async (req, res) => {
     });
 
   } catch (error) {
-     return res.status(500).json({
+    return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
     });
@@ -2867,7 +2887,7 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
     }
 
     // Profile + Stats
-  const profileQuery = `
+    const profileQuery = `
         SELECT 
             tu.full_name,
             tu.email,
@@ -2908,7 +2928,7 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
             ts.mobile_number
         `;
 
- 
+
     const overallProgressQuery = `
       SELECT 
       COALESCE(
@@ -2979,8 +2999,8 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
       ORDER BY activity_time DESC
       LIMIT 5
     `;
-        
-  // Run all queries together
+
+    // Run all queries together
     const [profile, overall, activity] = await Promise.all([
       pool.query(profileQuery, [student_id]),
       pool.query(overallProgressQuery, [student_id]),
