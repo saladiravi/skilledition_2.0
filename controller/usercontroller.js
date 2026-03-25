@@ -497,6 +497,7 @@ exports.getProfile = async (req, res) => {
         SELECT 
           tt.profile_pic,
           tu.full_name,
+          tu.email,
           te.degree,
           tt.professional_background,
           tt.subject_to_teach,
