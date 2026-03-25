@@ -1,60 +1,18 @@
-const pool =require('../config/db');
-const bcrypt=require('bcryptjs');
+const pool = require('../config/db');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { uploadToS3, getSignedVideoUrl } = require('../utils/s3upload');
 require("dotenv").config();
-const {sendOtpMail}=require('../utils/mail');
+const { sendOtpMail } = require('../utils/mail');
 const jwt_secret = process.env.JWT_SECRET;
 
 
 
-// exports.addUser = async (req, res) => {
-//   const { full_name,email, password,role } = req.body;
-
-//   if (!full_name || !email  || !password || !role) {
-//     return res.status(400).json({
-//       statusCode: 400,
-//       message: 'Missing Require Fields',
-//     });
-//   }
-
-//   try {
-//     const emailExists = await pool.query(`SELECT email FROM tbl_user WHERE email=$1`,[email]);
-   
-//     if (emailExists.rows.length >0) {
-//       return res.status(409).json({
-//         statusCode: 409,
-//         message: 'Email already registered',
-//       });
-//     }
-
-//     const hashedpassword=await bcrypt.hash(password,10)
-//     const newUser = await pool.query(`INSERT INTO tbl_user(full_name,email,password,role) VALUES($1,$2,$3,$4) RETURNING *`,
-//         [full_name,email,hashedpassword,role]
-//     )
-
-//     return res.status(200).json({
-//       statusCode: 200,
-//       message: 'Registered successfully',
-//       data: newUser.rows[0],
-//     });
-
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({
-//       statusCode: 500,
-//       message: 'Internal server error',
-//     });
-//   }
-// };
-
-
-
 exports.addUser = async (req, res) => {
-  const { full_name, email, password, role ,otp} = req.body;
+  const { full_name, email,phone_number, password, role, otp } = req.body;
 
   // ✅ Validation
-  if (!full_name || !email || !password || !role) {
+  if (!full_name || !email || !phone_number || !password || !role || !otp) {
     return res.status(400).json({
       statusCode: 400,
       message: 'Missing Required Fields',
@@ -62,7 +20,7 @@ exports.addUser = async (req, res) => {
   }
 
   try {
-     const otpResult = await pool.query(
+    const otpResult = await pool.query(
       `SELECT * FROM tbl_email_otp 
        WHERE email=$1 AND otp=$2
        ORDER BY created_at DESC LIMIT 1`,
@@ -131,20 +89,20 @@ exports.addUser = async (req, res) => {
         const nextNumber = numberPart + 1;
 
         // Format with leading zeros
-        studentRegNumber = `SE-A${String(nextNumber).padStart(3, '0')}`;
+        studentRegNumber = `SE26-A${String(nextNumber).padStart(3, '0')}`;
 
       } else {
         // First student
-        studentRegNumber = 'SE-A001';
+        studentRegNumber = 'SE26-A001';
       }
     }
 
     // ✅ Insert user
     const newUser = await pool.query(
-      `INSERT INTO tbl_user(full_name,email,password,role,student_reg_number) 
-       VALUES($1,$2,$3,$4,$5) 
+      `INSERT INTO tbl_user(full_name,email,phone_number,password,role,student_reg_number) 
+       VALUES($1,$2,$3,$4,$5,$6) 
        RETURNING *`,
-      [full_name, email, hashedpassword, role, studentRegNumber]
+      [full_name, email, phone_number,hashedpassword, role, studentRegNumber]
     );
 
     return res.status(200).json({
@@ -272,14 +230,14 @@ exports.adminloginUser = async (req, res) => {
         role: user.role
       },
       jwt_secret,
-      { expiresIn: '24h'}
+      { expiresIn: '24h' }
     );
 
     return res.status(200).json({
       statusCode: 200,
       message: 'Login successfully',
       token,
-     user: {
+      user: {
         user_id: user.user_id,
         role: user.role
       }
@@ -295,21 +253,21 @@ exports.adminloginUser = async (req, res) => {
 };
 
 
-exports.getuser=async(req,res)=>{
-  const {user_id} =req.body
-  
-  try{
-    
-      const user=await pool.query(`SELECT full_name,role,status,student_reg_number FROM tbl_user WHERE user_id=$1`,[user_id]);
-      return res.status(200).json({
-        statusCode:200,
-        message:'Fetched Sucessfully',
-        user:user.rows[0]
-      })
-  }catch(error){
+exports.getuser = async (req, res) => {
+  const { user_id } = req.body
+
+  try {
+
+    const user = await pool.query(`SELECT full_name,role,status,student_reg_number FROM tbl_user WHERE user_id=$1`, [user_id]);
+    return res.status(200).json({
+      statusCode: 200,
+      message: 'Fetched Sucessfully',
+      user: user.rows[0]
+    })
+  } catch (error) {
     return res.status(500).json({
-      message:500,
-      statusCode:'Internal Server Error'
+      message: 500,
+      statusCode: 'Internal Server Error'
     })
   }
 }
@@ -317,20 +275,20 @@ exports.getuser=async(req,res)=>{
 
 
 exports.changePassword = async (req, res) => {
- 
-  const {  user_id: userId,currentPassword, newPassword, confirmNewPassword } = req.body;
+
+  const { user_id: userId, currentPassword, newPassword, confirmNewPassword } = req.body;
 
   // 1️⃣ Validate input
   if (!currentPassword || !newPassword || !confirmNewPassword) {
     return res.status(400).json({
-      statusCode:400,
+      statusCode: 400,
       message: "All fields are required"
     });
   }
 
   if (newPassword !== confirmNewPassword) {
     return res.status(400).json({
-      statusCode:400,
+      statusCode: 400,
       message: "New password and confirm password do not match"
     });
   }
@@ -344,7 +302,7 @@ exports.changePassword = async (req, res) => {
 
     if (userResult.rows.length === 0) {
       return res.status(404).json({
-        statusCode:404,
+        statusCode: 404,
         message: "User not found"
       });
     }
@@ -356,7 +314,7 @@ exports.changePassword = async (req, res) => {
 
     if (!isMatch) {
       return res.status(401).json({
-        statusCode:401,
+        statusCode: 401,
         message: "Current password is incorrect"
       });
     }
@@ -373,14 +331,14 @@ exports.changePassword = async (req, res) => {
 
     // 6️⃣ Success response
     res.status(200).json({
-      statusCode:200,
+      statusCode: 200,
       message: "Password updated successfully"
     });
 
   } catch (error) {
     console.error(error);
     res.status(500).json({
-      statusCode:500,
+      statusCode: 500,
       message: "Internal server error"
     });
   }
@@ -392,9 +350,9 @@ exports.getTutorBankDetails = async (req, res) => {
   const { user_id } = req.body; // or req.user.user_id (JWT)
 
   if (!user_id) {
-    return res.status(400).json({ 
-      statusCode:400,
-      message: "user_id is required" 
+    return res.status(400).json({
+      statusCode: 400,
+      message: "user_id is required"
     });
   }
 
@@ -415,21 +373,21 @@ exports.getTutorBankDetails = async (req, res) => {
 
     if (result.rows.length === 0) {
       return res.status(404).json({
-        statusCode:404,
+        statusCode: 404,
         message: "Tutor details not found"
       });
     }
 
     res.status(200).json({
-      statusCode:200,
-      message:'Fetched Sucessfully',
+      statusCode: 200,
+      message: 'Fetched Sucessfully',
       data: result.rows[0]
     });
 
   } catch (error) {
     console.error(error);
     res.status(500).json({
-      statusCode:500,
+      statusCode: 500,
       message: "Internal server error"
     });
   }
@@ -459,7 +417,7 @@ exports.updateTutorBankDetails = async (req, res) => {
     !billing_address
   ) {
     return res.status(400).json({
-      statusCode:400,
+      statusCode: 400,
       message: "Required fields are missing"
     });
   }
@@ -491,20 +449,20 @@ exports.updateTutorBankDetails = async (req, res) => {
 
     if (result.rowCount === 0) {
       return res.status(404).json({
-        statusCode:404,
+        statusCode: 404,
         message: "Tutor not found"
       });
     }
 
     res.status(200).json({
-      statusCode:200,
+      statusCode: 200,
       message: "Bank details updated successfully"
     });
 
   } catch (error) {
-    
+
     res.status(500).json({
-      statusCode:500,
+      statusCode: 500,
       message: "Internal server error"
     });
   }
@@ -523,7 +481,7 @@ exports.getProfile = async (req, res) => {
 
   try {
     const result = await pool.query(
-        `
+      `
         SELECT 
           tt.profile_pic,
           tu.full_name,
@@ -627,7 +585,7 @@ exports.updateProfile = async (req, res) => {
     `;
 
     const values = [
-     
+
       professional_background,
       subject_to_teach,
       profile_pic_key,
@@ -647,7 +605,7 @@ exports.updateProfile = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Profile updated successfully"
-    
+
     });
 
   } catch (error) {
@@ -703,7 +661,7 @@ exports.sendOTP = async (req, res) => {
     );
 
     // ✅ Send Email
-   await sendOtpMail(email, otp);
+    await sendOtpMail(email, otp);
 
     return res.status(200).json({
       statusCode: 200,
