@@ -903,6 +903,7 @@ exports.getTutorOnboarding = async (req, res) => {
         t.years_of_experience,
         t.professional_background,
         t.achievements,
+        t.reject_reason,
         t.level
       FROM tbl_user u
       LEFT JOIN tbl_tutor t ON t.user_id = u.user_id
@@ -927,6 +928,7 @@ exports.getTutorOnboarding = async (req, res) => {
         statusCode: 200,
         message: "User exists but tutor onboarding not completed",
         fullname: tutor.full_name,
+        reject_reason:tutor.reject_reason,
         tutor: {
 
           tutor_details: tutor, // contains full_name, email
@@ -991,11 +993,11 @@ exports.getTutorOnboarding = async (req, res) => {
     );
 
     let demo_video = null;
-    let  reject_reason = null; 
+ 
     if (demoVideoRes.rows.length > 0) {
       demo_video = demoVideoRes.rows[0];
 
-      reject_reason = demo_video.demo_video_reject_reason;
+      
 
       if (demo_video.video_file) {
         demo_video.video_file_url = await getSignedVideoUrl(demo_video.video_file);
@@ -1029,12 +1031,12 @@ exports.getTutorOnboarding = async (req, res) => {
       statusCode: 200,
       message: "Fetched successfully",
       fullname: tutor.full_name,
+      reject_reason:tutor.reject_reason,
       tutor: {
         tutor_details: tutor,
         education: educationRes.rows,
         certificates,
         demo_video,
-        reject_reason,
         payment_plan
       }
     });

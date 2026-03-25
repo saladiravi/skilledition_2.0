@@ -3,7 +3,7 @@ const bcrypt=require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { uploadToS3, getSignedVideoUrl } = require('../utils/s3upload');
 require("dotenv").config();
-
+const {sendOtpMail}=require('../utils/mail');
 const jwt_secret = process.env.JWT_SECRET;
 
 
@@ -51,7 +51,7 @@ const jwt_secret = process.env.JWT_SECRET;
 
 
 exports.addUser = async (req, res) => {
-  const { full_name, email, password, role } = req.body;
+  const { full_name, email, password, role ,otp} = req.body;
 
   // ✅ Validation
   if (!full_name || !email || !password || !role) {
@@ -62,6 +62,36 @@ exports.addUser = async (req, res) => {
   }
 
   try {
+     const otpResult = await pool.query(
+      `SELECT * FROM tbl_email_otp 
+       WHERE email=$1 AND otp=$2
+       ORDER BY created_at DESC LIMIT 1`,
+      [email, otp]
+    );
+
+    if (otpResult.rows.length === 0) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: 'Invalid OTP',
+      });
+    }
+
+    const otpData = otpResult.rows[0];
+
+    // ✅ Check expiry
+    if (new Date() > otpData.expires_at) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: 'OTP expired',
+      });
+    }
+
+    // 🔥 OPTIONAL (good practice): delete OTP after success
+    await pool.query(
+      `DELETE FROM tbl_email_otp WHERE email=$1`,
+      [email]
+    );
+
     // ✅ Check email exists
     const emailExists = await pool.query(
       `SELECT email FROM tbl_user WHERE email=$1`,
@@ -625,6 +655,66 @@ exports.updateProfile = async (req, res) => {
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
+    });
+  }
+};
+
+
+
+exports.sendOTP = async (req, res) => {
+  const { email } = req.body;
+
+  // ✅ Validation
+  if (!email) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "Email is required"
+    });
+  }
+
+  try {
+    // ✅ Check email already exists
+    const emailExists = await pool.query(
+      `SELECT email FROM tbl_user WHERE email=$1`,
+      [email]
+    );
+
+    if (emailExists.rows.length > 0) {
+      return res.status(409).json({
+        statusCode: 409,
+        message: "Email already registered"
+      });
+    }
+
+    // ✅ Generate OTP (6 digit)
+    const otp = Math.floor(100000 + Math.random() * 900000);
+
+    // ✅ Remove old OTPs for this email (important)
+    await pool.query(
+      `DELETE FROM tbl_email_otp WHERE email=$1`,
+      [email]
+    );
+
+    // ✅ Store new OTP (5 minutes expiry)
+    await pool.query(
+      `INSERT INTO tbl_email_otp (email, otp, expires_at)
+       VALUES ($1, $2, NOW() + INTERVAL '5 minutes')`,
+      [email, otp]
+    );
+
+    // ✅ Send Email
+   await sendOtpMail(email, otp);
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "OTP sent successfully"
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error"
     });
   }
 };

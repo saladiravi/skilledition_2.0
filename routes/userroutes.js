@@ -8,6 +8,9 @@ const { allowRoles } = require("../middleware/roleMiddleware");
 
 
 router.post('/adduser', userController.addUser);
+
+router.post('/sendOTP', userController.sendOTP);
+
 router.post('/loginuser',userController.loginUser);
 router.post('/getuser',userController.getuser);
 router.post('/tutorchangePassword', verifyToken, allowRoles("admin", "student", "tutor"),userController.changePassword);
