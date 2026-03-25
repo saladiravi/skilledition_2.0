@@ -8,7 +8,7 @@ const { uploadToS3, getSignedVideoUrl } = require('../utils/s3upload');
 
 exports.addtutorAbout = async (req, res) => {
   const {
-     country,
+    country,
     subject_to_teach,
     speak_language,
     level,
@@ -16,9 +16,9 @@ exports.addtutorAbout = async (req, res) => {
   } = req.body;
 
   if (
-     
+
     !country || !subject_to_teach || !speak_language ||
-     !user_id
+    !user_id
   ) {
     return res.status(400).json({
       statusCode: 400,
@@ -106,7 +106,7 @@ exports.updateTutorabout = async (req, res) => {
     `;
 
     const values = [
-       country,
+      country,
       subject_to_teach,
       speak_language,
       level,
@@ -787,7 +787,7 @@ exports.getTutorOnboarding = async (req, res) => {
         statusCode: 200,
         message: "User exists but tutor onboarding not completed",
         fullname: tutor.full_name,
-        reject_reason:tutor.reject_reason,
+        reject_reason: tutor.reject_reason,
         tutor: {
 
           tutor_details: tutor, // contains full_name, email
@@ -852,11 +852,11 @@ exports.getTutorOnboarding = async (req, res) => {
     );
 
     let demo_video = null;
- 
+
     if (demoVideoRes.rows.length > 0) {
       demo_video = demoVideoRes.rows[0];
 
-      
+
 
       if (demo_video.video_file) {
         demo_video.video_file_url = await getSignedVideoUrl(demo_video.video_file);
@@ -890,7 +890,7 @@ exports.getTutorOnboarding = async (req, res) => {
       statusCode: 200,
       message: "Fetched successfully",
       fullname: tutor.full_name,
-      reject_reason:tutor.reject_reason,
+      reject_reason: tutor.reject_reason,
       tutor: {
         tutor_details: tutor,
         education: educationRes.rows,
@@ -901,9 +901,9 @@ exports.getTutorOnboarding = async (req, res) => {
     });
 
   } catch (err) {
-     
+
     return res.status(500).json({
-       statusCode: 500,
+      statusCode: 500,
       message: "Server error",
       error: err.message
     });
@@ -1542,19 +1542,30 @@ exports.getTutorById = async (req, res) => {
 
   try {
     const tutorQuery = `
-            SELECT
-                u.user_id,
-                u.full_name,
-                u.email,
-                u.phone_number,
-                u.status,
-                u.created_at,
-                t.*
-            FROM tbl_user u
-            JOIN tbl_tutor t 
-                ON t.user_id = u.user_id
-            WHERE t.tutor_id = $1
-            AND u.role = 'tutor'
+          SELECT
+            u.user_id,
+            u.full_name,
+            u.email,
+            u.phone_number,
+            u.status,
+            u.created_at,
+            t.tutor_id,
+            t.country,
+            t.subject_to_teach,
+            t.speak_language,
+            t.profile_pic,
+            t.years_of_experience,
+            t.professional_background,
+            t.achievements,
+            t.level,
+            t.highest_qualification,
+            t.professional_bio,
+            t.status
+        FROM tbl_user u
+        JOIN tbl_tutor t 
+            ON t.user_id = u.user_id
+        WHERE t.tutor_id = $1
+        AND u.role = 'tutor';
         `;
 
     const tutorResult = await pool.query(tutorQuery, [tutor_id]);
