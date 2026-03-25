@@ -991,11 +991,11 @@ exports.getTutorOnboarding = async (req, res) => {
     );
 
     let demo_video = null;
-    let demo_video_reject_reason = null; 
+    let  reject_reason = null; 
     if (demoVideoRes.rows.length > 0) {
       demo_video = demoVideoRes.rows[0];
 
-      demo_video_reject_reason = demo_video.demo_video_reject_reason;
+      reject_reason = demo_video.demo_video_reject_reason;
 
       if (demo_video.video_file) {
         demo_video.video_file_url = await getSignedVideoUrl(demo_video.video_file);
@@ -1034,7 +1034,7 @@ exports.getTutorOnboarding = async (req, res) => {
         education: educationRes.rows,
         certificates,
         demo_video,
-        demo_video_reject_reason,
+        reject_reason,
         payment_plan
       }
     });
