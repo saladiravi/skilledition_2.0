@@ -121,6 +121,71 @@ exports.addUser = async (req, res) => {
 };
 
 
+// exports.loginUser = async (req, res) => {
+//   const { email, password } = req.body;
+
+//   if (!email || !password) {
+//     return res.status(400).json({
+//       statusCode: 400,
+//       message: 'Email and password are required'
+//     });
+//   }
+
+//   try {
+//     const result = await pool.query(
+//       `SELECT * FROM tbl_user WHERE email=$1
+//       AND role IN ('student', 'tutor')`,
+//       [email]
+//     );
+
+//     // FIX: Check if user exists
+//     if (result.rows.length === 0) {
+//       return res.status(404).json({
+//         statusCode: 404,
+//         message: 'User not found'
+//       });
+//     }
+
+//     const user = result.rows[0];
+
+//     // Compare passwords
+//     const isMatch = await bcrypt.compare(password, user.password);
+
+//     if (!isMatch) {
+//       return res.status(401).json({
+//         statusCode: 401,
+//         message: 'Invalid password'
+//       });
+//     }
+
+//     // FIX: Correct JWT payload
+//     const token = jwt.sign(
+//       {
+//         id: user.user_id,
+//         email: user.email,
+//         role: user.role
+//       },
+//       jwt_secret,
+//       { expiresIn: '24h' }
+//     );
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: 'Login successfully',
+//       token,
+//       user
+//     });
+
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: 'Internal server error'
+//     });
+//   }
+// };
+
+
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
 
@@ -133,12 +198,27 @@ exports.loginUser = async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT * FROM tbl_user WHERE email=$1
-      AND role IN ('student', 'tutor')`,
+      `SELECT 
+        u.*,
+
+        CASE 
+          WHEN sc.student_id IS NOT NULL THEN true
+          ELSE false
+        END AS overview_unlocked
+
+      FROM tbl_user u
+
+      LEFT JOIN (
+        SELECT DISTINCT student_id 
+        FROM tbl_student_course
+      ) sc
+      ON sc.student_id = u.user_id
+
+      WHERE u.email = $1
+      AND u.role IN ('student', 'tutor')`,
       [email]
     );
 
-    // FIX: Check if user exists
     if (result.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
@@ -148,7 +228,6 @@ exports.loginUser = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
@@ -158,7 +237,11 @@ exports.loginUser = async (req, res) => {
       });
     }
 
-    // FIX: Correct JWT payload
+    // 👉 Only for student
+    if (user.role !== 'student') {
+      user.overview_unlocked = null;
+    }
+
     const token = jwt.sign(
       {
         id: user.user_id,
@@ -184,6 +267,7 @@ exports.loginUser = async (req, res) => {
     });
   }
 };
+
 
 exports.adminloginUser = async (req, res) => {
   const { email, password } = req.body;
