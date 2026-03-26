@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { uploadToS3, getSignedVideoUrl } = require('../utils/s3upload');
 require("dotenv").config();
-const { sendOtpMail } = require('../utils/mail');
+const { sendOtpMail,sendforgotpasswordOtpMail } = require('../utils/mail');
 const jwt_secret = process.env.JWT_SECRET;
 
 
@@ -750,6 +750,132 @@ exports.sendOTP = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "OTP sent successfully"
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error"
+    });
+  }
+};
+
+
+exports.sendpasswordOTP = async (req, res) => {
+  const { email } = req.body;
+
+  // ✅ Validation
+  if (!email) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "Email is required"
+    });
+  }
+
+  try {
+    // ✅ Check email already exists
+    const emailExists = await pool.query(
+      `SELECT email FROM tbl_user WHERE email=$1`,
+      [email]
+    );
+
+    if (emailExists.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Email not found"
+      });
+    }
+
+    // ✅ Generate OTP (6 digit)
+    const otp = Math.floor(100000 + Math.random() * 900000);
+
+    // ✅ Remove old OTPs for this email (important)
+    await pool.query(
+      `DELETE FROM tbl_email_otp WHERE email=$1`,
+      [email]
+    );
+
+    // ✅ Store new OTP (5 minutes expiry)
+    await pool.query(
+      `INSERT INTO tbl_email_otp (email, otp, expires_at)
+       VALUES ($1, $2, NOW() + INTERVAL '5 minutes')`,
+      [email, otp]
+    );
+
+    // ✅ Send Email
+    await sendforgotpasswordOtpMail(email, otp);
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "OTP sent successfully"
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error"
+    });
+  }
+};
+
+
+
+exports.resetPassword = async (req, res) => {
+  const { email, otp, new_password, confirm_password } = req.body;
+
+  // ✅ Validation
+  if (!email || !otp || !new_password || !confirm_password) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "All fields are required"
+    });
+  }
+
+  if (new_password !== confirm_password) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "Passwords do not match"
+    });
+  }
+
+  try {
+    // ✅ Check OTP
+    const otpResult = await pool.query(
+      `SELECT * FROM tbl_email_otp 
+       WHERE email=$1 AND otp=$2 
+       AND expires_at > NOW()`,
+      [email, otp]
+    );
+
+    if (otpResult.rows.length === 0) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid or expired OTP"
+      });
+    }
+
+    // ✅ Hash new password
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+
+    // ✅ Update password
+    await pool.query(
+      `UPDATE tbl_user 
+       SET password=$1 
+       WHERE email=$2`,
+      [hashedPassword, email]
+    );
+
+    // ✅ Delete OTP after use
+    await pool.query(
+      `DELETE FROM tbl_email_otp WHERE email=$1`,
+      [email]
+    );
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Password reset successfully"
     });
 
   } catch (error) {

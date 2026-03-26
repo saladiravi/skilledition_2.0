@@ -10,7 +10,7 @@ const { allowRoles } = require("../middleware/roleMiddleware");
 router.post('/adduser', userController.addUser);
 
 router.post('/sendOTP', userController.sendOTP);
-
+router.post('/forgotpasswordotp',userController.sendpasswordOTP);
 router.post('/loginuser',userController.loginUser);
 router.post('/getuser',userController.getuser);
 router.post('/tutorchangePassword', verifyToken, allowRoles("admin", "student", "tutor"),userController.changePassword);
@@ -25,6 +25,6 @@ router.post('/tutorupdateprofile',  verifyToken, allowRoles("admin", "student", 
 ]), userController.updateProfile);
 
 router.post('/adminlogin',userController.adminloginUser);
-
+router.post('/forgotpassword',userController.resetPassword)
 
 module.exports = router;
