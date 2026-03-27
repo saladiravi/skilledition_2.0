@@ -115,3 +115,71 @@ exports.deleteNotification = async (req, res) => {
     });
   }
 };
+
+
+exports.gettutorNotificationDashboard = async (req, res) => {
+  const { tutor_id } = req.body  
+
+  if (!tutor_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "tutor_id is required"
+    });
+  }
+
+  try {
+
+    // ✅ Run both queries in parallel
+    const [countsResult, notificationsResult] = await Promise.all([
+
+      // 📊 Dashboard Counts
+      pool.query(`
+        SELECT 
+          COUNT(*) AS total_notifications,
+
+          COUNT(*) FILTER (WHERE type = 'assignment') AS assignments,
+
+          COUNT(*) FILTER (WHERE type = 'query') AS queries,
+ 
+
+          COUNT(*) FILTER (WHERE type = 'feedback') AS feedbacks,
+
+          COUNT(*) FILTER (WHERE is_read = false) AS unread_count
+
+        FROM tbl_notifications
+        WHERE receiver_id = $1
+      `, [tutor_id]),
+
+
+      // 🔔 Notifications List
+      pool.query(`
+        SELECT 
+          notification_id,
+          sender_id,
+          type,
+          message,
+          is_read,
+          created_at,
+          type_id
+        FROM tbl_notifications
+        WHERE receiver_id = $1
+        ORDER BY notification_id DESC
+      `, [tutor_id])
+
+    ]);
+
+    return res.json({
+      statusCode: 200,
+      data: {
+        dashboard: countsResult.rows[0],     // 📊 counts
+        notifications: notificationsResult.rows // 🔔 list
+      }
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "Internal Server Error"
+    });
+  }
+};
