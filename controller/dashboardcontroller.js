@@ -367,12 +367,13 @@ exports.getAdminDashboard = async (req, res) => {
         (SELECT ROUND(AVG(total_marks::numeric), 2) 
          FROM tbl_student_final_assignment) AS avg_assignment_score,
 
-        (SELECT ROUND(AVG(total_hours), 2)
-         FROM (
-           SELECT student_id, SUM(watched::numeric)/60.0 AS total_hours
-           FROM tbl_student_course_progress
-           GROUP BY student_id
-         ) t) AS avg_learning_hours,
+      (SELECT ROUND(AVG(total_hours), 2)
+        FROM (
+          SELECT student_id, 
+                  SUM(EXTRACT(EPOCH FROM watched))/3600.0 AS total_hours
+          FROM tbl_student_course_progress
+          GROUP BY student_id
+        ) t) AS avg_learning_hours,
 
         (SELECT ROUND(
             (COUNT(DISTINCT CASE WHEN is_unlocked = true THEN student_id END) * 100.0)
