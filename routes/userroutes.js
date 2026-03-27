@@ -26,5 +26,6 @@ router.post('/tutorupdateprofile',  verifyToken, allowRoles("admin", "student", 
 
 router.post('/adminlogin',userController.adminloginUser);
 router.post('/forgotpassword',userController.resetPassword)
+router.post('/verifyOTP',userController.verifyOTP)
 
 module.exports = router;

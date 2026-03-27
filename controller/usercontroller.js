@@ -765,7 +765,6 @@ exports.sendOTP = async (req, res) => {
 exports.sendpasswordOTP = async (req, res) => {
   const { email } = req.body;
 
-  // ✅ Validation
   if (!email) {
     return res.status(400).json({
       statusCode: 400,
@@ -774,7 +773,6 @@ exports.sendpasswordOTP = async (req, res) => {
   }
 
   try {
-    // ✅ Check email already exists
     const emailExists = await pool.query(
       `SELECT email FROM tbl_user WHERE email=$1`,
       [email]
@@ -787,46 +785,78 @@ exports.sendpasswordOTP = async (req, res) => {
       });
     }
 
-    // ✅ Generate OTP (6 digit)
     const otp = Math.floor(100000 + Math.random() * 900000);
 
-    // ✅ Remove old OTPs for this email (important)
-    await pool.query(
-      `DELETE FROM tbl_email_otp WHERE email=$1`,
-      [email]
-    );
+    // ❌ remove old
+    await pool.query(`DELETE FROM tbl_email_otp WHERE email=$1`, [email]);
 
-    // ✅ Store new OTP (5 minutes expiry)
-    await pool.query(
+    // ✅ insert and RETURN id
+    const otpResult = await pool.query(
       `INSERT INTO tbl_email_otp (email, otp, expires_at)
-       VALUES ($1, $2, NOW() + INTERVAL '5 minutes')`,
+       VALUES ($1, $2, NOW() + INTERVAL '5 minutes')
+       RETURNING email_otp_id`,
       [email, otp]
     );
 
-    // ✅ Send Email
+    const email_otp_id = otpResult.rows[0].email_otp_id;
+
     await sendforgotpasswordOtpMail(email, otp);
 
-    return res.status(200).json({
+    return res.json({
       statusCode: 200,
-      message: "OTP sent successfully"
+      message: "OTP sent successfully",
+      email_otp_id   // ✅ send to frontend
     });
 
   } catch (error) {
     console.error(error);
     return res.status(500).json({
-      statusCode: 500,
       message: "Internal server error"
     });
   }
 };
 
+exports.verifyOTP = async (req, res) => {
+  const { email_otp_id, otp } = req.body;
 
+  if (!email_otp_id || !otp) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "email_otp_id and otp are required"
+    });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT * FROM tbl_email_otp
+       WHERE email_otp_id = $1
+       AND otp = $2
+       AND expires_at > NOW()`,
+      [email_otp_id, otp]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid or expired OTP"
+      });
+    }
+
+    return res.json({
+      statusCode: 200,
+      message: "OTP verified successfully"
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 exports.resetPassword = async (req, res) => {
-  const { email, otp, new_password, confirm_password } = req.body;
+  const { email_otp_id, new_password, confirm_password } = req.body;
 
-  // ✅ Validation
-  if (!email || !otp || !new_password || !confirm_password) {
+  if (!email_otp_id || !new_password || !confirm_password) {
     return res.status(400).json({
       statusCode: 400,
       message: "All fields are required"
@@ -841,48 +871,45 @@ exports.resetPassword = async (req, res) => {
   }
 
   try {
-    // ✅ Check OTP
-    const otpResult = await pool.query(
-      `SELECT * FROM tbl_email_otp 
-       WHERE email=$1 AND otp=$2 
+    // ✅ Get email from OTP table
+    const otpData = await pool.query(
+      `SELECT email FROM tbl_email_otp
+       WHERE email_otp_id = $1
        AND expires_at > NOW()`,
-      [email, otp]
+      [email_otp_id]
     );
 
-    if (otpResult.rows.length === 0) {
+    if (otpData.rows.length === 0) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Invalid or expired OTP"
+        message: "Invalid or expired request"
       });
     }
 
-    // ✅ Hash new password
+    const email = otpData.rows[0].email;
+
+    // ✅ Hash password
     const hashedPassword = await bcrypt.hash(new_password, 10);
 
     // ✅ Update password
     await pool.query(
-      `UPDATE tbl_user 
-       SET password=$1 
-       WHERE email=$2`,
+      `UPDATE tbl_user SET password=$1 WHERE email=$2`,
       [hashedPassword, email]
     );
 
-    // ✅ Delete OTP after use
+    // ✅ delete OTP
     await pool.query(
-      `DELETE FROM tbl_email_otp WHERE email=$1`,
-      [email]
+      `DELETE FROM tbl_email_otp WHERE email_otp_id=$1`,
+      [email_otp_id]
     );
 
-    return res.status(200).json({
+    return res.json({
       statusCode: 200,
       message: "Password reset successfully"
     });
 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
-      statusCode: 500,
-      message: "Internal server error"
-    });
+    res.status(500).json({ message: "Internal server error" });
   }
 };
