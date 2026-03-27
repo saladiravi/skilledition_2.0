@@ -152,19 +152,38 @@ exports.gettutorNotificationDashboard = async (req, res) => {
 
 
       // 🔔 Notifications List
-      pool.query(`
-        SELECT 
-          notification_id,
-          sender_id,
-          type,
-          message,
-          is_read,
-          created_at,
-          type_id
-        FROM tbl_notifications
-        WHERE receiver_id = $1
-        ORDER BY notification_id DESC
-      `, [tutor_id])
+   pool.query(`
+          SELECT 
+            notification_id,
+            sender_id,
+            type,
+            message,
+            is_read,
+
+            -- ✅ Time Ago Format
+            CASE
+              WHEN NOW() - created_at < INTERVAL '1 minute'
+                THEN CONCAT(EXTRACT(SECOND FROM NOW() - created_at)::int, ' sec ago')
+
+              WHEN NOW() - created_at < INTERVAL '1 hour'
+                THEN CONCAT(EXTRACT(MINUTE FROM NOW() - created_at)::int, ' min ago')
+
+              WHEN NOW() - created_at < INTERVAL '1 day'
+                THEN CONCAT(EXTRACT(HOUR FROM NOW() - created_at)::int, ' hr ago')
+
+              WHEN NOW() - created_at < INTERVAL '7 days'
+                THEN CONCAT(EXTRACT(DAY FROM NOW() - created_at)::int, ' days ago')
+
+              ELSE TO_CHAR(created_at, 'DD Mon YYYY')
+            END AS time_ago,
+
+            created_at,
+            type_id
+
+          FROM tbl_notifications
+          WHERE receiver_id = $1
+          ORDER BY notification_id DESC
+        `, [tutor_id])
 
     ]);
 
