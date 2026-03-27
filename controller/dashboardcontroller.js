@@ -369,8 +369,9 @@ exports.getAdminDashboard = async (req, res) => {
 
       (SELECT ROUND(AVG(total_hours), 2)
         FROM (
-          SELECT student_id, 
-                  SUM(EXTRACT(EPOCH FROM watched))/3600.0 AS total_hours
+          SELECT 
+            student_id, 
+            SUM(EXTRACT(EPOCH FROM watched::interval)) / 3600.0 AS total_hours
           FROM tbl_student_course_progress
           GROUP BY student_id
         ) t) AS avg_learning_hours,
