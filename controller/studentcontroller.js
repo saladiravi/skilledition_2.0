@@ -15,7 +15,7 @@ exports.getprofile = async (req, res) => {
         tu.created_at,
 
         ts.student_id,
-        ts.mobile_number,
+        tu.phone_number,
         ts.gender,
         ts.date_of_birth,
         ts.college,
@@ -72,7 +72,7 @@ exports.updateprofile = async (req, res) => {
       });
     }
 
-    const mobile_number = req.body.mobile_number || null;
+    const phone_number = req.body.phone_number || null;
     const gender = req.body.gender || null;
     const date_of_birth = req.body.date_of_birth || null;
     const college = req.body.college || null;
@@ -101,25 +101,24 @@ exports.updateprofile = async (req, res) => {
 
     if (full_name) {
       await pool.query(
-        `UPDATE tbl_user SET full_name=$1 WHERE user_id=$2`,
-        [full_name, user_id]
+        `UPDATE tbl_user SET phone_number=$1,full_name=$2 WHERE user_id=$3`,
+        [phone_number,full_name, user_id]
       );
     }
 
     await pool.query(
       `UPDATE tbl_student
-       SET mobile_number=$1,
-           gender=$2,
-           date_of_birth=$3,
-           college=$4,
-           qualification=$5,
-           year_of_passing=$6,
-           address=$7,
-           pincode=$8,
-           profile_image=$9
-       WHERE user_id=$10`,
+       SET gender=$1,
+           date_of_birth=$2,
+           college=$3,
+           qualification=$4,
+           year_of_passing=$5,
+           address=$6,
+           pincode=$7,
+           profile_image=$8
+       WHERE user_id=$9`,
       [
-        mobile_number,
+      
         gender,
         date_of_birth,
         college,
