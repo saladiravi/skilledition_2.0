@@ -1488,7 +1488,7 @@ exports.getallstudentcertificates = async (req, res) => {
             tc.course_title,
             tu.full_name,
             tu.email,
-            ts.mobile_number
+            tu.phone_number
 
         FROM tbl_certificates AS tcr
 

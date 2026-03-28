@@ -2304,7 +2304,7 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
         SELECT 
             tu.full_name,
             tu.email,
-            ts.mobile_number,
+            tu.phone_number,
 
             COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
 
@@ -2338,7 +2338,7 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
             tu.user_id,
             tu.full_name,
             tu.email,
-            ts.mobile_number
+            tu.phone_number
         `;
 
 
