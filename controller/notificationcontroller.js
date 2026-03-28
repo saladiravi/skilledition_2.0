@@ -12,7 +12,8 @@ exports.getnotification = async (req, res) => {
        FROM tbl_notifications n
        JOIN tbl_user u 
          ON n.sender_id = u.user_id
-       WHERE n.receiver_id = $1`,
+       WHERE n.receiver_id = $1
+       ORDER BY n.notification_id ASC`,
       [receiver_id]
     );
 
@@ -182,7 +183,7 @@ exports.gettutorNotificationDashboard = async (req, res) => {
 
           FROM tbl_notifications
           WHERE receiver_id = $1
-          ORDER BY notification_id DESC
+          ORDER BY notification_id ASC
         `, [tutor_id])
 
     ]);
@@ -196,7 +197,7 @@ exports.gettutorNotificationDashboard = async (req, res) => {
     });
 
   } catch (err) {
-    console.error(err);
+  
     res.status(500).json({
       message: "Internal Server Error"
     });
