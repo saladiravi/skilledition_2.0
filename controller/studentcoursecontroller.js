@@ -2724,7 +2724,7 @@ exports.getadminstudentmanagement = async (req, res) => {
       tu.user_id AS student_id, 
       tu.full_name,
       tu.email,
-      ts.mobile_number,
+      tu.phone_number,
 
       COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
 
@@ -2779,7 +2779,7 @@ exports.getadminstudentmanagement = async (req, res) => {
       tu.user_id,
       tu.full_name,
       tu.email,
-      ts.mobile_number
+      tu.phone_number
 `);
 
     return res.status(200).json({
