@@ -58,7 +58,7 @@ exports.getinternship = async (req, res) => {
           i.description,
           i.status,
           i.role,
-          i.phone_number,
+          u.phone_number,
           i.intership_certificate,
           TO_CHAR(i.start_date, 'DD-MM-YYYY') AS start_date,
           TO_CHAR(i.end_date, 'DD-MM-YYYY') AS end_date,
