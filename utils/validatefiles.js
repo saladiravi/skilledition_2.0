@@ -27,7 +27,7 @@ const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
       return res.status(400).json({
         statusCode:400,
-        message: "Certificate file size should not exceed 10MB"
+        message: "Certificate file size should not exceed 5MB"
       });
     }
   }
@@ -99,7 +99,7 @@ exports.validateProfilePic = (req, res, next) => {
   if (file.size > maxSize) {
     return res.status(400).json({
         statusCode:400,
-      message: "Profile picture size should not exceed 100KB"
+      message: "Profile picture size should not exceed 50KB"
     });
   }
 
