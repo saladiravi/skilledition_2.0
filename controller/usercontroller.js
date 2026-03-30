@@ -573,7 +573,7 @@ exports.getProfile = async (req, res) => {
           te.degree,
           tt.professional_background,
           tt.subject_to_teach,
-          tt.phone_number
+          tu.phone_number
         FROM tbl_user AS tu
         JOIN tbl_tutor AS tt 
           ON tu.user_id = tt.user_id
