@@ -805,7 +805,7 @@ exports.updateWatchProgress = async (req, res) => {
         await pool.query(`
           UPDATE tbl_student_course_progress
           SET is_unlocked = true,
-                unlocked_at = NOW() AT TIME ZONE 'Asia/Kolkata' AT TIME ZONE 'Asia/Kolkata'
+                unlocked_at = NOW() AT TIME ZONE 'Asia/Kolkata'
           WHERE student_id = $1
           AND module_video_id = $2
         `, [student_id, nextId]);
@@ -844,7 +844,7 @@ exports.updateWatchProgress = async (req, res) => {
       await pool.query(`
     UPDATE tbl_student_course_progress
     SET is_unlocked = true,
-          unlocked_at = NOW() AT TIME ZONE 'Asia/Kolkata' AT TIME ZONE 'Asia/Kolkata'
+          unlocked_at = NOW() AT TIME ZONE 'Asia/Kolkata'
     WHERE student_id = $1
       AND module_id = $2
       AND assignment_id IS NOT NULL
@@ -974,7 +974,7 @@ exports.unlockAssignmentAfterModule = async (req, res) => {
       await pool.query(`
         UPDATE tbl_student_course_progress
         SET is_unlocked = true,
-              unlocked_at = NOW() AT TIME ZONE 'Asia/Kolkata' AT TIME ZONE 'Asia/Kolkata'
+             unlocked_at = NOW() AT TIME ZONE 'Asia/Kolkata'
         WHERE student_id = $1
         AND assignment_id = $2
       `, [student_id, assignmentId]);
@@ -1453,7 +1453,7 @@ exports.writeExam = async (req, res) => {
           `
       UPDATE tbl_student_course_progress
       SET is_unlocked = true,
-            unlocked_at = NOW() AT TIME ZONE 'Asia/Kolkata' AT TIME ZONE 'Asia/Kolkata'
+            unlocked_at = NOW() AT TIME ZONE 'Asia/Kolkata'
       WHERE student_id = $1
         AND course_id = $2
         AND module_video_id = $3
