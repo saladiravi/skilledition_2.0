@@ -1498,6 +1498,7 @@ exports.getAllTutors = async (req, res) => {
         SELECT
             t.tutor_id,
             u.full_name,
+            u.email,
             t.years_of_experience,
             te.degree,
             t.country,
