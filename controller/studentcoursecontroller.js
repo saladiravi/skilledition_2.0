@@ -2439,10 +2439,10 @@ CROSS JOIN
   SELECT 
     COALESCE(
       CONCAT(
-        EXTRACT(HOUR FROM SUM(tmv.video_duration::interval)), 'H:',
-        EXTRACT(MINUTE FROM SUM(tmv.video_duration::interval)), 'M'
+        EXTRACT(HOUR FROM SUM(tmv.video_duration::interval)), 'h',
+        EXTRACT(MINUTE FROM SUM(tmv.video_duration::interval)), 'm'
       ),
-      '0H:0M'
+      '0h0m'
     ) AS total_learning_time
   FROM tbl_student_course sc
   JOIN tbl_module tm
