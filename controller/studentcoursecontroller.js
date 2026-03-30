@@ -84,8 +84,7 @@ exports.studentbuycourse = async (req, res) => {
     await client.query(`
       UPDATE tbl_student_course_progress
       SET is_unlocked = true,
-          //  unlocked_at = NOW()  
-             unlocked_at = NOW() AT TIME ZONE 'Asia/Kolkata'
+            unlocked_at = NOW() AT TIME ZONE 'Asia/Kolkata'
       WHERE student_id = $1
         AND course_id = $2
         AND module_video_id = (
