@@ -208,3 +208,33 @@ exports.tutorvalidateProfilePic = (req, res, next) => {
 
   next();
 };
+
+exports.validateTutorProfilePic = (req, res, next) => {
+  const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+  const maxSize = 50 * 1024; // 50KB
+
+  // ✅ If no file uploaded → allow (optional upload)
+  if (!req.files || !req.files.profile_pic || req.files.profile_pic.length === 0) {
+    return next();
+  }
+
+  const file = req.files.profile_pic[0];
+
+  // ✅ File type check
+  if (!allowedTypes.includes(file.mimetype)) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "Only JPG, JPEG, PNG images are allowed"
+    });
+  }
+
+  // ✅ File size check
+  if (file.size > maxSize) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "Profile picture size should not exceed 50KB"
+    });
+  }
+
+  next();
+};

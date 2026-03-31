@@ -5,6 +5,7 @@ const userController = require('../controller/usercontroller');
 const uploads = require('../utils/uploadfile');
 const { verifyToken } = require("../middleware/authMiddleware");
 const { allowRoles } = require("../middleware/roleMiddleware");
+const {validateTutorProfilePic} =require("../utils/validatefiles");
 
 
 router.post('/adduser', userController.addUser);
@@ -22,7 +23,7 @@ router.post('/tutorgetprofile', verifyToken, allowRoles("admin", "student", "tut
 
 router.post('/tutorupdateprofile',  verifyToken, allowRoles("admin", "student", "tutor"),uploads.fields([
   { name: 'profile_pic', maxCount: 10 },
-]), userController.updateProfile);
+]),validateTutorProfilePic,userController.updateProfile);
 
 router.post('/adminlogin',userController.adminloginUser);
 router.post('/forgotpassword',userController.resetPassword)
