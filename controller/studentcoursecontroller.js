@@ -1551,6 +1551,7 @@ exports.getAssignmentById = async (req, res) => {
       message: "Assignment fetched successfully",
       assignment: {
         assignment_id: assignment.assignment_id,
+        course_id: assignment.course_id,
         assignment_title: assignment.assignment_title,
         questions: questions
       }
