@@ -55,6 +55,21 @@ exports.sendMessage = async (req, res) => {
 
         chatRoomId = newRoom.rows[0].chat_room_id;
       }
+          const existingActiveQuery = await pool.query(
+              `SELECT query_id 
+              FROM tbl_queries
+              WHERE chat_room_id = $1
+              AND is_closed = false`,
+              [chatRoomId]
+            );
+ 
+        if (existingActiveQuery.rows.length === 0) {
+          await pool.query(
+            `INSERT INTO tbl_queries (chat_room_id, query_status, is_closed, created_at)
+            VALUES ($1, 'unresolved', false, NOW())`,
+            [chatRoomId]
+          );
+        }
     }
 
     // =====================================================
@@ -212,6 +227,20 @@ exports.getMessages = async (req, res) => {
 
     const pauseChat = chatRoomResult.rows[0]?.pause_chat || false;
 
+    const queryResult = await pool.query(
+          `SELECT query_id,
+                  query_status,
+                  is_closed,
+                  created_at
+          FROM tbl_queries
+          WHERE chat_room_id = $1
+          ORDER BY created_at DESC
+          LIMIT 1`,
+          [chat_room_id]
+        );
+
+    const queryDetails = queryResult.rows[0] || null;
+
     const messagesResult = await pool.query(
       `SELECT m.chat_id,
               m.message,
@@ -246,6 +275,7 @@ exports.getMessages = async (req, res) => {
     res.status(200).json({
       statusCode: 200,
       pause_chat: pauseChat,
+      query: queryDetails,
       messages
     });
 
@@ -614,67 +644,61 @@ exports.getpauseChatList = async (req, res) => {
 
 
 exports.chatstats = async (req, res) => {
-  const { tutor_id } = req.body
+  const { tutor_id } = req.body;
 
   try {
-    const checktutor = await pool.query(`SELECT role FROM tbl_user WHERE user_id=$1`, [tutor_id]);
+
+    const checktutor = await pool.query(
+      `SELECT role FROM tbl_user WHERE user_id=$1`,
+      [tutor_id]
+    );
+
     if (checktutor.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
         message: 'Tutor Not Found'
-      })
+      });
     }
-    const statsQuery = `
-        SELECT
-        COUNT(DISTINCT cr.student_id) AS total_students,
-        COUNT(cr.chat_room_id) AS total_queries,
 
-        COUNT(*) FILTER (
-            WHERE EXISTS (
-                SELECT 1
-                FROM tbl_chat_messages m
-                WHERE m.chat_room_id = cr.chat_room_id
-                AND m.sender_id = $1
-            )
+    const statsQuery = `
+      SELECT
+        COUNT(DISTINCT cr.student_id) AS total_students,
+
+        COUNT(q.query_id) AS total_queries,
+
+        COUNT(q.query_id) FILTER (
+          WHERE q.is_closed = true
         ) AS resolved,
 
-        COUNT(*) FILTER (
-            WHERE NOT EXISTS (
-                SELECT 1
-                FROM tbl_chat_messages m
-                WHERE m.chat_room_id = cr.chat_room_id
-                AND m.sender_id = $1
-            )
+        COUNT(q.query_id) FILTER (
+          WHERE q.is_closed = false
         ) AS unresolved,
 
         ROUND(
-        (
-        COUNT(*) FILTER (
-            WHERE EXISTS (
-                SELECT 1
-                FROM tbl_chat_messages m
-                WHERE m.chat_room_id = cr.chat_room_id
-                AND m.sender_id = $1
-            )
-        )::decimal
-        /
-        NULLIF(COUNT(cr.chat_room_id),0)
-        ) * 100 ,2
+          (
+            COUNT(q.query_id) FILTER (WHERE q.is_closed = true)::decimal
+            /
+            NULLIF(COUNT(q.query_id), 0)
+          ) * 100,
+          2
         ) AS response_rate
 
-        FROM tbl_chat_room cr
-        JOIN tbl_course c
+      FROM tbl_chat_room cr
+      JOIN tbl_course c
         ON cr.course_id = c.course_id
 
-        WHERE c.tutor_id = $1
-        `;
+      LEFT JOIN tbl_queries q
+        ON q.chat_room_id = cr.chat_room_id
+
+      WHERE c.tutor_id = $1
+    `;
 
     const statsResult = await pool.query(statsQuery, [tutor_id]);
     const stats = statsResult.rows[0];
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Fectched Sucessfully',
+      message: 'Fetched Successfully',
       stats: {
         total_students: Number(stats.total_students),
         total_queries: Number(stats.total_queries),
@@ -682,11 +706,40 @@ exports.chatstats = async (req, res) => {
         resolved: Number(stats.resolved),
         response_rate: Number(stats.response_rate)
       }
-    })
+    });
+
   } catch (error) {
+    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: 'Internal Server Error'
-    })
+    });
   }
-}
+};
+
+
+
+exports.closeQuery = async (req, res) => {
+  const { query_id } = req.body;
+
+  try {
+    await pool.query(
+      `UPDATE tbl_queries
+       SET is_closed = true, query_status = 'resolved'
+       WHERE query_id = $1`,
+      [query_id]
+    );
+
+    res.json({
+      statusCode: 200,
+      message: "Query closed successfully"
+    });
+
+  } catch (err) {
+    console.log(err)
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};

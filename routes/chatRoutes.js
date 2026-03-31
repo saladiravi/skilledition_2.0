@@ -20,6 +20,8 @@ router.post(
 router.post('/updatepausechat',verifyToken, allowRoles("admin","student","tutor"),chatController.updatepausechat);
 router.get('/getpauseChatList',verifyToken, allowRoles("admin","student","tutor"),chatController.getpauseChatList);
 router.post('/chatstats',verifyToken, allowRoles("admin","student","tutor"),chatController.chatstats);
+router.post('/closeQuery',verifyToken, allowRoles("admin","student","tutor"),chatController.closeQuery);
+
 
 
 module.exports = router;
