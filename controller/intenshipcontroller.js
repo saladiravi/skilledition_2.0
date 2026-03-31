@@ -21,6 +21,32 @@ exports.addinternship = async (req, res) => {
       });
     }
 
+    /* 2️⃣ Check Profile Completion */
+    const profileCheck = await pool.query(`
+      SELECT 
+        CASE 
+          WHEN 
+            gender IS NOT NULL AND gender <> '' AND
+            date_of_birth IS NOT NULL AND
+            college IS NOT NULL AND college <> '' AND
+            qualification IS NOT NULL AND qualification <> '' AND
+            year_of_passing IS NOT NULL AND year_of_passing <> '' AND
+            address IS NOT NULL AND address <> '' AND
+            pincode IS NOT NULL AND pincode <> '' AND
+            profile_image IS NOT NULL AND profile_image <> ''
+          THEN true
+          ELSE false
+        END AS is_profile_complete
+      FROM tbl_student
+      WHERE user_id = $1
+    `, [student_id]);
+
+    if (!profileCheck.rows[0]?.is_profile_complete) {
+      return res.status(403).json({
+        statusCode: 403,
+        message: "Please complete your profile before applying for internship"
+      });
+    }
 
     await pool.query(`
             INSERT INTO tbl_internship 
