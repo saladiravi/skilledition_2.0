@@ -5,7 +5,7 @@ const uploads = require('../utils/uploadfile');
 const { verifyToken } = require("../middleware/authMiddleware");
 const { allowRoles } = require("../middleware/roleMiddleware");
 const {validateCertificateFiles} =require("../utils/validatefiles");
-const {validateProfilePic} =require('../utils/validatefiles');
+const {tutorvalidateProfilePic} =require('../utils/validatefiles');
 const {updatevalidateCertificateFiles}= require('../utils/validatefiles');
 const {validateDemoVideos} =require('../utils/validatefiles');
 
@@ -18,7 +18,7 @@ router.post('/addtutorabout', verifyToken, allowRoles("admin", "student", "tutor
 ]), tutorcontroller.addtutorAbout);
 router.post('/updatetutorprofile', verifyToken, allowRoles("admin", "student", "tutor"), uploads.fields([
   { name: 'profile_pic', maxCount: 10 },
-]), validateProfilePic,tutorcontroller.updateTutorProfilePic);
+]),tutorvalidateProfilePic,tutorcontroller.updateTutorProfilePic);
 
 router.post('/updatetutorabout',verifyToken, allowRoles("admin", "student", "tutor"),tutorcontroller.updateTutorabout);
 router.post('/updateTutorProfessionalDetails',verifyToken, allowRoles("admin", "student", "tutor"),tutorcontroller.updateTutorProfessionalDetails);

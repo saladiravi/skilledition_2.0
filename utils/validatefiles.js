@@ -175,3 +175,36 @@ exports.studentvalidateProfilePic = (req, res, next) => {
 
   next();
 };
+
+exports.tutorvalidateProfilePic = (req, res, next) => {
+  const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+  const maxSize = 50 * 1024; // 50KB
+
+  // ✅ Check if file exists
+  // if (!req.files || !req.files.profile_pic || req.files.profile_pic.length === 0) {
+  //   return res.status(400).json({
+  //     statusCode: 400,
+  //     message: "Profile picture is required"
+  //   });
+  // }
+
+  const file = req.files.profile_pic[0];
+
+  // ✅ Type validation
+  if (!allowedTypes.includes(file.mimetype)) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "Only JPG, JPEG, PNG images are allowed"
+    });
+  }
+
+  // ✅ Size validation
+  if (file.size > maxSize) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "Profile picture size should not exceed 50KB"
+    });
+  }
+
+  next();
+};
