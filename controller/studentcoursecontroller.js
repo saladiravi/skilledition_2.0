@@ -271,28 +271,39 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     `, [student_id]);
 
     const activeCourses = await pool.query(`
-            SELECT COUNT(*) AS active_courses
-            FROM tbl_student_course
-            WHERE student_id = $1
+            SELECT 
+            CASE 
+              WHEN COUNT(*) = 0 THEN '-' 
+              ELSE COUNT(*)::text 
+            END AS active_courses
+          FROM tbl_student_course
+          WHERE student_id = $1
           `, [student_id]);
 
     /* 3️⃣ Learning Progress */
     const progress = await pool.query(`
-          SELECT 
-            COALESCE(
+         SELECT 
+          CASE 
+            WHEN COUNT(*) = 0 THEN '-' 
+            ELSE CONCAT(
               ROUND(
                 (COUNT(*) FILTER (WHERE is_completed = true)::decimal /
-                NULLIF(COUNT(*),0)) * 100
-              ,0)
-            ,0) AS learning_progress
-          FROM tbl_student_course_progress
-          WHERE student_id = $1
+                COUNT(*)) * 100
+              ,0),
+              '%'
+            )
+          END AS learning_progress
+        FROM tbl_student_course_progress
+        WHERE student_id = $1;
         `, [student_id]);
 
     /* 4️⃣ Learner Satisfaction */
     const rating = await pool.query(`
-      SELECT 
-        COALESCE(ROUND(AVG(rating),1),0) AS learner_satisfaction
+        SELECT 
+        CASE 
+          WHEN COUNT(*) = 0 THEN '-' 
+          ELSE ROUND(AVG(rating),1)::text
+        END AS learner_satisfaction
       FROM tbl_feedback
       WHERE student_id = $1
     `, [student_id]);
