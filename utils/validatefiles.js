@@ -146,3 +146,32 @@ exports.validateDemoVideos = (req, res, next) => {
 
   next();
 };
+
+
+exports.studentvalidateProfilePic = (req, res, next) => {
+  const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+  const maxSize = 50 * 1024; // 50KB
+
+  // ✅ IMPORTANT: handle no file case
+  if (!req.file) {
+    return next(); // or throw error if mandatory
+  }
+
+  const file = req.file;
+
+  if (!allowedTypes.includes(file.mimetype)) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "Only JPG, JPEG, PNG allowed"
+    });
+  }
+
+  if (file.size > maxSize) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "Max size is 50KB"
+    });
+  }
+
+  next();
+};

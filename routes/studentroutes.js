@@ -5,13 +5,13 @@ const studentController = require('../controller/studentcontroller');
  const uploads = require('../utils/uploadfile');
 const { verifyToken } = require("../middleware/authMiddleware");
 const { allowRoles } = require("../middleware/roleMiddleware");
-const {validateProfilePic} =require('../utils/validatefiles');
+const {studentvalidateProfilePic} =require('../utils/validatefiles');
 
 router.post('/getprofile',verifyToken,allowRoles("admin","student","tutor"),studentController.getprofile);
 
 router.post(
   '/updateprofile',verifyToken,allowRoles("admin","student","tutor"),
-  uploads.single('profile_image'),validateProfilePic, 
+  uploads.single('profile_image'),studentvalidateProfilePic, 
   studentController.updateprofile
 );
 
