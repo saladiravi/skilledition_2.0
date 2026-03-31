@@ -499,8 +499,8 @@ exports.studentwatchvideo = async (req, res) => {
   const { student_id, module_video_id } = req.body;
 
   if (!module_video_id || !student_id) {
-    return res.status(401).json({
-      statusCode: 401,
+    return res.status(400).json({
+      statusCode: 400,
       message: 'Missing Required Field'
     });
   }

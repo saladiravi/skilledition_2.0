@@ -339,7 +339,7 @@ exports.getassignmentsdetails = async (req, res) => {
     const { assignment_id } = req.body
     if (!assignment_id) {
         return res.status(400).json({
-            statusCode: 401,
+            statusCode: 400,
             message: 'Missing Require Field'
         })
     }

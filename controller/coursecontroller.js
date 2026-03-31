@@ -1463,8 +1463,8 @@ exports.getadmintotalcourse = async (req, res) => {
   const { status } = req.body;
 
   if (!status) {
-    return res.status(401).json({
-      statusCode: 401,
+    return res.status(400).json({
+      statusCode: 400,
       message: 'Missing Required Field'
     })
   }
@@ -1930,8 +1930,8 @@ exports.getadmincoursewithstatus = async (req, res) => {
   const { status, course_id } = req.body;
 
   if (!status) {
-    return res.status(401).json({
-      statusCode: 401,
+    return res.status(400).json({
+      statusCode: 400,
       message: 'Missing Required Field'
     });
   }
