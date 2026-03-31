@@ -169,7 +169,7 @@ exports.studentvalidateProfilePic = (req, res, next) => {
   if (file.size > maxSize) {
     return res.status(400).json({
       statusCode: 400,
-      message: "Max size is 50KB"
+      message: "Profile picture size should not exceed 50KB"
     });
   }
 
