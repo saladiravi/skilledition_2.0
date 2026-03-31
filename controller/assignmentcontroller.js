@@ -1213,8 +1213,9 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
             JOIN tbl_user AS tutor 
                 ON tutor.user_id = tc.tutor_id
 
-            LEFT JOIN tbl_certificates AS tcr
-                ON tsf.student_id=tcr.student_id
+           LEFT JOIN tbl_certificates AS tcr
+                ON tsf.student_id = tcr.student_id
+                AND tsf.course_id = tcr.course_id
                 
                 WHERE tsf.status = 'Completed'
             ORDER BY tsf.final_assignment_id ASC
