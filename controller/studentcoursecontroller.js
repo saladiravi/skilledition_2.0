@@ -2846,7 +2846,8 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
 
           COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
 
-          COUNT(*) FILTER (WHERE tsfa.is_unlocked = true) AS completed_courses,
+         COUNT(DISTINCT tsfa.course_id) 
+        FILTER (WHERE tsfa.is_unlocked = true) AS completed_courses,
 
           COUNT(DISTINCT tcert.certificate_id) AS certificates,
 
