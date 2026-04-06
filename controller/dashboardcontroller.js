@@ -386,7 +386,31 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
          FROM tbl_feedback) AS student_satisfaction
 
     `);
+const studentPurchases = await pool.query(`
+  SELECT 
+    sc.student_course_id,
+    sc.course_id,
+    c.course_title,
 
+    sc.student_id,
+    u.full_name,
+    u.phone_number,
+    u.email,
+    u.reg_number,
+
+    sc.order_amount,
+    sc.transaction_id,
+    sc.payment_status,
+    sc.created_at
+
+  FROM tbl_student_course sc
+  JOIN tbl_user u 
+    ON sc.student_id = u.user_id
+  JOIN tbl_course c 
+    ON sc.course_id = c.course_id
+
+  ORDER BY sc.created_at DESC
+`);
     // =======================
     // 📊 GRAPH DATA
     // =======================
@@ -553,6 +577,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
           avg_learning_hours: result.rows[0].avg_learning_hours,
           completion_rate: result.rows[0].completion_rate,
           student_satisfaction: result.rows[0].student_satisfaction,
+          studentPurchases: studentPurchases.rows
         },
 
         charts: {
