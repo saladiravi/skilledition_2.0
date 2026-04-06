@@ -3,42 +3,111 @@ const pool = require('../config/db');
 exports.getDashboardStats = async (req, res) => {
   try {
 
-    // ✅ Users
+    // =======================
+    // 🔹 USERS
+    // =======================
     const users = await pool.query(`
       SELECT
-          COUNT(*) FILTER (WHERE role = 'student') AS total_students,
-          COUNT(*) FILTER (WHERE role = 'tutor') AS active_tutors
+        COUNT(*) FILTER (WHERE role = 'student') AS total_students,
+        COUNT(*) FILTER (WHERE role = 'tutor') AS active_tutors
       FROM tbl_user
     `);
 
-    // ✅ Courses
+    // =======================
+    // 🔹 COURSES
+    // =======================
     const courses = await pool.query(`
       SELECT COUNT(*) AS active_courses
       FROM tbl_course
       WHERE status = 'Published'
     `);
 
-    // ✅ Internship
+    // =======================
+    // 🔹 INTERNSHIP
+    // =======================
     const internship = await pool.query(`
-      SELECT
-          COUNT(*) AS internship_requests,
-          COUNT(*) FILTER (WHERE status = 'Pending') AS pending_requests,
-          COUNT(*) FILTER (WHERE status = 'Approved') AS approved_requests,
-          COUNT(*) FILTER (WHERE status = 'Rejected') AS rejected_requests
+      SELECT COUNT(*) AS internship_requests
       FROM tbl_internship
     `);
 
-    // ✅ Graph
-    const graph = await pool.query(`
+    // =======================
+    // 📊 GRAPH (Last 5 Months)
+    // =======================
+
+    // 1️⃣ Generate months
+    const monthsResult = await pool.query(`
+      SELECT 
+        generate_series(
+          DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
+          DATE_TRUNC('month', CURRENT_DATE),
+          INTERVAL '1 month'
+        ) AS month_date
+    `);
+
+    // 2️⃣ Student data
+    const graphData = await pool.query(`
       SELECT
-          TO_CHAR(created_at, 'Mon YYYY') AS month,
-          COUNT(*) AS student_count
+        DATE_TRUNC('month', created_at) AS month_date,
+        COUNT(*) AS student_count
       FROM tbl_user
       WHERE role = 'student'
-      AND created_at >= NOW() - INTERVAL '12 months'
-      GROUP BY month
-      ORDER BY MIN(created_at)
+        AND created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
+      GROUP BY month_date
     `);
+
+    // 3️⃣ Map
+    const graphMap = {};
+    graphData.rows.forEach(row => {
+      graphMap[row.month_date] = parseInt(row.student_count);
+    });
+
+    // 4️⃣ Final Graph Data
+    const finalGraph = monthsResult.rows.map(row => {
+      const monthDate = row.month_date;
+
+      return {
+        month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }),
+        student_count: graphMap[monthDate] || 0
+      };
+    });
+
+    // =======================
+    // 🥧 PIE CHART (Course Popularity)
+    // =======================
+
+    const coursePopularity = await pool.query(`
+      SELECT 
+        c.course_id,
+        c.course_title,
+        COUNT(sc.student_id) AS total_students
+      FROM tbl_course c
+      LEFT JOIN tbl_student_course sc 
+        ON c.course_id = sc.course_id
+      GROUP BY c.course_id, c.course_title
+    `);
+
+    // Total students
+    const totalStudents = coursePopularity.rows.reduce((sum, row) => {
+      return sum + parseInt(row.total_students);
+    }, 0);
+
+    // Convert to %
+    const coursePopularityData = coursePopularity.rows.map(row => {
+      const count = parseInt(row.total_students);
+
+      return {
+        course_id: row.course_id,
+        course_title: row.course_title,
+        total_students: count,
+        percentage: totalStudents > 0
+          ? ((count / totalStudents) * 100).toFixed(2)
+          : "0.00"
+      };
+    });
+
+    // =======================
+    // ✅ FINAL RESPONSE
+    // =======================
 
     return res.status(200).json({
       statusCode: 200,
@@ -49,12 +118,13 @@ exports.getDashboardStats = async (req, res) => {
         active_tutors: users.rows[0].active_tutors,
         active_courses: courses.rows[0].active_courses,
         internship_requests: internship.rows[0].internship_requests,
-        pending_requests: internship.rows[0].pending_requests,
-        approved_requests: internship.rows[0].approved_requests,
-        rejected_requests: internship.rows[0].rejected_requests
       },
 
-      graph: graph.rows
+      charts: {
+        studentGraph: finalGraph,
+        coursePopularity: coursePopularityData
+      }
+
     });
 
   } catch (error) {
