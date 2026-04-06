@@ -339,7 +339,7 @@ exports.studentperformancetutordashboard = async (req, res) => {
 
 
 
-exports.getAdminDashboard = async (req, res) => {
+exports.getanalyticsAdminDashboard = async (req, res) => {
   try {
 
     const result = await pool.query(`
@@ -349,8 +349,8 @@ exports.getAdminDashboard = async (req, res) => {
         -- 🔹 OVERVIEW
         -- =======================
         (SELECT COUNT(*) FROM tbl_student_course) AS total_enrollments,
+        (SELECT COUNT(DISTINCT tutor_id) FROM tbl_course) AS active_tutors,
         (SELECT COUNT(*) FROM tbl_course) AS total_courses,
-        (SELECT COUNT(DISTINCT tutor_id) FROM tbl_course) AS total_tutors,
         (SELECT COALESCE(SUM(order_amount::numeric), 0) FROM tbl_student_course) AS total_revenue,
 
         -- =======================
@@ -390,25 +390,81 @@ exports.getAdminDashboard = async (req, res) => {
     // =======================
     // 📊 GRAPH DATA
     // =======================
+    // 1️⃣ Get last 6 months (including current)
+    const monthsResult = await pool.query(`
+      SELECT 
+        generate_series(
+          DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months',
+          DATE_TRUNC('month', CURRENT_DATE),
+          INTERVAL '1 month'
+        ) AS month_date
+    `);
 
+    // 2️⃣ Platform Growth
     const platformGrowth = await pool.query(`
       SELECT 
-        DATE_TRUNC('month', created_at) AS month,
+        DATE_TRUNC('month', created_at) AS month_date,
         COUNT(*) FILTER (WHERE role = 'student') AS students,
         COUNT(*) FILTER (WHERE role = 'tutor') AS tutors
       FROM tbl_user
-      GROUP BY month
-      ORDER BY month
+      WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+      GROUP BY month_date
     `);
 
+    // 3️⃣ Course Growth
     const courseGrowth = await pool.query(`
       SELECT 
-        DATE_TRUNC('month', course_created_at) AS month,
+        DATE_TRUNC('month', course_created_at) AS month_date,
         COUNT(*) AS courses
       FROM tbl_course
-      GROUP BY month
-      ORDER BY month
+      WHERE course_created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+      GROUP BY month_date
     `);
+
+    // 4️⃣ Convert query results to maps
+    const platformMap = {};
+    platformGrowth.rows.forEach(row => {
+      platformMap[row.month_date] = {
+        students: parseInt(row.students),
+        tutors: parseInt(row.tutors)
+      };
+    });
+
+    const courseMap = {};
+    courseGrowth.rows.forEach(row => {
+      courseMap[row.month_date] = parseInt(row.courses);
+    });
+
+    // 5️⃣ Build final fixed 6 months data
+    const finalData = monthsResult.rows.map(row => {
+      const monthDate = row.month_date;
+
+      return {
+        month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }), // Jan, Feb
+        students: platformMap[monthDate]?.students || 0,
+        tutors: platformMap[monthDate]?.tutors || 0,
+        courses: courseMap[monthDate] || 0
+      };
+    });
+
+    const ratingDistribution = await pool.query(`
+  SELECT 
+    c.course_id,
+    c.course_title,
+
+    COUNT(*) FILTER (WHERE f.rating = 5) AS five_star,
+    COUNT(*) FILTER (WHERE f.rating = 4) AS four_star,
+    COUNT(*) FILTER (WHERE f.rating = 3) AS three_star,
+    COUNT(*) FILTER (WHERE f.rating = 2) AS two_star,
+    COUNT(*) FILTER (WHERE f.rating = 1) AS one_star
+
+  FROM tbl_course c
+  LEFT JOIN tbl_feedback f 
+    ON c.course_id = f.course_id
+
+  GROUP BY c.course_id, c.course_title
+  ORDER BY c.course_id
+`);
 
     const coursePerformance = await pool.query(`
       SELECT 
@@ -423,15 +479,46 @@ exports.getAdminDashboard = async (req, res) => {
       GROUP BY c.course_id, c.course_title
     `);
 
-    const completionTrend = await pool.query(`
-      SELECT 
-        DATE_TRUNC('month', created_at) AS month,
-        COUNT(*) FILTER (WHERE is_unlocked = true) AS completed,
-        COUNT(*) FILTER (WHERE is_unlocked = false) AS in_progress
-      FROM tbl_student_final_assignment
-      GROUP BY month
-      ORDER BY month
-    `);
+ const monthsResults = await pool.query(`
+    SELECT 
+      generate_series(
+        DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
+        DATE_TRUNC('month', CURRENT_DATE),
+        INTERVAL '1 month'
+      ) AS month_date
+  `);
+
+  // 2️⃣ Get completion data
+  const trendData = await pool.query(`
+    SELECT 
+      DATE_TRUNC('month', created_at) AS month_date,
+      COUNT(*) FILTER (WHERE is_unlocked = true) AS completed,
+      COUNT(*) FILTER (WHERE is_unlocked = false) AS in_progress
+    FROM tbl_student_final_assignment
+    WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
+    GROUP BY month_date
+  `);
+
+  // 3️⃣ Convert to map
+  const trendMap = {};
+  trendData.rows.forEach(row => {
+    trendMap[row.month_date] = {
+      completed: parseInt(row.completed),
+      in_progress: parseInt(row.in_progress)
+    };
+  });
+
+  // 4️⃣ Build final fixed 5 months data
+  const finaltrendData = monthsResults.rows.map(row => {
+    const monthDate = row.month_date;
+
+    return {
+      month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }), // Jan, Feb
+      completed: trendMap[monthDate]?.completed || 0,
+      in_progress: trendMap[monthDate]?.in_progress || 0
+    };
+  });
+ 
 
     const courseAvgScores = await pool.query(`
       SELECT 
@@ -448,9 +535,9 @@ exports.getAdminDashboard = async (req, res) => {
       statusCode: 200,
       data: {
         overview: {
-          total_enrollments: result.rows[0].total_enrollments,
+          total_students: result.rows[0].total_students,
+          active_tutors: result.rows[0].active_tutors,
           total_courses: result.rows[0].total_courses,
-          total_tutors: result.rows[0].total_tutors,
           total_revenue: result.rows[0].total_revenue,
         },
 
@@ -469,10 +556,10 @@ exports.getAdminDashboard = async (req, res) => {
         },
 
         charts: {
-          platformGrowth: platformGrowth.rows,
-          courseGrowth: courseGrowth.rows,
+          platformGrowth: finalData,
           coursePerformance: coursePerformance.rows,
-          completionTrend: completionTrend.rows,
+          ratingDistribution:ratingDistribution.rows,
+          completionTrend: finaltrendData,
           courseAvgScores: courseAvgScores.rows
         }
       }
