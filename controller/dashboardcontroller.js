@@ -402,7 +402,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
             sc.order_amount,
             sc.transaction_id,
             sc.payment_status,
-            sc.created_at
+            TO_CHAR(sc.created_at, 'DD-MM-YYYY') AS submitted_at
 
           FROM tbl_student_course sc
           JOIN tbl_user u 
@@ -581,9 +581,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
       
         },
 
-        studentPurchases: {
-          studentPurchases: studentPurchases.rows
-        },
+       studentPurchases: studentPurchases.rows,
   
         charts: {
           platformGrowth: finalData,
