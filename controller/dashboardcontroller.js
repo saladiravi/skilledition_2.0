@@ -396,7 +396,7 @@ const studentPurchases = await pool.query(`
     u.full_name,
     u.phone_number,
     u.email,
-    u.reg_number,
+    u.student_reg_number,
 
     sc.order_amount,
     sc.transaction_id,
