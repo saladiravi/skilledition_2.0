@@ -386,31 +386,32 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
          FROM tbl_feedback) AS student_satisfaction
 
     `);
-const studentPurchases = await pool.query(`
-  SELECT 
-    sc.student_course_id,
-    sc.course_id,
-    c.course_title,
 
-    sc.student_id,
-    u.full_name,
-    u.phone_number,
-    u.email,
-    u.student_reg_number,
+        const studentPurchases = await pool.query(`
+          SELECT 
+            sc.student_course_id,
+            sc.course_id,
+            c.course_title,
 
-    sc.order_amount,
-    sc.transaction_id,
-    sc.payment_status,
-    sc.created_at
+            sc.student_id,
+            u.full_name,
+            u.phone_number,
+            u.email,
+            u.student_reg_number,
 
-  FROM tbl_student_course sc
-  JOIN tbl_user u 
-    ON sc.student_id = u.user_id
-  JOIN tbl_course c 
-    ON sc.course_id = c.course_id
+            sc.order_amount,
+            sc.transaction_id,
+            sc.payment_status,
+            sc.created_at
 
-  ORDER BY sc.created_at DESC
-`);
+          FROM tbl_student_course sc
+          JOIN tbl_user u 
+            ON sc.student_id = u.user_id
+          JOIN tbl_course c 
+            ON sc.course_id = c.course_id
+
+          ORDER BY sc.created_at DESC
+        `);
     // =======================
     // 📊 GRAPH DATA
     // =======================
@@ -472,45 +473,45 @@ const studentPurchases = await pool.query(`
     });
 
     const ratingDistribution = await pool.query(`
-  SELECT 
-    c.course_id,
-    c.course_title,
+        SELECT 
+          c.course_id,
+          c.course_title,
 
-    COUNT(*) FILTER (WHERE f.rating = 5) AS five_star,
-    COUNT(*) FILTER (WHERE f.rating = 4) AS four_star,
-    COUNT(*) FILTER (WHERE f.rating = 3) AS three_star,
-    COUNT(*) FILTER (WHERE f.rating = 2) AS two_star,
-    COUNT(*) FILTER (WHERE f.rating = 1) AS one_star
+          COUNT(*) FILTER (WHERE f.rating = 5) AS five_star,
+          COUNT(*) FILTER (WHERE f.rating = 4) AS four_star,
+          COUNT(*) FILTER (WHERE f.rating = 3) AS three_star,
+          COUNT(*) FILTER (WHERE f.rating = 2) AS two_star,
+          COUNT(*) FILTER (WHERE f.rating = 1) AS one_star
 
-  FROM tbl_course c
-  LEFT JOIN tbl_feedback f 
-    ON c.course_id = f.course_id
+        FROM tbl_course c
+        LEFT JOIN tbl_feedback f 
+          ON c.course_id = f.course_id
 
-  GROUP BY c.course_id, c.course_title
-  ORDER BY c.course_id
-`);
+        GROUP BY c.course_id, c.course_title
+        ORDER BY c.course_id
+      `);
 
-    const coursePerformance = await pool.query(`
-      SELECT 
-        c.course_id,
-        c.course_title,
-        COUNT(sc.student_id) AS enrolled,
-        COUNT(sfa.student_id) FILTER (WHERE sfa.is_unlocked = true) AS completed
-      FROM tbl_course c
-      LEFT JOIN tbl_student_course sc ON c.course_id = sc.course_id
-      LEFT JOIN tbl_student_final_assignment sfa 
-        ON c.course_id = sfa.course_id
-      GROUP BY c.course_id, c.course_title
-    `);
+          const coursePerformance = await pool.query(`
+            SELECT 
+              c.course_id,
+              c.course_title,
+              COUNT(sc.student_id) AS enrolled,
+              COUNT(sfa.student_id) FILTER (WHERE sfa.is_unlocked = true) AS completed
+            FROM tbl_course c
+            LEFT JOIN tbl_student_course sc ON c.course_id = sc.course_id
+            LEFT JOIN tbl_student_final_assignment sfa 
+              ON c.course_id = sfa.course_id
+            GROUP BY c.course_id, c.course_title
+          `);
 
- const monthsResults = await pool.query(`
-    SELECT 
-      generate_series(
-        DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
-        DATE_TRUNC('month', CURRENT_DATE),
-        INTERVAL '1 month'
-      ) AS month_date
-  `);
+      const monthsResults = await pool.query(`
+          SELECT 
+            generate_series(
+              DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
+              DATE_TRUNC('month', CURRENT_DATE),
+              INTERVAL '1 month'
+            ) AS month_date
+        `);
 
   // 2️⃣ Get completion data
   const trendData = await pool.query(`
@@ -577,9 +578,13 @@ const studentPurchases = await pool.query(`
           avg_learning_hours: result.rows[0].avg_learning_hours,
           completion_rate: result.rows[0].completion_rate,
           student_satisfaction: result.rows[0].student_satisfaction,
-          studentPurchases: studentPurchases.rows
+      
         },
 
+        studentPurchases: {
+          studentPurchases: studentPurchases.rows
+        },
+  
         charts: {
           platformGrowth: finalData,
           coursePerformance: coursePerformance.rows,
