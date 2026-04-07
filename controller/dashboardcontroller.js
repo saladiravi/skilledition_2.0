@@ -979,42 +979,86 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
         ) AS month_date
     `);
 
+    // const monthlyData = await pool.query(`
+    //   SELECT 
+    //     DATE_TRUNC('month', sc.created_at) AS month_date,
+
+    //     COUNT(DISTINCT sc.student_id) AS enrollments,
+
+    //     COUNT(DISTINCT u.user_id) FILTER (
+    //       WHERE u.role = 'student'
+    //     ) AS views,
+
+    //      (
+    //       SELECT COUNT(DISTINCT fa.student_id)
+    //       FROM tbl_student_final_assignment fa
+    //       JOIN tbl_course c ON fa.course_id = c.course_id
+    //       WHERE c.tutor_id = $1
+    //       AND fa.is_unlocked = true
+    //       AND DATE_TRUNC('month', fa.created_at) = month_date
+    //     ) AS completions
+
+    //   FROM tbl_course c
+
+    //   LEFT JOIN tbl_student_course sc 
+    //     ON sc.course_id = c.course_id
+
+    //   LEFT JOIN tbl_user u 
+    //     ON DATE_TRUNC('month', u.created_at) = DATE_TRUNC('month', sc.created_at)
+
+    //   LEFT JOIN tbl_student_final_assignment fa 
+    //     ON fa.course_id = c.course_id
+    //     AND DATE_TRUNC('month', fa.created_at) = DATE_TRUNC('month', sc.created_at)
+
+    //   WHERE c.tutor_id = $1
+    //     AND sc.created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
+
+    //   GROUP BY month_date
+    // `, [tutor_id]);
+
+
     const monthlyData = await pool.query(`
-      SELECT 
-        DATE_TRUNC('month', sc.created_at) AS month_date,
+  SELECT 
+    m.month_date,
 
-        COUNT(DISTINCT sc.student_id) AS enrollments,
-
-        COUNT(DISTINCT u.user_id) FILTER (
-          WHERE u.role = 'student'
-        ) AS views,
-
-         (
-          SELECT COUNT(DISTINCT fa.student_id)
-          FROM tbl_student_final_assignment fa
-          JOIN tbl_course c ON fa.course_id = c.course_id
-          WHERE c.tutor_id = $1
-          AND fa.is_unlocked = true
-          AND DATE_TRUNC('month', fa.created_at) = month_date
-        ) AS completions
-
-      FROM tbl_course c
-
-      LEFT JOIN tbl_student_course sc 
-        ON sc.course_id = c.course_id
-
-      LEFT JOIN tbl_user u 
-        ON DATE_TRUNC('month', u.created_at) = DATE_TRUNC('month', sc.created_at)
-
-      LEFT JOIN tbl_student_final_assignment fa 
-        ON fa.course_id = c.course_id
-        AND DATE_TRUNC('month', fa.created_at) = DATE_TRUNC('month', sc.created_at)
-
+    -- ✅ Enrollments
+    (
+      SELECT COUNT(DISTINCT sc.student_id)
+      FROM tbl_student_course sc
+      JOIN tbl_course c ON sc.course_id = c.course_id
       WHERE c.tutor_id = $1
-        AND sc.created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
+      AND DATE_TRUNC('month', sc.created_at) = m.month_date
+    ) AS enrollments,
 
-      GROUP BY month_date
-    `, [tutor_id]);
+    -- ✅ Views
+    (
+      SELECT COUNT(DISTINCT u.user_id)
+      FROM tbl_user u
+      WHERE u.role = 'student'
+      AND DATE_TRUNC('month', u.created_at) = m.month_date
+    ) AS views,
+
+    -- ✅ Completions
+    (
+      SELECT COUNT(DISTINCT fa.student_id)
+      FROM tbl_student_final_assignment fa
+      JOIN tbl_course c ON fa.course_id = c.course_id
+      WHERE c.tutor_id = $1
+      AND fa.is_unlocked = true
+      AND DATE_TRUNC('month', fa.created_at) = m.month_date
+    ) AS completions
+
+  FROM (
+    SELECT generate_series(
+      DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
+      DATE_TRUNC('month', CURRENT_DATE),
+      INTERVAL '1 month'
+    ) AS month_date
+  ) m
+
+  ORDER BY m.month_date
+`, [tutor_id]);
+
 
     const monthlyMap = {};
     monthlyData.rows.forEach(row => {
