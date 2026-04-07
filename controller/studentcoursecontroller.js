@@ -2487,14 +2487,48 @@ CROSS JOIN
       ORDER BY tc.course_id DESC
     `;
 
-    const [courses, lastVideo, assignments, mentors, learningTime, coursection, availableCourses] = await Promise.all([
+    const studentProgressGraphQuery = `
+  SELECT 
+    sc.student_id,
+    sc.course_id,
+    c.course_title,
+
+    COUNT(scp.module_video_id) AS total_videos,
+
+    COUNT(scp.module_video_id) 
+      FILTER (WHERE scp.is_completed = true) AS watched_videos,
+
+    COALESCE(
+      ROUND(
+        (COUNT(scp.module_video_id) FILTER (WHERE scp.is_completed = true) * 100.0) 
+        / NULLIF(COUNT(scp.module_video_id), 0),
+      2),
+    0) AS progress_percentage
+
+  FROM tbl_student_course sc
+
+  JOIN tbl_course c 
+    ON c.course_id = sc.course_id
+
+  LEFT JOIN tbl_student_course_progress scp
+    ON sc.student_id = scp.student_id
+    AND sc.course_id = scp.course_id
+
+  WHERE sc.student_id = $1
+
+  GROUP BY sc.student_id, sc.course_id, c.course_title
+  ORDER BY sc.course_id
+`;
+
+    const [courses, lastVideo, assignments, mentors, learningTime, coursection, availableCourses,studentProgressGraph] = await Promise.all([
       pool.query(courseQuery, [student_id]),
       pool.query(lastVideoQuery, [student_id]),
       pool.query(assignmentQuery, [student_id]),
       pool.query(mentorQuery, [student_id]),
       pool.query(learningTimeQuery, [student_id]),
       pool.query(coursesection, [student_id]),
-      pool.query(availableCoursesQuery)
+      pool.query(availableCoursesQuery),
+      pool.query(studentProgressGraphQuery, [student_id])
     ]);
 
     // Learning time data
@@ -2561,7 +2595,8 @@ CROSS JOIN
         learningtime: learningData,
         last_video: lastVideo.rows[0] || null,
         assignments: assignments.rows,
-        mentors: mentors.rows
+        mentors: mentors.rows,
+        student_progress_graph: studentProgressGraph.rows  
       }
     });
 
