@@ -1117,7 +1117,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
           ELSE 'In Progress'
         END AS progress,
 
-       ROUND(COALESCE(AVG(fa.total_marks::numeric), 0), 2) AS avg_score,
+        ROUND(COALESCE(AVG(fa.total_marks::int), 0), 2) AS avg_score,
 
         CASE 
           WHEN MAX(fa.created_at) >= NOW() - INTERVAL '7 days'
