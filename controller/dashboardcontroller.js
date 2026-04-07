@@ -1110,37 +1110,40 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
       LIMIT 10;
     `, [tutor_id]);
 
-    const activeStudentsQuery = await pool.query(`
-      SELECT COUNT(DISTINCT sc.student_id) AS active_students
+ const engagementMetrics = await pool.query(`
+  SELECT 
+
+    -- ✅ Active Students
+    (
+      SELECT COUNT(DISTINCT sc.student_id)
       FROM tbl_student_course sc
       JOIN tbl_course c ON sc.course_id = c.course_id
       WHERE c.tutor_id = $1
-    `, [tutor_id]);
+    ) AS active_students,
 
-    const completionQuery = await pool.query(`
-      SELECT 
-        COALESCE(ROUND(
-          (COUNT(*) FILTER (WHERE fa.status = 'Completed') * 100.0) /
-          NULLIF(COUNT(*),0), 2
-        ),0) AS assignment_completion
+    -- ✅ Assignment Completion %
+    (
+      SELECT COALESCE(ROUND(
+        (COUNT(*) FILTER (WHERE fa.status = 'Completed') * 100.0) /
+        NULLIF(COUNT(*),0), 2
+      ), 0)
       FROM tbl_student_final_assignment fa
       JOIN tbl_course c ON fa.course_id = c.course_id
       WHERE c.tutor_id = $1
-    `, [tutor_id]);
+    ) AS assignment_completion,
 
-    const studyTimeQuery = await pool.query(`
-      SELECT 
-        COALESCE(
-          TO_CHAR(
-            AVG(watched::interval),
-            'HH24:MI'
-          ),
-          '00:00'
-        ) AS avg_study_time
+    -- ✅ Avg Study Time
+    (
+      SELECT COALESCE(
+        TO_CHAR(AVG(watched::interval), 'HH24:MI'),
+        '00:00'
+      )
       FROM tbl_student_course_progress scp
       JOIN tbl_course c ON scp.course_id = c.course_id
       WHERE c.tutor_id = $1
-    `, [tutor_id]);
+    ) AS avg_study_time
+
+`, [tutor_id]);
 
     // =========================
     // FINAL RESPONSE
@@ -1154,9 +1157,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
         topCourses: coursesQuery.rows,
 
         studentPerformance: studentPerformanceQuery.rows,
-        activeStudents: activeStudentsQuery.rows[0],
-        assignmentCompletion: completionQuery.rows[0],
-        avgStudyTime: studyTimeQuery.rows[0]
+        engagementMetrics: engagementMetrics.rows[0]
       }
     });
 
