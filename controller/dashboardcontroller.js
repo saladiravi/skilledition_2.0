@@ -160,9 +160,7 @@ const recentSubmissions = await pool.query(`
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Dashboard stats fetched successfully",
-
-      stats: {
+        stats: {
         total_students: users.rows[0].total_students,
         active_tutors: users.rows[0].active_tutors,
         active_courses: courses.rows[0].active_courses,
