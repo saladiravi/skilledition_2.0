@@ -187,6 +187,180 @@ const recentSubmissions = await pool.query(`
 
 
 //tutor analytics 
+// exports.getTutoranalyticsDashboard = async (req, res) => {
+//   try {
+//     const { tutor_id } = req.body;
+
+//     if (!tutor_id) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "tutor_id is required"
+//       });
+//     }
+
+//     // =========================
+//     // 1️⃣ STATS
+//     // =========================
+//     const statsQuery = await pool.query(`
+//       SELECT
+//         -- Total Students (who enrolled tutor courses)
+//         COUNT(DISTINCT sc.student_id) AS total_students,
+
+//         -- Total Views (students not purchased tutor courses)
+//         (
+//           SELECT COUNT(*)
+//           FROM tbl_user u
+//           WHERE role = 'student'
+//           AND NOT EXISTS (
+//             SELECT 1 FROM tbl_student_course sc2
+//             JOIN tbl_course c2 ON sc2.course_id = c2.course_id
+//             WHERE sc2.student_id = u.user_id
+//             AND c2.tutor_id = $1
+//           )
+//         ) AS total_views,
+
+//         -- Avg Completion
+//         COALESCE(ROUND(
+//           (COUNT(*) FILTER (WHERE fa.is_unlocked = true) * 100.0) /
+//           NULLIF(COUNT(fa.final_assignment_id),0), 2
+//         ),0) AS avg_completion,
+
+//         -- Avg Rating
+//         COALESCE(ROUND(AVG(f.rating),2),0) AS avg_rating
+
+//       FROM tbl_course c
+//       LEFT JOIN tbl_student_course sc ON c.course_id = sc.course_id
+//       LEFT JOIN tbl_student_final_assignment fa ON c.course_id = fa.course_id
+//       LEFT JOIN tbl_feedback f ON c.course_id = f.course_id
+//       WHERE c.tutor_id = $1
+//     `, [tutor_id]);
+
+//     // =========================
+//     // 2️⃣ MONTHLY GRAPH
+//     // =========================
+//     const monthlyQuery = await pool.query(`
+//       WITH months AS (
+//         SELECT generate_series(1, 12) AS month_number
+//       )
+//       SELECT 
+//         TO_CHAR(TO_DATE(months.month_number::text, 'MM'), 'Mon') AS month,
+
+//         COUNT(DISTINCT sc.student_id) AS enrollments,
+
+//         COUNT(DISTINCT u.user_id) FILTER (
+//           WHERE u.role = 'student'
+//         ) AS views,
+
+//         COUNT(*) FILTER (
+//           WHERE fa.is_unlocked = true
+//         ) AS completions
+
+//       FROM months
+
+//       LEFT JOIN tbl_course c
+//         ON c.tutor_id = $1
+
+//       LEFT JOIN tbl_student_course sc
+//         ON sc.course_id = c.course_id
+//         AND EXTRACT(MONTH FROM sc.created_at) = months.month_number
+
+//       LEFT JOIN tbl_user u
+//         ON EXTRACT(MONTH FROM u.created_at) = months.month_number
+
+//       LEFT JOIN tbl_student_final_assignment fa
+//         ON fa.course_id = c.course_id
+//         AND EXTRACT(MONTH FROM fa.created_at) = months.month_number
+
+//       GROUP BY months.month_number
+//       ORDER BY months.month_number;
+//     `, [tutor_id]);
+
+//     const monthlyGraph = {
+//       xAxis: monthlyQuery.rows.map(r => r.month),
+//       enrollments: monthlyQuery.rows.map(r => Number(r.enrollments)),
+//       views: monthlyQuery.rows.map(r => Number(r.views)),
+//       completions: monthlyQuery.rows.map(r => Number(r.completions))
+//     };
+
+//     // =========================
+//     // 3️⃣ GRADE DISTRIBUTION
+//     // =========================
+//     const gradeQuery = await pool.query(`
+//       SELECT
+//         COUNT(*) FILTER (WHERE grade = 'A+') AS "A+",
+//         COUNT(*) FILTER (WHERE grade = 'A') AS "A",
+//         COUNT(*) FILTER (WHERE grade = 'B') AS "B",
+//         COUNT(*) FILTER (WHERE grade = 'C') AS "C",
+//         COUNT(*) FILTER (WHERE grade NOT IN ('A+','A','B','C')) AS "Below"
+//       FROM tbl_student_final_assignment fa
+//       JOIN tbl_course c ON fa.course_id = c.course_id
+//       WHERE c.tutor_id = $1
+//       AND fa.is_unlocked = true
+//     `, [tutor_id]);
+
+//     const g = gradeQuery.rows[0];
+
+//     const gradeChart = {
+//       xAxis: ["A+", "A", "B", "C", "Below"],
+//       yAxis: [g["A+"], g["A"], g["B"], g["C"], g["Below"]]
+//     };
+
+//     // =========================
+//     // 4️⃣ TOP COURSES (LAST 3 MONTHS)
+//     // =========================
+//     const coursesQuery = await pool.query(`
+//       SELECT 
+//         c.course_title,
+
+//         COUNT(DISTINCT sc.student_id) AS students,
+
+//         COALESCE(ROUND(
+//           (COUNT(*) FILTER (WHERE fa.is_unlocked = true) * 100.0) /
+//           NULLIF(COUNT(fa.final_assignment_id),0), 2
+//         ),0) AS completion_rate,
+
+//         COALESCE(ROUND(AVG(f.rating),2),0) AS avg_rating
+
+//       FROM tbl_course c
+
+//       LEFT JOIN tbl_student_course sc
+//         ON c.course_id = sc.course_id
+
+//       LEFT JOIN tbl_student_final_assignment fa
+//         ON c.course_id = fa.course_id
+
+//       LEFT JOIN tbl_feedback f
+//         ON c.course_id = f.course_id
+
+//       WHERE c.tutor_id = $1
+//       AND fa.created_at >= NOW() - INTERVAL '3 months'
+
+//       GROUP BY c.course_id
+//       ORDER BY students DESC
+//       LIMIT 5;
+//     `, [tutor_id]);
+
+//     // =========================
+//     // FINAL RESPONSE
+//     // =========================
+//     return res.json({
+//       success: true,
+//       dashboard: {
+//         stats: statsQuery.rows[0],
+//         monthlyGraph,
+//         gradeChart,
+//         topCourses: coursesQuery.rows
+//       }
+//     });
+
+//   } catch (err) {
+//     console.error(err);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server Error"
+//     });
+//   }
+// };
 exports.getTutoranalyticsDashboard = async (req, res) => {
   try {
     const { tutor_id } = req.body;
@@ -203,10 +377,8 @@ exports.getTutoranalyticsDashboard = async (req, res) => {
     // =========================
     const statsQuery = await pool.query(`
       SELECT
-        -- Total Students (who enrolled tutor courses)
         COUNT(DISTINCT sc.student_id) AS total_students,
 
-        -- Total Views (students not purchased tutor courses)
         (
           SELECT COUNT(*)
           FROM tbl_user u
@@ -219,13 +391,11 @@ exports.getTutoranalyticsDashboard = async (req, res) => {
           )
         ) AS total_views,
 
-        -- Avg Completion
         COALESCE(ROUND(
           (COUNT(*) FILTER (WHERE fa.is_unlocked = true) * 100.0) /
           NULLIF(COUNT(fa.final_assignment_id),0), 2
         ),0) AS avg_completion,
 
-        -- Avg Rating
         COALESCE(ROUND(AVG(f.rating),2),0) AS avg_rating
 
       FROM tbl_course c
@@ -236,14 +406,23 @@ exports.getTutoranalyticsDashboard = async (req, res) => {
     `, [tutor_id]);
 
     // =========================
-    // 2️⃣ MONTHLY GRAPH
+    // 2️⃣ MONTHLY GRAPH (✅ FIXED)
     // =========================
-    const monthlyQuery = await pool.query(`
-      WITH months AS (
-        SELECT generate_series(1, 12) AS month_number
-      )
+
+    // 🔹 Step 1: last 5 months
+    const monthsResult = await pool.query(`
       SELECT 
-        TO_CHAR(TO_DATE(months.month_number::text, 'MM'), 'Mon') AS month,
+        generate_series(
+          DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
+          DATE_TRUNC('month', CURRENT_DATE),
+          INTERVAL '1 month'
+        ) AS month_date
+    `);
+
+    // 🔹 Step 2: actual data
+    const monthlyData = await pool.query(`
+      SELECT 
+        DATE_TRUNC('month', sc.created_at) AS month_date,
 
         COUNT(DISTINCT sc.student_id) AS enrollments,
 
@@ -255,32 +434,45 @@ exports.getTutoranalyticsDashboard = async (req, res) => {
           WHERE fa.is_unlocked = true
         ) AS completions
 
-      FROM months
+      FROM tbl_course c
 
-      LEFT JOIN tbl_course c
-        ON c.tutor_id = $1
-
-      LEFT JOIN tbl_student_course sc
+      LEFT JOIN tbl_student_course sc 
         ON sc.course_id = c.course_id
-        AND EXTRACT(MONTH FROM sc.created_at) = months.month_number
 
-      LEFT JOIN tbl_user u
-        ON EXTRACT(MONTH FROM u.created_at) = months.month_number
+      LEFT JOIN tbl_user u 
+        ON DATE_TRUNC('month', u.created_at) = DATE_TRUNC('month', sc.created_at)
 
-      LEFT JOIN tbl_student_final_assignment fa
+      LEFT JOIN tbl_student_final_assignment fa 
         ON fa.course_id = c.course_id
-        AND EXTRACT(MONTH FROM fa.created_at) = months.month_number
+        AND DATE_TRUNC('month', fa.created_at) = DATE_TRUNC('month', sc.created_at)
 
-      GROUP BY months.month_number
-      ORDER BY months.month_number;
+      WHERE c.tutor_id = $1
+        AND sc.created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
+
+      GROUP BY month_date
     `, [tutor_id]);
 
-    const monthlyGraph = {
-      xAxis: monthlyQuery.rows.map(r => r.month),
-      enrollments: monthlyQuery.rows.map(r => Number(r.enrollments)),
-      views: monthlyQuery.rows.map(r => Number(r.views)),
-      completions: monthlyQuery.rows.map(r => Number(r.completions))
-    };
+    // 🔹 Step 3: map
+    const monthlyMap = {};
+    monthlyData.rows.forEach(row => {
+      monthlyMap[row.month_date] = {
+        enrollments: parseInt(row.enrollments),
+        views: parseInt(row.views),
+        completions: parseInt(row.completions)
+      };
+    });
+
+    // 🔹 Step 4: final graph
+    const monthlyGraph = monthsResult.rows.map(row => {
+      const monthDate = row.month_date;
+
+      return {
+        month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }),
+        enrollments: monthlyMap[monthDate]?.enrollments || 0,
+        views: monthlyMap[monthDate]?.views || 0,
+        completions: monthlyMap[monthDate]?.completions || 0
+      };
+    });
 
     // =========================
     // 3️⃣ GRADE DISTRIBUTION
@@ -361,7 +553,6 @@ exports.getTutoranalyticsDashboard = async (req, res) => {
     });
   }
 };
-
 //tutor
 exports.studentperformancetutordashboard = async (req, res) => {
   const { tutor_id } = req.body;
