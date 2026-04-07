@@ -911,3 +911,260 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
     });
   }
 };
+
+
+exports.getTutorAnalyticsDashboard = async (req, res) => {
+  try {
+    const { tutor_id } = req.body;
+
+    if (!tutor_id) {
+      return res.status(400).json({
+        success: false,
+        message: "tutor_id is required"
+      });
+    }
+
+    // =========================
+    // 1️⃣ STATS
+    // =========================
+    const statsQuery = await pool.query(`
+      SELECT
+        COUNT(DISTINCT sc.student_id) AS total_students,
+
+        (
+          SELECT COUNT(*)
+          FROM tbl_user u
+          WHERE role = 'student'
+          AND NOT EXISTS (
+            SELECT 1 FROM tbl_student_course sc2
+            JOIN tbl_course c2 ON sc2.course_id = c2.course_id
+            WHERE sc2.student_id = u.user_id
+            AND c2.tutor_id = $1
+          )
+        ) AS total_views,
+
+        COALESCE(ROUND(
+          (COUNT(*) FILTER (WHERE fa.is_unlocked = true) * 100.0) /
+          NULLIF(COUNT(fa.final_assignment_id),0), 2
+        ),0) AS avg_completion,
+
+        COALESCE(ROUND(AVG(f.rating),2),0) AS avg_rating
+
+      FROM tbl_course c
+      LEFT JOIN tbl_student_course sc ON c.course_id = sc.course_id
+      LEFT JOIN tbl_student_final_assignment fa ON c.course_id = fa.course_id
+      LEFT JOIN tbl_feedback f ON c.course_id = f.course_id
+      WHERE c.tutor_id = $1
+    `, [tutor_id]);
+
+    // =========================
+    // 2️⃣ MONTHLY GRAPH
+    // =========================
+    const monthsResult = await pool.query(`
+      SELECT 
+        generate_series(
+          DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
+          DATE_TRUNC('month', CURRENT_DATE),
+          INTERVAL '1 month'
+        ) AS month_date
+    `);
+
+    const monthlyData = await pool.query(`
+      SELECT 
+        DATE_TRUNC('month', sc.created_at) AS month_date,
+
+        COUNT(DISTINCT sc.student_id) AS enrollments,
+
+        COUNT(DISTINCT u.user_id) FILTER (
+          WHERE u.role = 'student'
+        ) AS views,
+
+        COUNT(*) FILTER (
+          WHERE fa.is_unlocked = true
+        ) AS completions
+
+      FROM tbl_course c
+
+      LEFT JOIN tbl_student_course sc 
+        ON sc.course_id = c.course_id
+
+      LEFT JOIN tbl_user u 
+        ON DATE_TRUNC('month', u.created_at) = DATE_TRUNC('month', sc.created_at)
+
+      LEFT JOIN tbl_student_final_assignment fa 
+        ON fa.course_id = c.course_id
+        AND DATE_TRUNC('month', fa.created_at) = DATE_TRUNC('month', sc.created_at)
+
+      WHERE c.tutor_id = $1
+        AND sc.created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
+
+      GROUP BY month_date
+    `, [tutor_id]);
+
+    const monthlyMap = {};
+    monthlyData.rows.forEach(row => {
+      monthlyMap[row.month_date] = {
+        enrollments: parseInt(row.enrollments),
+        views: parseInt(row.views),
+        completions: parseInt(row.completions)
+      };
+    });
+
+    const monthlyGraph = monthsResult.rows.map(row => {
+      const monthDate = row.month_date;
+
+      return {
+        month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }),
+        enrollments: monthlyMap[monthDate]?.enrollments || 0,
+        views: monthlyMap[monthDate]?.views || 0,
+        completions: monthlyMap[monthDate]?.completions || 0
+      };
+    });
+
+    // =========================
+    // 3️⃣ GRADE DISTRIBUTION
+    // =========================
+    const gradeQuery = await pool.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE grade = 'A+') AS "A+",
+        COUNT(*) FILTER (WHERE grade = 'A') AS "A",
+        COUNT(*) FILTER (WHERE grade = 'B') AS "B",
+        COUNT(*) FILTER (WHERE grade = 'C') AS "C",
+        COUNT(*) FILTER (WHERE grade NOT IN ('A+','A','B','C')) AS "Below"
+      FROM tbl_student_final_assignment fa
+      JOIN tbl_course c ON fa.course_id = c.course_id
+      WHERE c.tutor_id = $1
+      AND fa.is_unlocked = true
+    `, [tutor_id]);
+
+    const g = gradeQuery.rows[0];
+
+    const gradeChart = {
+      xAxis: ["A+", "A", "B", "C", "Below"],
+      yAxis: [g["A+"], g["A"], g["B"], g["C"], g["Below"]]
+    };
+
+    // =========================
+    // 4️⃣ TOP COURSES
+    // =========================
+    const coursesQuery = await pool.query(`
+      SELECT 
+        c.course_title,
+
+        COUNT(DISTINCT sc.student_id) AS students,
+
+        COALESCE(ROUND(
+          (COUNT(*) FILTER (WHERE fa.is_unlocked = true) * 100.0) /
+          NULLIF(COUNT(fa.final_assignment_id),0), 2
+        ),0) AS completion_rate,
+
+        COALESCE(ROUND(AVG(f.rating),2),0) AS avg_rating
+
+      FROM tbl_course c
+
+      LEFT JOIN tbl_student_course sc
+        ON c.course_id = sc.course_id
+
+      LEFT JOIN tbl_student_final_assignment fa
+        ON c.course_id = fa.course_id
+
+      LEFT JOIN tbl_feedback f
+        ON c.course_id = f.course_id
+
+      WHERE c.tutor_id = $1
+      AND fa.created_at >= NOW() - INTERVAL '3 months'
+
+      GROUP BY c.course_id
+      ORDER BY students DESC
+      LIMIT 5;
+    `, [tutor_id]);
+
+    // =========================
+    // 5️⃣ STUDENT PERFORMANCE
+    // =========================
+    const studentPerformanceQuery = await pool.query(`
+      SELECT 
+        u.full_name AS student_name,
+        c.course_title,
+
+        CASE 
+          WHEN fa.is_unlocked = true THEN '100%'
+          ELSE 'In Progress'
+        END AS progress,
+
+        COALESCE(AVG(fa.total_marks::int), 0) AS avg_score,
+
+        CASE 
+          WHEN MAX(fa.created_at) >= NOW() - INTERVAL '7 days'
+          THEN 'Active'
+          ELSE 'Inactive'
+        END AS activity_status
+
+      FROM tbl_student_final_assignment fa
+      JOIN tbl_user u ON fa.student_id = u.user_id
+      JOIN tbl_course c ON fa.course_id = c.course_id
+      WHERE c.tutor_id = $1
+
+      GROUP BY u.full_name, c.course_title, fa.is_unlocked
+      ORDER BY avg_score DESC
+      LIMIT 10;
+    `, [tutor_id]);
+
+    const activeStudentsQuery = await pool.query(`
+      SELECT COUNT(DISTINCT sc.student_id) AS active_students
+      FROM tbl_student_course sc
+      JOIN tbl_course c ON sc.course_id = c.course_id
+      WHERE c.tutor_id = $1
+    `, [tutor_id]);
+
+    const completionQuery = await pool.query(`
+      SELECT 
+        COALESCE(ROUND(
+          (COUNT(*) FILTER (WHERE fa.status = 'Completed') * 100.0) /
+          NULLIF(COUNT(*),0), 2
+        ),0) AS assignment_completion
+      FROM tbl_student_final_assignment fa
+      JOIN tbl_course c ON fa.course_id = c.course_id
+      WHERE c.tutor_id = $1
+    `, [tutor_id]);
+
+    const studyTimeQuery = await pool.query(`
+      SELECT 
+        COALESCE(
+          TO_CHAR(
+            AVG(watched::interval),
+            'HH24:MI'
+          ),
+          '00:00'
+        ) AS avg_study_time
+      FROM tbl_student_course_progress scp
+      JOIN tbl_course c ON scp.course_id = c.course_id
+      WHERE c.tutor_id = $1
+    `, [tutor_id]);
+
+    // =========================
+    // FINAL RESPONSE
+    // =========================
+    return res.status(200).json({
+      success: true,
+      dashboard: {
+        stats: statsQuery.rows[0],
+        monthlyGraph,
+        gradeChart,
+        topCourses: coursesQuery.rows,
+
+        studentPerformance: studentPerformanceQuery.rows,
+        activeStudents: activeStudentsQuery.rows[0],
+        assignmentCompletion: completionQuery.rows[0],
+        avgStudyTime: studyTimeQuery.rows[0]
+      }
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
+  }
+};
