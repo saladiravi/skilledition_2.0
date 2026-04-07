@@ -1062,7 +1062,17 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
         c.course_title,
 
         COUNT(DISTINCT sc.student_id) AS students,
-
+        (
+          SELECT COUNT(*)
+          FROM tbl_user u
+          WHERE role = 'student'
+          AND NOT EXISTS (
+            SELECT 1 FROM tbl_student_course sc2
+            JOIN tbl_course c2 ON sc2.course_id = c2.course_id
+            WHERE sc2.student_id = u.user_id
+            AND c2.tutor_id = $1
+          )
+        ) AS total_views,
         COALESCE(ROUND(
           (COUNT(*) FILTER (WHERE fa.is_unlocked = true) * 100.0) /
           NULLIF(COUNT(fa.final_assignment_id),0), 2
