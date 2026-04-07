@@ -800,41 +800,30 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         ORDER BY c.course_id
       `);
 
-          // const coursePerformance = await pool.query(`
-          //   SELECT 
-          //     c.course_id,
-          //     c.course_title,
-          //     COUNT(sc.student_id) AS enrolled,
-          //     COUNT(sfa.student_id) FILTER (WHERE sfa.is_unlocked = true) AS completed
-          //   FROM tbl_course c
-          //   LEFT JOIN tbl_student_course sc ON c.course_id = sc.course_id
-          //   LEFT JOIN tbl_student_final_assignment sfa 
-          //     ON c.course_id = sfa.course_id
-          //     WHERE c.status = 'Published'
-          //   GROUP BY c.course_id, c.course_title
-          // `);
-const coursePerformance = await pool.query(`
-  SELECT 
-    c.course_id,
-    c.course_title,
+     
+      const coursePerformance = await pool.query(`
+        SELECT 
+          c.course_id,
+          c.course_title,
 
-    COUNT(DISTINCT sc.student_id) AS enrolled,
+          COUNT(DISTINCT sc.student_id) AS enrolled,
 
-    COUNT(DISTINCT sfa.student_id) 
-      FILTER (WHERE sfa.is_unlocked = true) AS completed
+          COUNT(DISTINCT sfa.student_id) 
+            FILTER (WHERE sfa.is_unlocked = true) AS completed
 
-  FROM tbl_course c
+        FROM tbl_course c
 
-  LEFT JOIN tbl_student_course sc 
-    ON c.course_id = sc.course_id
+        LEFT JOIN tbl_student_course sc 
+          ON c.course_id = sc.course_id
 
-  LEFT JOIN tbl_student_final_assignment sfa 
-    ON c.course_id = sfa.course_id
+        LEFT JOIN tbl_student_final_assignment sfa 
+          ON c.course_id = sfa.course_id
 
-  WHERE c.status = 'Published'
+        WHERE c.status = 'Published'
 
-  GROUP BY c.course_id, c.course_title
-`);
+        GROUP BY c.course_id, c.course_title
+      `);
+
       const monthsResults = await pool.query(`
           SELECT 
             generate_series(
@@ -844,48 +833,48 @@ const coursePerformance = await pool.query(`
             ) AS month_date
         `);
 
-  // 2️⃣ Get completion data
-  const trendData = await pool.query(`
-    SELECT 
-      DATE_TRUNC('month', created_at) AS month_date,
-      COUNT(*) FILTER (WHERE is_unlocked = true) AS completed,
-      COUNT(*) FILTER (WHERE is_unlocked = false) AS in_progress
-    FROM tbl_student_final_assignment
-    WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
-    GROUP BY month_date
-  `);
+
+      const trendData = await pool.query(`
+        SELECT 
+          DATE_TRUNC('month', created_at) AS month_date,
+          COUNT(*) FILTER (WHERE is_unlocked = true) AS completed,
+          COUNT(*) FILTER (WHERE is_unlocked = false) AS in_progress
+        FROM tbl_student_final_assignment
+        WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
+        GROUP BY month_date
+      `);
 
   // 3️⃣ Convert to map
-  const trendMap = {};
-  trendData.rows.forEach(row => {
-    trendMap[row.month_date] = {
-      completed: parseInt(row.completed),
-      in_progress: parseInt(row.in_progress)
-    };
-  });
+        const trendMap = {};
+        trendData.rows.forEach(row => {
+          trendMap[row.month_date] = {
+            completed: parseInt(row.completed),
+            in_progress: parseInt(row.in_progress)
+          };
+        });
 
-  // 4️⃣ Build final fixed 5 months data
-  const finaltrendData = monthsResults.rows.map(row => {
-    const monthDate = row.month_date;
+      // 4️⃣ Build final fixed 5 months data
+        const finaltrendData = monthsResults.rows.map(row => {
+          const monthDate = row.month_date;
 
-    return {
-      month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }), // Jan, Feb
-      completed: trendMap[monthDate]?.completed || 0,
-      in_progress: trendMap[monthDate]?.in_progress || 0
-    };
-  });
+          return {
+            month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }), // Jan, Feb
+            completed: trendMap[monthDate]?.completed || 0,
+            in_progress: trendMap[monthDate]?.in_progress || 0
+          };
+        });
  
 
-    const courseAvgScores = await pool.query(`
-      SELECT 
-        c.course_title,
-        ROUND(AVG(a.total_marks::numeric), 2) AS avg_score
-      FROM tbl_course c
-      JOIN tbl_student_final_assignment a 
-        ON c.course_id = a.course_id
-      GROUP BY c.course_title
-      ORDER BY avg_score DESC
-    `);
+        const courseAvgScores = await pool.query(`
+          SELECT 
+            c.course_title,
+            ROUND(AVG(a.total_marks::numeric), 2) AS avg_score
+          FROM tbl_course c
+          JOIN tbl_student_final_assignment a 
+            ON c.course_id = a.course_id
+          GROUP BY c.course_title
+          ORDER BY avg_score DESC
+        `);
 
     return res.status(200).json({
       statusCode: 200,
