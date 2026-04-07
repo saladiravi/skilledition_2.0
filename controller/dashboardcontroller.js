@@ -105,6 +105,55 @@ exports.getDashboardStats = async (req, res) => {
       };
     });
 
+
+    // =======================
+// 🕒 RECENT SUBMISSIONS
+// =======================
+
+const recentSubmissions = await pool.query(`
+  SELECT 
+    full_name,
+    type,
+    TO_CHAR(activity_date, 'DD-MM-YYYY') AS activity_date
+  FROM (
+
+    SELECT u.full_name, 'registration' AS type, u.created_at AS activity_date
+    FROM tbl_user u
+    WHERE u.created_at IS NOT NULL
+
+    UNION ALL
+
+    SELECT u.full_name, 'assignment' AS type, sa.created_at AS activity_date
+    FROM tbl_student_assignment sa
+    JOIN tbl_user u ON u.user_id = sa.student_id
+    WHERE sa.created_at IS NOT NULL
+
+    UNION ALL
+
+    SELECT u.full_name, 'final_exam' AS type, sfa.submitted_at AS activity_date
+    FROM tbl_student_final_assignment sfa
+    JOIN tbl_user u ON u.user_id = sfa.student_id
+    WHERE sfa.submitted_at IS NOT NULL
+
+    UNION ALL
+
+    SELECT u.full_name, 'internship' AS type, i.applied_date AS activity_date
+    FROM tbl_internship i
+    JOIN tbl_user u ON u.user_id = i.student_id
+    WHERE i.applied_date IS NOT NULL
+
+    UNION ALL
+
+    SELECT u.full_name, 'course' AS type, sc.created_at AS activity_date
+    FROM tbl_student_course sc
+    JOIN tbl_user u ON u.user_id = sc.student_id
+    WHERE sc.created_at IS NOT NULL
+
+  ) AS activity
+
+  ORDER BY activity_date DESC
+  LIMIT 10
+`);
     // =======================
     // ✅ FINAL RESPONSE
     // =======================
@@ -123,8 +172,8 @@ exports.getDashboardStats = async (req, res) => {
       charts: {
         studentGraph: finalGraph,
         coursePopularity: coursePopularityData
-      }
-
+      },
+      recent_submissions: recentSubmissions.rows   
     });
 
   } catch (error) {
