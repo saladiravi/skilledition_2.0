@@ -1144,7 +1144,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
     // FINAL RESPONSE
     // =========================
     return res.status(200).json({
-      success: true,
+      statusCode:200,
       dashboard: {
         stats: statsQuery.rows[0],
         monthlyGraph,
@@ -1159,7 +1159,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+   
     return res.status(500).json({
       success: false,
       message: "Internal Server Error"
