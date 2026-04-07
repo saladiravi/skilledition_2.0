@@ -12,6 +12,6 @@ router.post('/studentperformancetutordashboard',verifyToken, allowRoles("admin",
 router.get('/getanalyticsAdminDashboard',verifyToken, allowRoles("admin","student","tutor"),dashboard.getanalyticsAdminDashboard);
 
 
-router.post('/getTutorAnalyticsDashboard',verifyToken, allowRoles("admin","student","tutor"),dashboard.getTutorAnalyticsDashboard);
+router.post('/getTutorAnalytics',verifyToken, allowRoles("admin","student","tutor"),dashboard.getTutorAnalyticsDashboard);
 
 module.exports = router
