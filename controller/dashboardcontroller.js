@@ -989,8 +989,13 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
           WHERE u.role = 'student'
         ) AS views,
 
-        COUNT(*) FILTER (
-          WHERE fa.is_unlocked = true
+         (
+          SELECT COUNT(DISTINCT fa.student_id)
+          FROM tbl_student_final_assignment fa
+          JOIN tbl_course c ON fa.course_id = c.course_id
+          WHERE c.tutor_id = $1
+          AND fa.is_unlocked = true
+          AND DATE_TRUNC('month', fa.created_at) = month_date
         ) AS completions
 
       FROM tbl_course c
@@ -1112,7 +1117,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
           ELSE 'In Progress'
         END AS progress,
 
-        COALESCE(AVG(fa.total_marks::int), 0) AS avg_score,
+       ROUND(COALESCE(AVG(fa.total_marks::numeric), 0), 2) AS avg_score,
 
         CASE 
           WHEN MAX(fa.created_at) >= NOW() - INTERVAL '7 days'
