@@ -76,14 +76,15 @@ exports.getDashboardStats = async (req, res) => {
     // =======================
 
     const coursePopularity = await pool.query(`
-      SELECT 
-        c.course_id,
-        c.course_title,
-        COUNT(sc.student_id) AS total_students
-      FROM tbl_course c
-      LEFT JOIN tbl_student_course sc 
-        ON c.course_id = sc.course_id
-      GROUP BY c.course_id, c.course_title
+       SELECT 
+    c.course_id,
+    c.course_title,
+    COUNT(sc.student_id) AS total_students
+  FROM tbl_course c
+  LEFT JOIN tbl_student_course sc 
+    ON c.course_id = sc.course_id
+  WHERE c.status = 'Published'
+  GROUP BY c.course_id, c.course_title
     `);
 
     // Total students
