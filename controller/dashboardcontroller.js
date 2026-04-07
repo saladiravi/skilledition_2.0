@@ -795,7 +795,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         FROM tbl_course c
         LEFT JOIN tbl_feedback f 
           ON c.course_id = f.course_id
-
+          WHERE c.status = 'Published'
         GROUP BY c.course_id, c.course_title
         ORDER BY c.course_id
       `);
@@ -810,6 +810,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
             LEFT JOIN tbl_student_course sc ON c.course_id = sc.course_id
             LEFT JOIN tbl_student_final_assignment sfa 
               ON c.course_id = sfa.course_id
+              WHERE c.status = 'Published'
             GROUP BY c.course_id, c.course_title
           `);
 
