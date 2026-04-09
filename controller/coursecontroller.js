@@ -1457,7 +1457,7 @@ exports.getAdminCourseList = async (req, res) => {
   }
 };
 
- 
+
 exports.getadmintotalcourse = async (req, res) => {
 
   const { status } = req.body;
@@ -1617,14 +1617,11 @@ exports.getadmintotalcourse = async (req, res) => {
           course_id: row.course_id,
           course_title: row.course_title,
           status: row.course_status,
-
           description: row.course_description,
           category: row.category_name,
           level: row.level,
           duration: row.duration,
-
           tutor: row.tutor_name,
-
           total_modules: Number(row.total_modules),
           enrolled_students: Number(row.enrolled_count),
 
@@ -1673,8 +1670,6 @@ exports.getadmintotalcourse = async (req, res) => {
         });
       }
 
-
-      /* ---------- ASSIGNMENT ---------- */
       /* ---------- ASSIGNMENT ---------- */
       if (row.assignment_id && module) {
 
@@ -1706,11 +1701,7 @@ exports.getadmintotalcourse = async (req, res) => {
           module.assignments.push(assignment);
         }
       }
-
-
     }
-
-
     const result = Object.values(courses);
 
     if (result.length === 0) {
@@ -1719,21 +1710,12 @@ exports.getadmintotalcourse = async (req, res) => {
         data: []
       });
     }
-
     return res.status(200).json({
       statusCode: 200,
-      // message: "Admin courses fetched successfully",
       data: result
     });
-
-
-
   } catch (error) {
-
-    console.error("getadmintotalcourse Error:", error);
-
     return res.status(500).json({
-
       statusCode: 500,
       message: "Internal Server Error"
 

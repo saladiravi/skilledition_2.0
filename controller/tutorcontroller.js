@@ -1819,15 +1819,11 @@ exports.getAllTutorbystatus = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Tutors fetched successfully",
-      data: rows
+        data: rows
     });
 
   } catch (error) {
-
-    console.error("getAllTutorbystatus Error:", error);
-
-    return res.status(500).json({
+  return res.status(500).json({
       statusCode: 500,
       message: "Internal server error"
     });
