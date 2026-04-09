@@ -2258,6 +2258,360 @@ exports.getCourseenroleDetails = async (req, res) => {
 
 
 
+// exports.getstudentoverview = async (req, res) => {
+
+//   const { student_id } = req.body;
+
+//   if (!student_id) {
+//     return res.status(400).json({
+//       statusCode: 400,
+//       message: "student_id is required"
+//     });
+//   }
+
+//   try {
+//     const studentname = await pool.query(
+//       `SELECT full_name FROM tbl_user WHERE user_id=$1`,
+//       [student_id]
+//     );
+
+//     const studentName = studentname.rows.length
+//       ? studentname.rows[0].full_name
+//       : null;
+
+//     // 1️⃣ Courses with progress
+//     const courseQuery = `
+//       SELECT 
+//         tc.course_id,
+//         tc.course_title,
+//         tcat.category_name,
+//         tu.full_name AS mentor_name,
+
+//         COUNT(DISTINCT tmv.module_video_id) AS total_videos,
+
+//         COUNT(DISTINCT svp.module_video_id)
+//         FILTER (WHERE svp.is_completed = true) AS watched_videos
+
+//       FROM tbl_student_course sc
+      
+//       JOIN tbl_course tc
+//         ON sc.course_id = tc.course_id
+
+//       JOIN tbl_category tcat
+//         ON tc.category_id = tcat.category_id
+
+//       JOIN tbl_module tm
+//         ON tc.course_id = tm.course_id
+
+//       JOIN tbl_module_videos tmv
+//         ON tm.module_id = tmv.module_id
+
+//       LEFT JOIN tbl_student_course_progress svp
+//         ON tmv.module_video_id = svp.module_video_id
+//         AND svp.student_id = $1
+
+//       JOIN tbl_user tu
+//         ON tc.tutor_id = tu.user_id
+
+//       WHERE sc.student_id = $1
+
+//       GROUP BY tc.course_id, tc.course_title, tcat.category_name, tu.full_name
+//       ORDER BY tc.course_id DESC
+//     `;
+
+//     const coursesection = `
+//       SELECT 
+//         tc.course_id,
+//         tc.course_title,
+//         tcat.category_name,
+
+//         COUNT(DISTINCT tmv.module_video_id) AS total_videos,
+
+//         COUNT(DISTINCT svp.module_video_id)
+//         FILTER (WHERE svp.is_completed = true) AS watched_videos
+
+//       FROM tbl_student_course sc
+      
+//       JOIN tbl_course tc
+//         ON sc.course_id = tc.course_id
+
+//       JOIN tbl_category tcat
+//         ON tc.category_id = tcat.category_id
+
+//       JOIN tbl_module tm
+//         ON tc.course_id = tm.course_id
+
+//       JOIN tbl_module_videos tmv
+//         ON tm.module_id = tmv.module_id
+
+//       LEFT JOIN tbl_student_course_progress svp
+//         ON tmv.module_video_id = svp.module_video_id
+//         AND svp.student_id = $1
+
+//       WHERE sc.student_id = $1
+
+//       GROUP BY tc.course_id, tc.course_title, tcat.category_name
+//       ORDER BY tc.course_id ASC
+//     `;
+
+//     // 2️⃣ Last watched video
+//     const lastVideoQuery = `
+//       SELECT 
+//         tc.course_id,
+//         tc.course_title,
+//         tcat.category_name,
+//         tmv.video_title
+
+//       FROM tbl_student_course_progress svp
+
+//       JOIN tbl_module_videos tmv
+//         ON svp.module_video_id = tmv.module_video_id
+
+//       JOIN tbl_module tm
+//         ON tmv.module_id = tm.module_id
+
+//       JOIN tbl_course tc
+//         ON tm.course_id = tc.course_id
+        
+//         JOIN tbl_category tcat
+//       ON tc.category_id = tcat.category_id
+
+//       WHERE svp.student_id = $1
+//       AND svp.is_completed = true
+
+//       ORDER BY svp.student_course_progress_id DESC
+//       LIMIT 1
+//     `;
+
+//     // 3️⃣ Latest assignments
+//     const assignmentQuery = `
+//       SELECT 
+//         ta.assignment_title,
+//         ta.total_questions,
+
+//         CASE 
+//           WHEN scp.is_completed = true THEN 'Completed'
+//           ELSE 'Pending'
+//         END AS status
+
+//       FROM tbl_student_course sc
+
+//       JOIN tbl_module tm
+//         ON sc.course_id = tm.course_id
+
+//       JOIN tbl_assignment ta
+//         ON tm.module_id = ta.module_id
+
+//       LEFT JOIN tbl_student_course_progress scp
+//         ON ta.assignment_id = scp.assignment_id
+//         AND scp.student_id = $1
+
+//       WHERE sc.student_id = $1
+
+//       ORDER BY ta.assignment_date DESC
+//       LIMIT 3
+//     `;
+
+//     // 4️⃣ Mentors
+//     const mentorQuery = `
+//       SELECT DISTINCT
+//         tu.user_id,
+//         tu.full_name,
+//         tu.role
+
+//       FROM tbl_student_course sc
+
+//       JOIN tbl_course tc
+//         ON sc.course_id = tc.course_id
+
+//       JOIN tbl_user tu
+//         ON tc.tutor_id = tu.user_id
+
+//       WHERE sc.student_id = $1
+//     `;
+
+//     // 5️⃣ Learning Time
+//  const learningTimeQuery = `
+// SELECT 
+//   c.duration,
+//   c.no_of_modules,
+//   v.total_learning_time
+// FROM
+// (
+//   SELECT 
+//     SUM(REGEXP_REPLACE(tc.duration, '[^0-9]', '', 'g')::int) AS duration,
+//     SUM(tc.no_of_modules) AS no_of_modules
+//   FROM tbl_student_course sc
+//   JOIN tbl_course tc
+//     ON sc.course_id = tc.course_id
+//   WHERE sc.student_id = $1
+// ) c
+// CROSS JOIN
+// (
+//   SELECT 
+//     COALESCE(
+//       CONCAT(
+//         EXTRACT(HOUR FROM SUM(tmv.video_duration::interval)), 'h',
+//         EXTRACT(MINUTE FROM SUM(tmv.video_duration::interval)), 'm'
+//       ),
+//       '0h0m'
+//     ) AS total_learning_time
+//   FROM tbl_student_course sc
+//   JOIN tbl_module tm
+//     ON sc.course_id = tm.course_id
+//   JOIN tbl_module_videos tmv
+//     ON tm.module_id = tmv.module_id
+//   WHERE sc.student_id = $1
+// ) v
+// `;
+
+//     const availableCoursesQuery = `
+//       SELECT 
+//         tc.course_id,
+//         tc.course_title,
+//         tcat.category_name,
+//         COUNT(tmv.module_video_id) AS total_videos
+
+//       FROM tbl_course tc
+
+//       JOIN tbl_category tcat
+//         ON tc.category_id = tcat.category_id
+
+//       LEFT JOIN tbl_module tm
+//         ON tc.course_id = tm.course_id
+
+//       LEFT JOIN tbl_module_videos tmv
+//         ON tm.module_id = tmv.module_id
+
+//       GROUP BY tc.course_id, tc.course_title, tcat.category_name
+//       ORDER BY tc.course_id DESC
+//     `;
+
+//     const studentProgressGraphQuery = `
+//   SELECT 
+//     sc.student_id,
+//     sc.course_id,
+//     c.course_title,
+
+//     COUNT(scp.module_video_id) AS total_videos,
+
+//     COUNT(scp.module_video_id) 
+//       FILTER (WHERE scp.is_completed = true) AS watched_videos,
+
+//     COALESCE(
+//       ROUND(
+//         (COUNT(scp.module_video_id) FILTER (WHERE scp.is_completed = true) * 100.0) 
+//         / NULLIF(COUNT(scp.module_video_id), 0),
+//       2),
+//     0) AS progress_percentage
+
+//   FROM tbl_student_course sc
+
+//   JOIN tbl_course c 
+//     ON c.course_id = sc.course_id
+
+//   LEFT JOIN tbl_student_course_progress scp
+//     ON sc.student_id = scp.student_id
+//     AND sc.course_id = scp.course_id
+
+//   WHERE sc.student_id = $1
+
+//   GROUP BY sc.student_id, sc.course_id, c.course_title
+//   ORDER BY sc.course_id
+// `;
+
+//     const [courses, lastVideo, assignments, mentors, learningTime, coursection, availableCourses,studentProgressGraph] = await Promise.all([
+//       pool.query(courseQuery, [student_id]),
+//       pool.query(lastVideoQuery, [student_id]),
+//       pool.query(assignmentQuery, [student_id]),
+//       pool.query(mentorQuery, [student_id]),
+//       pool.query(learningTimeQuery, [student_id]),
+//       pool.query(coursesection, [student_id]),
+//       pool.query(availableCoursesQuery),
+//       pool.query(studentProgressGraphQuery, [student_id])
+//     ]);
+
+//     // Learning time data
+//     const learningData = learningTime.rows[0]
+//       ? {
+//         duration: learningTime.rows[0].duration,
+//         no_of_modules: Number(learningTime.rows[0].no_of_modules),
+//         total_learning_time: learningTime.rows[0].total_learning_time
+//       }
+//       : {
+//         duration: "0 Days",
+//         no_of_modules: 0,
+//         total_learning_time: "00:00:00"
+//       };
+
+//     // Course progress
+//     const courseData = courses.rows.map(course => {
+
+//       const totalVideos = Number(course.total_videos);
+//       const watchedVideos = Number(course.watched_videos);
+
+//       const percentage =
+//         totalVideos === 0
+//           ? 0
+//           : Math.round((watchedVideos / totalVideos) * 100);
+
+//       return {
+//         course_id: course.course_id,
+//         course_title: course.course_title,
+//         category_name: course.category_name,
+//         percentage
+//       };
+
+//     });
+
+//     // If student did not purchase any course
+//     if (courseData.length === 0) {
+
+//       const availableCourseList = availableCourses.rows.map(course => ({
+//         course_id: course.course_id,
+//         course_title: course.course_title,
+//         category_name: course.category_name,
+//         total_videos: Number(course.total_videos)
+//       }));
+
+//       return res.status(200).json({
+//         statusCode: 200,
+//         message: "No purchased courses",
+//         data: {
+//           student_name: studentName,
+//           course_watching: [],
+//           course_section: availableCourseList
+//         }
+//       });
+//     }
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: "Fetched successfully",
+//       data: {
+//         student_name: studentName,
+//         course_watching: courseData,
+//         course_section: coursection.rows,
+//         learningtime: learningData,
+//         last_video: lastVideo.rows[0] || null,
+//         assignments: assignments.rows,
+//         mentors: mentors.rows,
+//         student_progress_graph: studentProgressGraph.rows  
+//       }
+//     });
+
+//   } catch (error) {
+
+//     console.error(error);
+
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error"
+//     });
+
+//   }
+// };
+
 exports.getstudentoverview = async (req, res) => {
 
   const { student_id } = req.body;
@@ -2318,7 +2672,48 @@ exports.getstudentoverview = async (req, res) => {
       GROUP BY tc.course_id, tc.course_title, tcat.category_name, tu.full_name
       ORDER BY tc.course_id DESC
     `;
+ const pieChartQuery = `
+      SELECT 
+  tc.course_id,
+  tc.course_title,
 
+  ROUND(
+    (
+      COUNT(DISTINCT svp.module_video_id)
+      FILTER (WHERE svp.is_completed = true) * 100.0
+      / NULLIF(COUNT(DISTINCT tmv.module_video_id), 0)
+    )
+    /
+    total_courses.total_count
+  , 2) AS completed_percentage
+
+FROM tbl_student_course sc
+
+JOIN tbl_course tc
+  ON sc.course_id = tc.course_id
+
+JOIN tbl_module tm
+  ON tc.course_id = tm.course_id
+
+JOIN tbl_module_videos tmv
+  ON tm.module_id = tmv.module_id
+
+LEFT JOIN tbl_student_course_progress svp
+  ON tmv.module_video_id = svp.module_video_id
+  AND svp.student_id = $1
+
+-- ✅ FIX: separate total courses calculation
+CROSS JOIN (
+  SELECT COUNT(DISTINCT course_id) AS total_count
+  FROM tbl_student_course
+  WHERE student_id = $1
+) AS total_courses
+
+WHERE sc.student_id = $1
+
+GROUP BY tc.course_id, tc.course_title, total_courses.total_count
+ORDER BY tc.course_id
+    `;
     const coursesection = `
       SELECT 
         tc.course_id,
@@ -2519,9 +2914,10 @@ CROSS JOIN
   GROUP BY sc.student_id, sc.course_id, c.course_title
   ORDER BY sc.course_id
 `;
-
-    const [courses, lastVideo, assignments, mentors, learningTime, coursection, availableCourses,studentProgressGraph] = await Promise.all([
+  
+    const [courses,pieChart, lastVideo, assignments, mentors, learningTime, coursection, availableCourses,studentProgressGraph] = await Promise.all([
       pool.query(courseQuery, [student_id]),
+    pool.query(pieChartQuery, [student_id]),
       pool.query(lastVideoQuery, [student_id]),
       pool.query(assignmentQuery, [student_id]),
       pool.query(mentorQuery, [student_id]),
@@ -2563,7 +2959,10 @@ CROSS JOIN
       };
 
     });
-
+    const pieChartData = pieChart.rows.map(row => ({
+      course_title: row.course_title,
+      completed: Math.round(Number(row.completed_percentage))
+    }));
     // If student did not purchase any course
     if (courseData.length === 0) {
 
@@ -2591,6 +2990,7 @@ CROSS JOIN
       data: {
         student_name: studentName,
         course_watching: courseData,
+         pie_chart: pieChartData,
         course_section: coursection.rows,
         learningtime: learningData,
         last_video: lastVideo.rows[0] || null,
@@ -2611,8 +3011,6 @@ CROSS JOIN
 
   }
 };
-
-
 // exports.getadminstudentmanagement = async (req, res) => {
 
 //   try {
