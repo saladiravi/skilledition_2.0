@@ -1722,7 +1722,7 @@ exports.getadmintotalcourse = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Admin courses fetched successfully",
+      // message: "Admin courses fetched successfully",
       data: result
     });
 
