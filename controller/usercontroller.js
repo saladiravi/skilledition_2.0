@@ -121,6 +121,7 @@ exports.addUser = async (req, res) => {
 };
 
 
+
 // exports.loginUser = async (req, res) => {
 //   const { email, password } = req.body;
 
@@ -133,12 +134,27 @@ exports.addUser = async (req, res) => {
 
 //   try {
 //     const result = await pool.query(
-//       `SELECT * FROM tbl_user WHERE email=$1
-//       AND role IN ('student', 'tutor')`,
+//       `SELECT 
+//         u.*,
+
+//         CASE 
+//           WHEN sc.student_id IS NOT NULL THEN true
+//           ELSE false
+//         END AS overview_unlocked
+
+//       FROM tbl_user u
+
+//       LEFT JOIN (
+//         SELECT DISTINCT student_id 
+//         FROM tbl_student_course
+//       ) sc
+//       ON sc.student_id = u.user_id
+
+//       WHERE u.email = $1
+//       AND u.role IN ('student', 'tutor')`,
 //       [email]
 //     );
 
-//     // FIX: Check if user exists
 //     if (result.rows.length === 0) {
 //       return res.status(404).json({
 //         statusCode: 404,
@@ -147,8 +163,13 @@ exports.addUser = async (req, res) => {
 //     }
 
 //     const user = result.rows[0];
+//     if (user.login_status === true) {
+//       return res.status(403).json({
+//         statusCode: 403,
+//         message: 'User already logged in on another device'
+//       });
+//     }
 
-//     // Compare passwords
 //     const isMatch = await bcrypt.compare(password, user.password);
 
 //     if (!isMatch) {
@@ -157,8 +178,17 @@ exports.addUser = async (req, res) => {
 //         message: 'Invalid password'
 //       });
 //     }
+//  await pool.query(
+//       `UPDATE tbl_user 
+//        SET login_status = true  
+//        WHERE user_id = $1`,
+//       [user.user_id]
+//     );
+//     // 👉 Only for student
+//     if (user.role !== 'student') {
+//       user.overview_unlocked = null;
+//     }
 
-//     // FIX: Correct JWT payload
 //     const token = jwt.sign(
 //       {
 //         id: user.user_id,
@@ -185,7 +215,6 @@ exports.addUser = async (req, res) => {
 //   }
 // };
 
-
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
 
@@ -200,20 +229,16 @@ exports.loginUser = async (req, res) => {
     const result = await pool.query(
       `SELECT 
         u.*,
-
         CASE 
           WHEN sc.student_id IS NOT NULL THEN true
           ELSE false
         END AS overview_unlocked
-
       FROM tbl_user u
-
       LEFT JOIN (
         SELECT DISTINCT student_id 
         FROM tbl_student_course
       ) sc
       ON sc.student_id = u.user_id
-
       WHERE u.email = $1
       AND u.role IN ('student', 'tutor')`,
       [email]
@@ -227,6 +252,17 @@ exports.loginUser = async (req, res) => {
     }
 
     const user = result.rows[0];
+
+    // ✅ First verify password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({
+        statusCode: 401,
+        message: 'Invalid password'
+      });
+    }
+
+    // ✅ Now check login_status
     if (user.login_status === true) {
       return res.status(403).json({
         statusCode: 403,
@@ -234,25 +270,20 @@ exports.loginUser = async (req, res) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
-      return res.status(401).json({
-        statusCode: 401,
-        message: 'Invalid password'
-      });
-    }
- await pool.query(
+    // ✅ Update login_status to true
+    await pool.query(
       `UPDATE tbl_user 
        SET login_status = true  
        WHERE user_id = $1`,
       [user.user_id]
     );
+
     // 👉 Only for student
     if (user.role !== 'student') {
       user.overview_unlocked = null;
     }
 
+    // Generate JWT
     const token = jwt.sign(
       {
         id: user.user_id,
@@ -278,8 +309,6 @@ exports.loginUser = async (req, res) => {
     });
   }
 };
-
-
 exports.adminloginUser = async (req, res) => {
   const { email, password } = req.body;
 
