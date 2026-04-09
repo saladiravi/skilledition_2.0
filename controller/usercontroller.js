@@ -227,7 +227,7 @@ exports.loginUser = async (req, res) => {
     }
 
     const user = result.rows[0];
- if (user.login_status) {
+    if (user.login_status === true) {
       return res.status(403).json({
         statusCode: 403,
         message: 'User already logged in on another device'
