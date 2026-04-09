@@ -2915,16 +2915,16 @@ CROSS JOIN
   ORDER BY sc.course_id
 `;
   
-    const [courses,pieChart, lastVideo, assignments, mentors, learningTime, coursection, availableCourses,studentProgressGraph] = await Promise.all([
+    const [courses, lastVideo, assignments, mentors, learningTime, coursection, availableCourses,studentProgressGraph,pieChart] = await Promise.all([
       pool.query(courseQuery, [student_id]),
-    pool.query(pieChartQuery, [student_id]),
-      pool.query(lastVideoQuery, [student_id]),
+     pool.query(lastVideoQuery, [student_id]),
       pool.query(assignmentQuery, [student_id]),
       pool.query(mentorQuery, [student_id]),
       pool.query(learningTimeQuery, [student_id]),
       pool.query(coursesection, [student_id]),
       pool.query(availableCoursesQuery),
-      pool.query(studentProgressGraphQuery, [student_id])
+      pool.query(studentProgressGraphQuery, [student_id]),
+      pool.query(pieChartQuery, [student_id]),
     ]);
 
     // Learning time data
@@ -2990,13 +2990,13 @@ CROSS JOIN
       data: {
         student_name: studentName,
         course_watching: courseData,
-         pie_chart: pieChartData,
         course_section: coursection.rows,
         learningtime: learningData,
         last_video: lastVideo.rows[0] || null,
         assignments: assignments.rows,
         mentors: mentors.rows,
-        student_progress_graph: studentProgressGraph.rows  
+        student_progress_graph: studentProgressGraph.rows ,
+         pie_chart: pieChartData
       }
     });
 
