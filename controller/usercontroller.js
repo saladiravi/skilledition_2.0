@@ -227,6 +227,12 @@ exports.loginUser = async (req, res) => {
     }
 
     const user = result.rows[0];
+ if (user.login_status) {
+      return res.status(403).json({
+        statusCode: 403,
+        message: 'User already logged in on another device'
+      });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
@@ -236,7 +242,12 @@ exports.loginUser = async (req, res) => {
         message: 'Invalid password'
       });
     }
-
+ await pool.query(
+      `UPDATE tbl_user 
+       SET login_status = true  
+       WHERE user_id = $1`,
+      [user.user_id]
+    );
     // 👉 Only for student
     if (user.role !== 'student') {
       user.overview_unlocked = null;
@@ -911,5 +922,62 @@ exports.resetPassword = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+exports.logoutUser = async (req, res) => {
+  try {
+    const { user_id } = req.body;
+
+    if (!user_id) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: 'user_id is required'
+      });
+    }
+
+    // 1️⃣ Check if user exists
+    const userCheck = await pool.query(
+      `SELECT user_id, login_status FROM tbl_user WHERE user_id = $1`,
+      [user_id]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'User not found'
+      });
+    }
+
+    const user = userCheck.rows[0];
+
+    // 2️⃣ Check if user is already logged out
+    if (!user.login_status) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: 'User already logged out'
+      });
+    }
+
+    // 3️⃣ Update login_status to false
+    await pool.query(
+      `UPDATE tbl_user
+       SET login_status = false
+       WHERE user_id = $1`,
+      [user_id]
+    );
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: 'Logout successful'
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: 'Internal server error'
+    });
   }
 };
