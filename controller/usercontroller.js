@@ -122,197 +122,197 @@ exports.addUser = async (req, res) => {
 
 
 
-// exports.loginUser = async (req, res) => {
-//   const { email, password } = req.body;
-
-//   if (!email || !password) {
-//     return res.status(400).json({
-//       statusCode: 400,
-//       message: 'Email and password are required'
-//     });
-//   }
-
-//   try {
-//     const result = await pool.query(
-//       `SELECT 
-//         u.*,
-
-//         CASE 
-//           WHEN sc.student_id IS NOT NULL THEN true
-//           ELSE false
-//         END AS overview_unlocked
-
-//       FROM tbl_user u
-
-//       LEFT JOIN (
-//         SELECT DISTINCT student_id 
-//         FROM tbl_student_course
-//       ) sc
-//       ON sc.student_id = u.user_id
-
-//       WHERE u.email = $1
-//       AND u.role IN ('student', 'tutor')`,
-//       [email]
-//     );
-
-//     if (result.rows.length === 0) {
-//       return res.status(404).json({
-//         statusCode: 404,
-//         message: 'User not found'
-//       });
-//     }
-
-//     const user = result.rows[0];
-//     if (user.login_status === true) {
-//       return res.status(403).json({
-//         statusCode: 403,
-//         message: 'User already logged in on another device'
-//       });
-//     }
-
-//     const isMatch = await bcrypt.compare(password, user.password);
-
-//     if (!isMatch) {
-//       return res.status(401).json({
-//         statusCode: 401,
-//         message: 'Invalid password'
-//       });
-//     }
-//  await pool.query(
-//       `UPDATE tbl_user 
-//        SET login_status = true  
-//        WHERE user_id = $1`,
-//       [user.user_id]
-//     );
-//     // 👉 Only for student
-//     if (user.role !== 'student') {
-//       user.overview_unlocked = null;
-//     }
-
-//     const token = jwt.sign(
-//       {
-//         id: user.user_id,
-//         email: user.email,
-//         role: user.role
-//       },
-//       jwt_secret,
-//       { expiresIn: '24h' }
-//     );
-
-//     return res.status(200).json({
-//       statusCode: 200,
-//       message: 'Login successfully',
-//       token,
-//       user
-//     });
-
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({
-//       statusCode: 500,
-//       message: 'Internal server error'
-//     });
-//   }
-// };
-
-
 exports.loginUser = async (req, res) => {
-  const { email, password, device_id, device_info } = req.body;
+  const { email, password } = req.body;
 
-  if (!email || !password || !device_info) {
+  if (!email || !password) {
     return res.status(400).json({
-         statusCode:400,
-      message: "Email, password and device info required"
+      statusCode: 400,
+      message: 'Email and password are required'
     });
   }
 
   try {
-    // 1️⃣ Get user
-    const userRes = await pool.query(
-      `SELECT * FROM tbl_user WHERE email=$1`,
+    const result = await pool.query(
+      `SELECT 
+        u.*,
+
+        CASE 
+          WHEN sc.student_id IS NOT NULL THEN true
+          ELSE false
+        END AS overview_unlocked
+
+      FROM tbl_user u
+
+      LEFT JOIN (
+        SELECT DISTINCT student_id 
+        FROM tbl_student_course
+      ) sc
+      ON sc.student_id = u.user_id
+
+      WHERE u.email = $1
+      AND u.role IN ('student', 'tutor')`,
       [email]
     );
 
-    if (userRes.rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({
-           statusCode:404,
-            message: "User not found" });
+        statusCode: 404,
+        message: 'User not found'
+      });
     }
 
-    const user = userRes.rows[0];
+    const user = result.rows[0];
+    if (user.login_status === true) {
+      return res.status(403).json({
+        statusCode: 403,
+        message: 'User already logged in on another device'
+      });
+    }
 
-    // 2️⃣ Check password
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ 
-           statusCode:401,
-           message: "Invalid password" });
-    }
 
-    // 3️⃣ Get device
-    const deviceRes = await pool.query(
-      `SELECT * FROM user_devices WHERE user_id=$1`,
+    if (!isMatch) {
+      return res.status(401).json({
+        statusCode: 401,
+        message: 'Invalid password'
+      });
+    }
+ await pool.query(
+      `UPDATE tbl_user 
+       SET login_status = true  
+       WHERE user_id = $1`,
       [user.user_id]
     );
-
-    const existingDevice = deviceRes.rows[0];
-
-    // 4️⃣ Device logic
-    if (!existingDevice) {
-      await pool.query(
-        `INSERT INTO user_devices (user_id, device_id, device_info)
-         VALUES ($1, $2, $3)`,
-        [user.user_id, device_id, device_info]
-      );
-    } else {
-      const oldInfo = existingDevice.device_info || {};
-
-      const isSameDeviceInfo =
-        oldInfo.platform === device_info.platform &&
-        oldInfo.userAgent === device_info.userAgent &&
-        oldInfo.screenResolution === device_info.screenResolution &&
-        oldInfo.timezone === device_info.timezone;
-
-      if (existingDevice.device_id !== device_id && !isSameDeviceInfo) {
-        return res.status(403).json({
-             statusCode:403,
-          message: "Already logged in on another device",
-          allowForceLogin: true
-        });
-      }
-
-      // Update device if needed
-      if (existingDevice.device_id !== device_id) {
-        await pool.query(
-          `UPDATE user_devices
-           SET device_id=$1, device_info=$2, updated_at=NOW()
-           WHERE user_id=$3`,
-          [device_id, device_info, user.user_id]
-        );
-      }
+    // 👉 Only for student
+    if (user.role !== 'student') {
+      user.overview_unlocked = null;
     }
 
-    // 5️⃣ Token
     const token = jwt.sign(
-      { user_id: user.user_id, email: user.email },
+      {
+        id: user.user_id,
+        email: user.email,
+        role: user.role
+      },
       jwt_secret,
-      { expiresIn: "24h" }
+      { expiresIn: '24h' }
     );
 
     return res.status(200).json({
-      statusCode:200,
-      message: "Login successful",
+      statusCode: 200,
+      message: 'Login successfully',
       token,
       user
     });
 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ 
-         statusCode:500,
-         message: "Server error" });
+    return res.status(500).json({
+      statusCode: 500,
+      message: 'Internal server error'
+    });
   }
 };
+
+
+// exports.loginUser = async (req, res) => {
+//   const { email, password, device_id, device_info } = req.body;
+
+//   if (!email || !password || !device_info) {
+//     return res.status(400).json({
+//          statusCode:400,
+//       message: "Email, password and device info required"
+//     });
+//   }
+
+//   try {
+//     // 1️⃣ Get user
+//     const userRes = await pool.query(
+//       `SELECT * FROM tbl_user WHERE email=$1`,
+//       [email]
+//     );
+
+//     if (userRes.rows.length === 0) {
+//       return res.status(404).json({
+//            statusCode:404,
+//             message: "User not found" });
+//     }
+
+//     const user = userRes.rows[0];
+
+//     // 2️⃣ Check password
+//     const isMatch = await bcrypt.compare(password, user.password);
+//     if (!isMatch) {
+//       return res.status(401).json({ 
+//            statusCode:401,
+//            message: "Invalid password" });
+//     }
+
+//     // 3️⃣ Get device
+//     const deviceRes = await pool.query(
+//       `SELECT * FROM user_devices WHERE user_id=$1`,
+//       [user.user_id]
+//     );
+
+//     const existingDevice = deviceRes.rows[0];
+
+//     // 4️⃣ Device logic
+//     if (!existingDevice) {
+//       await pool.query(
+//         `INSERT INTO user_devices (user_id, device_id, device_info)
+//          VALUES ($1, $2, $3)`,
+//         [user.user_id, device_id, device_info]
+//       );
+//     } else {
+//       const oldInfo = existingDevice.device_info || {};
+
+//       const isSameDeviceInfo =
+//         oldInfo.platform === device_info.platform &&
+//         oldInfo.userAgent === device_info.userAgent &&
+//         oldInfo.screenResolution === device_info.screenResolution &&
+//         oldInfo.timezone === device_info.timezone;
+
+//       if (existingDevice.device_id !== device_id && !isSameDeviceInfo) {
+//         return res.status(403).json({
+//              statusCode:403,
+//           message: "Already logged in on another device",
+//           allowForceLogin: true
+//         });
+//       }
+
+//       // Update device if needed
+//       if (existingDevice.device_id !== device_id) {
+//         await pool.query(
+//           `UPDATE user_devices
+//            SET device_id=$1, device_info=$2, updated_at=NOW()
+//            WHERE user_id=$3`,
+//           [device_id, device_info, user.user_id]
+//         );
+//       }
+//     }
+
+//     // 5️⃣ Token
+//     const token = jwt.sign(
+//       { user_id: user.user_id, email: user.email },
+//       jwt_secret,
+//       { expiresIn: "24h" }
+//     );
+
+//     return res.status(200).json({
+//       statusCode:200,
+//       message: "Login successful",
+//       token,
+//       user
+//     });
+
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ 
+//          statusCode:500,
+//          message: "Server error" });
+//   }
+// };
 
 
 // exports.loginUser = async (req, res) => {
