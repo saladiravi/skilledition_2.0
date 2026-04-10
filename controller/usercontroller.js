@@ -216,53 +216,55 @@ exports.addUser = async (req, res) => {
 // };
 
 
+ 
+
 exports.loginUser = async (req, res) => {
   const { email, password, device_id, device_info } = req.body;
 
   if (!email || !password || !device_info) {
     return res.status(400).json({
+      statusCode:400,
       message: "Email, password and device info required"
     });
   }
 
   try {
-    // 1️⃣ Get user
     const result = await pool.query(
-      `SELECT * FROM tbl_user WHERE email = $1`,
+      `SELECT * FROM tbl_user WHERE email=$1`,
       [email]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: "User not found" });
+      
+      return res.status(404).json({ 
+         statusCode:404,
+        message: "User not found" });
     }
 
     const user = result.rows[0];
 
-    // 2️⃣ Check password
     const isMatch = await bcrypt.compare(password, user.password);
-
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid password" });
+      return res.status(401).json({ 
+         statusCode:401,
+         message: "Invalid password" });
     }
 
     const oldDeviceId = user.device_id;
     const oldInfo = user.device_info || {};
     const newInfo = device_info;
 
-    // 3️⃣ Compare device_info
     const isSameDeviceInfo =
       oldInfo.platform === newInfo.platform &&
       oldInfo.userAgent === newInfo.userAgent &&
-      oldInfo.screenresolution === newInfo.screenResolution &&
+      oldInfo.screenResolution === newInfo.screenResolution &&
       oldInfo.timezone === newInfo.timezone;
-
-    // 4️⃣ LOGIN LOGIC
 
     // ✅ First login
     if (!oldDeviceId) {
       await pool.query(
         `UPDATE tbl_user 
-         SET device_id=$1, device_info=$2 
+         SET device_id=$1, device_info=$2, login_status=true
          WHERE user_id=$3`,
         [device_id, device_info, user.user_id]
       );
@@ -270,14 +272,17 @@ exports.loginUser = async (req, res) => {
 
     // ✅ Same device
     else if (oldDeviceId === device_id) {
-      // allow
+      await pool.query(
+        `UPDATE tbl_user SET login_status=true WHERE user_id=$1`,
+        [user.user_id]
+      );
     }
 
-    // ✅ Browser cleared (device_id changed but same device)
+    // ✅ Browser cleared
     else if (isSameDeviceInfo) {
       await pool.query(
         `UPDATE tbl_user 
-         SET device_id=$1, device_info=$2 
+         SET device_id=$1, device_info=$2, login_status=true
          WHERE user_id=$3`,
         [device_id, device_info, user.user_id]
       );
@@ -286,12 +291,12 @@ exports.loginUser = async (req, res) => {
     // ❌ Different device
     else {
       return res.status(403).json({
+         statusCode:403,
         message: "Already logged in on another device",
         allowForceLogin: true
       });
     }
 
-    // 5️⃣ Generate token
     const token = jwt.sign(
       {
         user_id: user.user_id,
@@ -302,13 +307,16 @@ exports.loginUser = async (req, res) => {
     );
 
     return res.status(200).json({
+       statusCode:200,
       message: "Login successful",
       token
     });
 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({
+       statusCode:500,
+        message: "Server error" });
   }
 };
 
