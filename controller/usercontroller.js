@@ -215,100 +215,200 @@ exports.addUser = async (req, res) => {
 //   }
 // };
 
-exports.loginUser = async (req, res) => {
-  const { email, password } = req.body;
 
-  if (!email || !password) {
+exports.loginUser = async (req, res) => {
+  const { email, password, device_id, device_info } = req.body;
+
+  if (!email || !password || !device_info) {
     return res.status(400).json({
-      statusCode: 400,
-      message: 'Email and password are required'
+      message: "Email, password and device info required"
     });
   }
 
   try {
+    // 1️⃣ Get user
     const result = await pool.query(
-      `SELECT 
-        u.*,
-        CASE 
-          WHEN sc.student_id IS NOT NULL THEN true
-          ELSE false
-        END AS overview_unlocked
-      FROM tbl_user u
-      LEFT JOIN (
-        SELECT DISTINCT student_id 
-        FROM tbl_student_course
-      ) sc
-      ON sc.student_id = u.user_id
-      WHERE u.email = $1
-      AND u.role IN ('student', 'tutor')`,
+      `SELECT * FROM tbl_user WHERE email = $1`,
       [email]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        statusCode: 404,
-        message: 'User not found'
-      });
+      return res.status(404).json({ message: "User not found" });
     }
 
     const user = result.rows[0];
 
-    // ✅ First verify password
+    // 2️⃣ Check password
     const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
-      return res.status(401).json({
-        statusCode: 401,
-        message: 'Invalid password'
-      });
+      return res.status(401).json({ message: "Invalid password" });
     }
 
-    // ✅ Now check login_status
-    if (user.login_status === true) {
+    const oldDeviceId = user.device_id;
+    const oldInfo = user.device_info || {};
+    const newInfo = device_info;
+
+    // 3️⃣ Compare device_info
+    const isSameDeviceInfo =
+      oldInfo.platform === newInfo.platform &&
+      oldInfo.userAgent === newInfo.userAgent &&
+      oldInfo.screenresolution === newInfo.screenResolution &&
+      oldInfo.timezone === newInfo.timezone;
+
+    // 4️⃣ LOGIN LOGIC
+
+    // ✅ First login
+    if (!oldDeviceId) {
+      await pool.query(
+        `UPDATE tbl_user 
+         SET device_id=$1, device_info=$2 
+         WHERE user_id=$3`,
+        [device_id, device_info, user.user_id]
+      );
+    }
+
+    // ✅ Same device
+    else if (oldDeviceId === device_id) {
+      // allow
+    }
+
+    // ✅ Browser cleared (device_id changed but same device)
+    else if (isSameDeviceInfo) {
+      await pool.query(
+        `UPDATE tbl_user 
+         SET device_id=$1, device_info=$2 
+         WHERE user_id=$3`,
+        [device_id, device_info, user.user_id]
+      );
+    }
+
+    // ❌ Different device
+    else {
       return res.status(403).json({
-        statusCode: 403,
-        message: 'User already logged in on another device'
+        message: "Already logged in on another device",
+        allowForceLogin: true
       });
     }
 
-    // ✅ Update login_status to true
-    await pool.query(
-      `UPDATE tbl_user 
-       SET login_status = true  
-       WHERE user_id = $1`,
-      [user.user_id]
-    );
-
-    // 👉 Only for student
-    if (user.role !== 'student') {
-      user.overview_unlocked = null;
-    }
-
-    // Generate JWT
+    // 5️⃣ Generate token
     const token = jwt.sign(
       {
-        id: user.user_id,
-        email: user.email,
-        role: user.role
+        user_id: user.user_id,
+        email: user.email
       },
-      jwt_secret,
-      { expiresIn: '24h' }
+      JWT_SECRET,
+      { expiresIn: "24h" }
     );
 
     return res.status(200).json({
-      statusCode: 200,
-      message: 'Login successfully',
-      token,
-      user
+      message: "Login successful",
+      token
     });
 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
-      statusCode: 500,
-      message: 'Internal server error'
-    });
+    return res.status(500).json({ message: "Server error" });
   }
 };
+
+
+// exports.loginUser = async (req, res) => {
+//   const { email, password } = req.body;
+
+//   if (!email || !password) {
+//     return res.status(400).json({
+//       statusCode: 400,
+//       message: 'Email and password are required'
+//     });
+//   }
+
+//   try {
+//     const result = await pool.query(
+//       `SELECT 
+//         u.*,
+//         CASE 
+//           WHEN sc.student_id IS NOT NULL THEN true
+//           ELSE false
+//         END AS overview_unlocked
+//       FROM tbl_user u
+//       LEFT JOIN (
+//         SELECT DISTINCT student_id 
+//         FROM tbl_student_course
+//       ) sc
+//       ON sc.student_id = u.user_id
+//       WHERE u.email = $1
+//       AND u.role IN ('student', 'tutor')`,
+//       [email]
+//     );
+
+//     if (result.rows.length === 0) {
+//       return res.status(404).json({
+//         statusCode: 404,
+//         message: 'User not found'
+//       });
+//     }
+
+//     const user = result.rows[0];
+
+//     // ✅ First verify password
+//     const isMatch = await bcrypt.compare(password, user.password);
+//     if (!isMatch) {
+//       return res.status(401).json({
+//         statusCode: 401,
+//         message: 'Invalid password'
+//       });
+//     }
+
+//     // ✅ Now check login_status
+//     if (user.login_status === true) {
+//       return res.status(403).json({
+//         statusCode: 403,
+//         message: 'User already logged in on another device'
+//       });
+//     }
+
+//     // ✅ Update login_status to true
+//     await pool.query(
+//       `UPDATE tbl_user 
+//        SET login_status = true  
+//        WHERE user_id = $1`,
+//       [user.user_id]
+//     );
+
+//     // 👉 Only for student
+//     if (user.role !== 'student') {
+//       user.overview_unlocked = null;
+//     }
+
+//     // Generate JWT
+//     const token = jwt.sign(
+//       {
+//         id: user.user_id,
+//         email: user.email,
+//         role: user.role
+//       },
+//       jwt_secret,
+//       { expiresIn: '24h' }
+//     );
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: 'Login successfully',
+//       token,
+//       user
+//     });
+
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: 'Internal server error'
+//     });
+//   }
+// };
+
+
 exports.adminloginUser = async (req, res) => {
   const { email, password } = req.body;
 
