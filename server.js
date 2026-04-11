@@ -17,12 +17,31 @@ const chatRoutes = require("./routes/chatRoutes");
 const notification=require('./routes/notificationroutes');
 const dashboard =require('./routes/dashboardroutes');
 const sanitizeInput =require('./middleware/sanitizeInput');
-
+const UAParser = require('ua-parser-js');
 
 
 
 const app = express();
 
+
+app.use((req, res, next) => {
+  const parser = new UAParser(req.headers['user-agent']);
+  const result = parser.getResult();
+
+  // ✅ Attach to req
+  req.deviceInfo = {
+    device: result.device || {},
+    os: result.os || {},
+    browser: result.browser || {},
+    userAgent: req.headers['user-agent']
+  };
+
+  console.log("Device:", result.device);
+  console.log("OS:", result.os);
+  console.log("Browser:", result.browser);
+
+  next();
+});
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); 
 app.use(express.json());
 app.use(sanitizeInput);
