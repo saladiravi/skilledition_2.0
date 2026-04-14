@@ -1661,7 +1661,7 @@ const createFinalAssignment = async (client, student_id, course_id) => {
   try {
 
     // 1. Create final assignment
-  const finalAssignmentResult = await client.query(`
+const finalAssignmentResult = await client.query(`
   INSERT INTO tbl_student_final_assignment
     (student_id, course_id, assignment_title, created_at, unlocked_date, is_unlocked, status)
   SELECT
@@ -1669,13 +1669,13 @@ const createFinalAssignment = async (client, student_id, course_id) => {
     $2,
     'Final Assignment',
     NOW(),
-    NOW() + (tc.duration || ' days')::INTERVAL,
+    NOW() + (tc.duration::int * INTERVAL '1 day'),
     false,
     'Pending'
   FROM tbl_course tc
   WHERE tc.course_id = $2
   RETURNING final_assignment_id
-`, [student_id, course_id]);
+`, [Number(student_id), Number(course_id)]);
 
     const final_assignment_id = finalAssignmentResult.rows[0].final_assignment_id;
 
