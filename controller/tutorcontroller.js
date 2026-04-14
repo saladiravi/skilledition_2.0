@@ -2143,7 +2143,10 @@ exports.tutordashboards = async (req, res) => {
     }
     const statsQuery = `
         SELECT
-        COUNT(DISTINCT c.course_id) AS total_courses,
+        COUNT(DISTINCT CASE 
+    WHEN c.status = 'published' 
+    THEN c.course_id 
+    END) AS total_courses,
 
         COUNT(DISTINCT sc.student_id) AS active_students,
 
