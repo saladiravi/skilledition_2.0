@@ -1327,7 +1327,7 @@ exports.updatefinalassigmentbyadmin = async (req, res) => {
         );
 
         await sendNotification({
-            sender_id: 15, // admin default
+            sender_id: 4, // admin default
             receiver_id: student_id,
             type: 'certificate',
             message: `Your certificate has been generated for course ${course_id}`,
