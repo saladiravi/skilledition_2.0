@@ -54,12 +54,13 @@ exports.getDashboardStats = async (req, res) => {
 
     // 2️⃣ Student data
     const graphData = await pool.query(`
-       SELECT
+      SELECT
         TO_CHAR(created_at, 'YYYY-MM') AS month_key,
         COUNT(*) AS student_count
       FROM tbl_user
       WHERE role = 'student'
-        AND created_at >= CURRENT_DATE - INTERVAL '4 months'
+      AND created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
+      AND created_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
       GROUP BY month_key
       `);
 
