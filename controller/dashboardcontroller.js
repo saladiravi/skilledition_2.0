@@ -979,43 +979,6 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
         ) AS month_date
     `);
 
-    // const monthlyData = await pool.query(`
-    //   SELECT 
-    //     DATE_TRUNC('month', sc.created_at) AS month_date,
-
-    //     COUNT(DISTINCT sc.student_id) AS enrollments,
-
-    //     COUNT(DISTINCT u.user_id) FILTER (
-    //       WHERE u.role = 'student'
-    //     ) AS views,
-
-    //      (
-    //       SELECT COUNT(DISTINCT fa.student_id)
-    //       FROM tbl_student_final_assignment fa
-    //       JOIN tbl_course c ON fa.course_id = c.course_id
-    //       WHERE c.tutor_id = $1
-    //       AND fa.is_unlocked = true
-    //       AND DATE_TRUNC('month', fa.created_at) = month_date
-    //     ) AS completions
-
-    //   FROM tbl_course c
-
-    //   LEFT JOIN tbl_student_course sc 
-    //     ON sc.course_id = c.course_id
-
-    //   LEFT JOIN tbl_user u 
-    //     ON DATE_TRUNC('month', u.created_at) = DATE_TRUNC('month', sc.created_at)
-
-    //   LEFT JOIN tbl_student_final_assignment fa 
-    //     ON fa.course_id = c.course_id
-    //     AND DATE_TRUNC('month', fa.created_at) = DATE_TRUNC('month', sc.created_at)
-
-    //   WHERE c.tutor_id = $1
-    //     AND sc.created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
-
-    //   GROUP BY month_date
-    // `, [tutor_id]);
-
 
     const monthlyData = await pool.query(`
   SELECT 
@@ -1060,25 +1023,28 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
 `, [tutor_id]);
 
 
-    const monthlyMap = {};
-    monthlyData.rows.forEach(row => {
-      monthlyMap[row.month_date] = {
-        enrollments: parseInt(row.enrollments),
-        views: parseInt(row.views),
-        completions: parseInt(row.completions)
-      };
-    });
+const monthlyMap = {};
 
-    const monthlyGraph = monthsResult.rows.map(row => {
-      const monthDate = row.month_date;
+monthlyData.rows.forEach(row => {
+  const key = new Date(row.month_date).toISOString().slice(0, 7); // "YYYY-MM"
 
-      return {
-        month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }),
-        enrollments: monthlyMap[monthDate]?.enrollments || 0,
-        views: monthlyMap[monthDate]?.views || 0,
-        completions: monthlyMap[monthDate]?.completions || 0
-      };
-    });
+  monthlyMap[key] = {
+    enrollments: parseInt(row.enrollments),
+    views: parseInt(row.views),
+    completions: parseInt(row.completions)
+  };
+});
+
+const monthlyGraph = monthsResult.rows.map(row => {
+  const key = new Date(row.month_date).toISOString().slice(0, 7);
+
+  return {
+    month: new Date(row.month_date).toLocaleString('en-US', { month: 'short' }),
+    enrollments: monthlyMap[key]?.enrollments || 0,
+    views: monthlyMap[key]?.views || 0,
+    completions: monthlyMap[key]?.completions || 0
+  };
+});
 
     // =========================
     // 3️⃣ GRADE DISTRIBUTION
