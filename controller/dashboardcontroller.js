@@ -971,12 +971,20 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
     // 2️⃣ MONTHLY GRAPH
     // =========================
     const monthsResult = await pool.query(`
-      SELECT 
+        SELECT 
         generate_series(
-          DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
-          DATE_TRUNC('month', CURRENT_DATE),
+          DATE_TRUNC('month', NOW()) - INTERVAL '3 months',
+          DATE_TRUNC('month', NOW()) + INTERVAL '1 month',
           INTERVAL '1 month'
-        ) AS month_date
+        ) AS month_date,
+        TO_CHAR(
+          generate_series(
+            DATE_TRUNC('month', NOW()) - INTERVAL '3 months',
+            DATE_TRUNC('month', NOW()) + INTERVAL '1 month',
+            INTERVAL '1 month'
+          ),
+          'YYYY-MM'
+        ) AS month_key
     `);
 
 
@@ -1015,10 +1023,10 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
         AND fa.created_at < m.month_date + INTERVAL '1 month'
       ) AS completions
 
-    FROM (
+      FROM (
       SELECT generate_series(
-        DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
-        DATE_TRUNC('month', CURRENT_DATE),
+        DATE_TRUNC('month', NOW()) - INTERVAL '3 months',
+        DATE_TRUNC('month', NOW()) + INTERVAL '1 month',
         INTERVAL '1 month'
       ) AS month_date
     ) m
