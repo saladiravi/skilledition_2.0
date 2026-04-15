@@ -754,6 +754,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         COUNT(*) FILTER (WHERE role = 'tutor') AS tutors
       FROM tbl_user
       WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+      AND created_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
       GROUP BY month_date
     `);
 
@@ -764,6 +765,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         COUNT(*) AS courses
       FROM tbl_course
       WHERE course_created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+      AND created_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
       GROUP BY month_date
     `);
 
@@ -856,6 +858,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
           COUNT(*) FILTER (WHERE is_unlocked = false) AS in_progress
         FROM tbl_student_final_assignment
         WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
+        AND created_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
         GROUP BY month_date
       `);
 
