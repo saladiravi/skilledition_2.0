@@ -13,7 +13,7 @@ exports.getnotification = async (req, res) => {
        JOIN tbl_user u 
          ON n.sender_id = u.user_id
        WHERE n.receiver_id = $1
-       ORDER BY n.notification_id ASC`,
+       ORDER BY n.notification_id DESC`,
       [receiver_id]
     );
 
@@ -183,7 +183,7 @@ exports.gettutorNotificationDashboard = async (req, res) => {
 
           FROM tbl_notifications
           WHERE receiver_id = $1
-          ORDER BY notification_id ASC
+          ORDER BY notification_id DESC
         `, [tutor_id])
 
     ]);
