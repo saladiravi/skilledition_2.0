@@ -276,26 +276,85 @@ exports.adminloginUser = async (req, res) => {
 };
 
 
+// exports.getuser = async (req, res) => {
+//   const { user_id } = req.body
+
+//   try {
+
+//     const user = await pool.query(`SELECT full_name,role,status,student_reg_number FROM tbl_user WHERE user_id=$1`, [user_id]);
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: 'Fetched Sucessfully',
+//       user: user.rows[0]
+//     })
+//   } catch (error) {
+//     return res.status(500).json({
+//       message: 500,
+//       statusCode: 'Internal Server Error'
+//     })
+//   }
+// }
+
 exports.getuser = async (req, res) => {
-  const { user_id } = req.body
+  const { user_id } = req.body;
 
   try {
 
-    const user = await pool.query(`SELECT full_name,role,status,student_reg_number FROM tbl_user WHERE user_id=$1`, [user_id]);
+    const result = await pool.query(`
+      SELECT 
+        u.full_name,
+        u.role,
+        u.status,
+        u.student_reg_number,
+
+        s.profile_image,
+        t.profile_pic
+
+      FROM tbl_user u
+      LEFT JOIN tbl_student s ON u.user_id = s.user_id
+      LEFT JOIN tbl_tutor t ON u.user_id = t.user_id
+      WHERE u.user_id = $1
+    `, [user_id]);
+
+    const user = result.rows[0];
+
+    if (!user) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "User not found"
+      });
+    }
+
+    let profileUrl = null;
+
+    // ✅ Role-based image selection
+    if (user.role === 'student' && user.profile_image) {
+      profileUrl = await getSignedVideoUrl(user.profile_image);
+    } 
+    else if (user.role === 'tutor' && user.profile_pic) {
+      profileUrl = await getSignedVideoUrl(user.profile_pic);
+    }
+
     return res.status(200).json({
       statusCode: 200,
-      message: 'Fetched Sucessfully',
-      user: user.rows[0]
-    })
+      message: 'Fetched Successfully',
+      user: {
+        full_name: user.full_name,
+        role: user.role,
+        status: user.status,
+        student_reg_number: user.student_reg_number,
+        profile_image: profileUrl
+      }
+    });
+
   } catch (error) {
+    console.error(error);
     return res.status(500).json({
-      message: 500,
-      statusCode: 'Internal Server Error'
-    })
+      statusCode: 500,
+      message: 'Internal Server Error'
+    });
   }
-}
-
-
+};
 
 exports.changePassword = async (req, res) => {
 
