@@ -63,7 +63,7 @@ exports.getprofile = async (req, res) => {
 
 exports.updateprofile = async (req, res) => {
   try {
-    const { user_id, full_name } = req.body;
+    const { user_id } = req.body;
 
     if (!user_id) {
       return res.status(400).json({
@@ -72,7 +72,7 @@ exports.updateprofile = async (req, res) => {
       });
     }
 
-    const phone_number = req.body.phone_number || null;
+   
     const gender = req.body.gender || null;
     const date_of_birth = req.body.date_of_birth || null;
     const college = req.body.college || null;
@@ -99,12 +99,7 @@ exports.updateprofile = async (req, res) => {
       profile_pic_key = await uploadToS3(req.file, "users/profile_image");
     }
 
-    if (full_name) {
-      await pool.query(
-        `UPDATE tbl_user SET phone_number=$1,full_name=$2 WHERE user_id=$3`,
-        [phone_number,full_name, user_id]
-      );
-    }
+    
 
     await pool.query(
       `UPDATE tbl_student
