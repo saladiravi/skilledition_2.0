@@ -1164,7 +1164,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
             AND COUNT(*) FILTER (WHERE fa.status = 'Completed') > 0
             THEN '100%'
 
-          ELSE 'In Progress'
+          ELSE '0'
         END AS progress,
 
        ROUND(
