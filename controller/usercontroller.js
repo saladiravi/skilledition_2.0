@@ -562,10 +562,9 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   const {
     user_id,
-    full_name,
-    professional_background,
+     professional_background,
     subject_to_teach,
-    phone_number
+   
   } = req.body;
 
   if (!user_id) {
@@ -585,14 +584,7 @@ exports.updateProfile = async (req, res) => {
         "users/profile_pics"
       );
     }
-
-    /* -------------------- Update tbl_user -------------------- */
-    if (full_name) {
-      await pool.query(
-        `UPDATE tbl_user SET full_name = $1 WHERE user_id = $2`,
-        [full_name, user_id]
-      );
-    }
+ 
 
     /* -------------------- Update tbl_tutor -------------------- */
     const query = `
@@ -601,10 +593,10 @@ exports.updateProfile = async (req, res) => {
        
         professional_background = COALESCE($1, professional_background),
         subject_to_teach = COALESCE($2, subject_to_teach),
-        profile_pic = COALESCE($3, profile_pic),
-        phone_number = COALESCE($4, phone_number)
-      WHERE user_id = $5
-      RETURNING user_id, profile_pic, phone_number;
+        profile_pic = COALESCE($3, profile_pic)
+     
+      WHERE user_id = $4
+      RETURNING user_id, profile_pic;
     `;
 
     const values = [
@@ -612,7 +604,6 @@ exports.updateProfile = async (req, res) => {
       professional_background,
       subject_to_teach,
       profile_pic_key,
-      phone_number,
       user_id
     ];
 
