@@ -37,39 +37,48 @@ exports.getDashboardStats = async (req, res) => {
     // 1️⃣ Generate months
     const monthsResult = await pool.query(`
       SELECT 
+      generate_series(
+        DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
+        DATE_TRUNC('month', CURRENT_DATE),
+        INTERVAL '1 month'
+      ) AS month_date,
+      TO_CHAR(
         generate_series(
           DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
           DATE_TRUNC('month', CURRENT_DATE),
           INTERVAL '1 month'
-        ) AS month_date
+        ),
+        'YYYY-MM'
+      ) AS month_key
     `);
 
     // 2️⃣ Student data
     const graphData = await pool.query(`
-      SELECT
-        DATE_TRUNC('month', created_at) AS month_date,
+        SELECT
+        TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM') AS month_key,
         COUNT(*) AS student_count
       FROM tbl_user
       WHERE role = 'student'
         AND created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
-      GROUP BY month_date
-    `);
+      GROUP BY month_key
+      `);
 
     // 3️⃣ Map
     const graphMap = {};
+
     graphData.rows.forEach(row => {
-      graphMap[row.month_date] = parseInt(row.student_count);
+      graphMap[row.month_key] = parseInt(row.student_count);
     });
 
     // 4️⃣ Final Graph Data
     const finalGraph = monthsResult.rows.map(row => {
-      const monthDate = row.month_date;
+    const key = row.month_key;
 
-      return {
-        month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }),
-        student_count: graphMap[monthDate] || 0
-      };
-    });
+    return {
+      month: new Date(row.month_date).toLocaleString('en-US', { month: 'short' }),
+      student_count: graphMap[key] || 0
+    };
+  });
 
     // =======================
     // 🥧 PIE CHART (Course Popularity)
