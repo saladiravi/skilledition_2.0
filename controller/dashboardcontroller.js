@@ -108,10 +108,10 @@ exports.getDashboardStats = async (req, res) => {
 
 
     // =======================
-// 🕒 RECENT SUBMISSIONS
-// =======================
+    // 🕒 RECENT SUBMISSIONS
+    // =======================
 
-const recentSubmissions = await pool.query(`
+    const recentSubmissions = await pool.query(`
   SELECT 
     full_name,
     type,
@@ -161,7 +161,7 @@ const recentSubmissions = await pool.query(`
 
     return res.status(200).json({
       statusCode: 200,
-        stats: {
+      stats: {
         total_students: users.rows[0].total_students,
         active_tutors: users.rows[0].active_tutors,
         active_courses: courses.rows[0].active_courses,
@@ -172,7 +172,7 @@ const recentSubmissions = await pool.query(`
         studentGraph: finalGraph,
         coursePopularity: coursePopularityData
       },
-      recent_submissions: recentSubmissions.rows   
+      recent_submissions: recentSubmissions.rows
     });
 
   } catch (error) {
@@ -696,7 +696,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
 
     `);
 
-        const studentPurchases = await pool.query(`
+    const studentPurchases = await pool.query(`
           SELECT 
             sc.student_course_id,
             sc.course_id,
@@ -800,8 +800,8 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         ORDER BY c.course_id
       `);
 
-     
-      const coursePerformance = await pool.query(`
+
+    const coursePerformance = await pool.query(`
         SELECT 
           c.course_id,
           c.course_title,
@@ -824,7 +824,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         GROUP BY c.course_id, c.course_title
       `);
 
-      const monthsResults = await pool.query(`
+    const monthsResults = await pool.query(`
           SELECT 
             generate_series(
               DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
@@ -834,7 +834,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         `);
 
 
-      const trendData = await pool.query(`
+    const trendData = await pool.query(`
         SELECT 
           DATE_TRUNC('month', created_at) AS month_date,
           COUNT(*) FILTER (WHERE is_unlocked = true) AS completed,
@@ -844,28 +844,28 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         GROUP BY month_date
       `);
 
-  // 3️⃣ Convert to map
-        const trendMap = {};
-        trendData.rows.forEach(row => {
-          trendMap[row.month_date] = {
-            completed: parseInt(row.completed),
-            in_progress: parseInt(row.in_progress)
-          };
-        });
+    // 3️⃣ Convert to map
+    const trendMap = {};
+    trendData.rows.forEach(row => {
+      trendMap[row.month_date] = {
+        completed: parseInt(row.completed),
+        in_progress: parseInt(row.in_progress)
+      };
+    });
 
-      // 4️⃣ Build final fixed 5 months data
-        const finaltrendData = monthsResults.rows.map(row => {
-          const monthDate = row.month_date;
+    // 4️⃣ Build final fixed 5 months data
+    const finaltrendData = monthsResults.rows.map(row => {
+      const monthDate = row.month_date;
 
-          return {
-            month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }), // Jan, Feb
-            completed: trendMap[monthDate]?.completed || 0,
-            in_progress: trendMap[monthDate]?.in_progress || 0
-          };
-        });
- 
+      return {
+        month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }), // Jan, Feb
+        completed: trendMap[monthDate]?.completed || 0,
+        in_progress: trendMap[monthDate]?.in_progress || 0
+      };
+    });
 
-        const courseAvgScores = await pool.query(`
+
+    const courseAvgScores = await pool.query(`
           SELECT 
             c.course_title,
             ROUND(AVG(a.total_marks::numeric), 2) AS avg_score
@@ -898,15 +898,15 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
           avg_learning_hours: result.rows[0].avg_learning_hours,
           completion_rate: result.rows[0].completion_rate,
           student_satisfaction: result.rows[0].student_satisfaction,
-      
+
         },
 
-       studentPurchases: studentPurchases.rows,
-  
+        studentPurchases: studentPurchases.rows,
+
         charts: {
           platformGrowth: finalData,
           coursePerformance: coursePerformance.rows,
-          ratingDistribution:ratingDistribution.rows,
+          ratingDistribution: ratingDistribution.rows,
           completionTrend: finaltrendData,
           courseAvgScores: courseAvgScores.rows
         }
@@ -1156,12 +1156,27 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
         u.full_name AS student_name,
         c.course_title,
 
-        CASE 
-          WHEN BOOL_AND(fa.is_unlocked) THEN '100%'
+       CASE 
+          WHEN COUNT(*) FILTER (WHERE fa.status = 'Completed') = 0 
+            THEN 'Not Started'
+
+          WHEN BOOL_AND(fa.is_unlocked) 
+            AND COUNT(*) FILTER (WHERE fa.status = 'Completed') > 0
+            THEN '100%'
+
           ELSE 'In Progress'
         END AS progress,
 
-        ROUND(COALESCE(AVG(fa.total_marks::int), 0), 2) AS avg_score,
+       ROUND(
+          COALESCE(
+            AVG(fa.total_marks::int)
+            FILTER (
+              WHERE 
+                fa.status = 'Completed' 
+                AND fa.total_marks ~ '^[0-9]+$'
+            ),
+          0),
+        2) AS avg_score,
 
         CASE 
           WHEN MAX(fa.created_at) >= NOW() - INTERVAL '7 days'
@@ -1179,7 +1194,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
       LIMIT 10;
     `, [tutor_id]);
 
- const engagementMetrics = await pool.query(`
+    const engagementMetrics = await pool.query(`
   SELECT 
 
     -- ✅ Active Students
@@ -1218,7 +1233,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
     // FINAL RESPONSE
     // =========================
     return res.status(200).json({
-      statusCode:200,
+      statusCode: 200,
       dashboard: {
         stats: statsQuery.rows[0],
         monthlyGraph,
@@ -1231,7 +1246,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
     });
 
   } catch (error) {
-   console.log(error)
+    console.log(error)
     return res.status(500).json({
       success: false,
       message: "Internal Server Error"
