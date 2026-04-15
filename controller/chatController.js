@@ -662,7 +662,12 @@ exports.chatstats = async (req, res) => {
 
     const statsQuery = `
       SELECT
-        COUNT(DISTINCT cr.student_id) AS total_students,
+         (
+          SELECT COUNT(DISTINCT sc.student_id)
+          FROM tbl_student_course sc
+          JOIN tbl_course c2 ON sc.course_id = c2.course_id
+          WHERE c2.tutor_id = $1
+        ) AS total_students,
 
         COUNT(q.query_id) AS total_queries,
 
