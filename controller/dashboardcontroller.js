@@ -959,10 +959,14 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         (SELECT COUNT(*) FROM tbl_student_course) AS enrolled_students,
         (SELECT COUNT(*) FROM tbl_student_final_assignment WHERE is_unlocked = true) AS completed_students,
         (SELECT COUNT(*) FROM tbl_student_final_assignment WHERE is_unlocked = false) AS in_progress_students,
-        (SELECT ROUND(AVG(total_marks::numeric), 2) FROM tbl_student_final_assignment) AS avg_percentage,
+        (SELECT ROUND(AVG(total_marks::numeric), 2) 
+        FROM tbl_student_final_assignment
+        WHERE is_unlocked = true) AS avg_percentage,
 
-        (SELECT ROUND(AVG(total_marks::numeric), 2) FROM tbl_student_final_assignment) AS avg_assignment_score,
-
+        (SELECT ROUND(AVG(total_marks::numeric), 2) 
+        FROM tbl_student_final_assignment
+        WHERE is_unlocked = true) AS avg_assignment_score,
+        
         (SELECT ROUND(AVG(total_hours), 2)
           FROM (
             SELECT 
