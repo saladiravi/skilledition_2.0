@@ -1012,7 +1012,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
       AND fa.is_unlocked = true
       AND fa.created_at >= m.month_date
       AND fa.created_at < m.month_date + INTERVAL '1 month'
-    ) AS completions,
+    ) AS completions
 
   FROM (
     SELECT generate_series(
