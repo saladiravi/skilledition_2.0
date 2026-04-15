@@ -1023,9 +1023,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
       ) AS month_date
     ) m
 
-    ORDER BY m.month_date;
-
-      ORDER BY m.month_date
+    ORDER BY m.month_date
     `, [tutor_id]);
 
 
