@@ -3266,6 +3266,7 @@ exports.getadminstudentmanagement = async (req, res) => {
       tu.user_id AS student_id, 
       tu.full_name,
       tu.email,
+      tu.student_reg_number,
       tu.phone_number,
       ts.gender,
 
@@ -3323,6 +3324,7 @@ exports.getadminstudentmanagement = async (req, res) => {
       tu.full_name,
       tu.email,
       tu.phone_number,
+      tu.student_reg_number,
       ts.gender
 `);
 

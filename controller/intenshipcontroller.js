@@ -138,6 +138,7 @@ exports.gettotalinternship = async (req, res) => {
           u.user_id,
           u.full_name,
           u.email,
+          u.student_reg_number,
           i.internship_id,
           i.project_name,
           i.github_url,

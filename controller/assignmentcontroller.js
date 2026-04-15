@@ -1219,6 +1219,7 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
                 student.full_name AS student_name,
                 student.email AS email,
                 student.phone_number,
+                student.student_reg_number,
                 tutor.full_name AS tutor_name
 
             FROM tbl_student_final_assignment AS tsf
@@ -1511,7 +1512,8 @@ exports.getallstudentcertificates = async (req, res) => {
             tc.course_title,
             tu.full_name,
             tu.email,
-            tu.phone_number
+            tu.phone_number,
+            tu.student_reg_number
 
         FROM tbl_certificates AS tcr
 
