@@ -1029,7 +1029,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
 const monthlyMap = {};
 
 monthlyData.rows.forEach(row => {
-  const key = new Date(row.month_date).toISOString().slice(0, 7); // "YYYY-MM"
+  const key = row.month_date.toLocaleDateString('en-CA').slice(0, 7); // "YYYY-MM"
 
   monthlyMap[key] = {
     enrollments: parseInt(row.enrollments),
@@ -1039,10 +1039,10 @@ monthlyData.rows.forEach(row => {
 });
 
 const monthlyGraph = monthsResult.rows.map(row => {
-  const key = new Date(row.month_date).toISOString().slice(0, 7);
+  const key = row.month_date.toLocaleDateString('en-CA').slice(0, 7);
 
   return {
-    month: new Date(row.month_date).toLocaleString('en-US', { month: 'short' }),
+    month: row.month_date.toLocaleString('en-US', { month: 'short' }),
     enrollments: monthlyMap[key]?.enrollments || 0,
     views: monthlyMap[key]?.views || 0,
     completions: monthlyMap[key]?.completions || 0
