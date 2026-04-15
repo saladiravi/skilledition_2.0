@@ -1676,26 +1676,18 @@ exports.getAssignmentById = async (req, res) => {
 const createFinalAssignment = async (client, student_id, course_id) => {
   try {
 
-    // 1. Create final assignment
-  const finalAssignmentResult = await client.query(`
-  INSERT INTO tbl_student_final_assignment
-    (student_id, course_id, assignment_title, created_at, unlocked_date, is_unlocked, status)
-  SELECT
-    $1,
-    $2,
-    'Final Assignment',
-    NOW(),
-    NOW() + (tc.duration || ' days')::INTERVAL,
-    false,
-    'Pending'
-  FROM tbl_course tc
-  WHERE tc.course_id = $2
-  RETURNING final_assignment_id
-`, [student_id, course_id]);
+    // 1️⃣ Create final assignment (simple)
+    const finalAssignmentResult = await client.query(`
+      INSERT INTO tbl_student_final_assignment
+        (student_id, course_id, assignment_title, created_at, is_unlocked, status)
+      VALUES
+        ($1, $2, 'Final Assignment', NOW(), false, 'Pending')
+      RETURNING final_assignment_id
+    `, [student_id, course_id]);
 
     const final_assignment_id = finalAssignmentResult.rows[0].final_assignment_id;
 
-    // 2. Get 60 random questions from entire course
+    // 2️⃣ Get 60 random questions
     const questions = await client.query(`
       SELECT tq.question, tq.a, tq.b, tq.c, tq.d, tq.answer
       FROM tbl_assignment ta
@@ -1705,7 +1697,7 @@ const createFinalAssignment = async (client, student_id, course_id) => {
       LIMIT 60
     `, [course_id]);
 
-    // 3. Insert questions
+    // 3️⃣ Insert questions (same logic)
     for (const q of questions.rows) {
       await client.query(`
         INSERT INTO tbl_student_final_assignment_questions
@@ -1723,11 +1715,11 @@ const createFinalAssignment = async (client, student_id, course_id) => {
       ]);
     }
 
-    // 4. Timer (1 question = 1 minute)
+    // 4️⃣ Timer logic
     const totalQuestions = questions.rows.length;
     const timerMinutes = totalQuestions;
 
-    // 5. Update assignment
+    // 5️⃣ Update assignment
     await client.query(`
       UPDATE tbl_student_final_assignment
       SET total_questions = $1,
