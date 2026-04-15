@@ -1049,12 +1049,14 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
     ) AS completions
 
   FROM (
-    SELECT generate_series(
-      DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
-      DATE_TRUNC('month', CURRENT_DATE),
-      INTERVAL '1 month'
-    ) AS month_date
-  ) m
+   SELECT 
+        TO_CHAR(month_date, 'YYYY-MM') AS month_date
+      FROM generate_series(
+        date_trunc('month', CURRENT_DATE) - INTERVAL '4 months',
+        date_trunc('month', CURRENT_DATE),
+        INTERVAL '1 month'
+      ) AS month_date;
+    ) m
 
   ORDER BY m.month_date
 `, [tutor_id]);
