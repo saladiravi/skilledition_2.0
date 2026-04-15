@@ -985,20 +985,22 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
     m.month_date,
 
     -- ✅ Enrollments
-    (
+      (
       SELECT COUNT(DISTINCT sc.student_id)
       FROM tbl_student_course sc
       JOIN tbl_course c ON sc.course_id = c.course_id
       WHERE c.tutor_id = $1
-      AND DATE_TRUNC('month', sc.created_at) = m.month_date
+      AND sc.created_at >= m.month_date
+      AND sc.created_at < m.month_date + INTERVAL '1 month'
     ) AS enrollments,
 
     -- ✅ Views
-    (
+      (
       SELECT COUNT(DISTINCT u.user_id)
       FROM tbl_user u
       WHERE u.role = 'student'
-      AND DATE_TRUNC('month', u.created_at) = m.month_date
+      AND u.created_at >= m.month_date
+      AND u.created_at < m.month_date + INTERVAL '1 month'
     ) AS views,
 
     -- ✅ Completions
@@ -1008,8 +1010,9 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
       JOIN tbl_course c ON fa.course_id = c.course_id
       WHERE c.tutor_id = $1
       AND fa.is_unlocked = true
-      AND DATE_TRUNC('month', fa.created_at) = m.month_date
-    ) AS completions
+      AND fa.created_at >= m.month_date
+      AND fa.created_at < m.month_date + INTERVAL '1 month'
+    ) AS completions,
 
   FROM (
     SELECT generate_series(
