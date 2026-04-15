@@ -124,13 +124,14 @@ exports.studentbuycourse = async (req, res) => {
       message: 'Course purchased successfully'
     });
 
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error(error);
-    return res.status(500).json({
-      statusCode: 500,
-      message: 'Internal Server Error'
-    });
+  }catch (error) {
+  await client.query('ROLLBACK');
+  console.error("FULL ERROR:", error);   // 👈 important
+  return res.status(500).json({
+    statusCode: 500,
+    message: error.message   // 👈 send actual error
+  });
+
   } finally {
     client.release();
   }
