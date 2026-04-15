@@ -770,7 +770,8 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
     // 4️⃣ Convert query results to maps
     const platformMap = {};
     platformGrowth.rows.forEach(row => {
-      platformMap[row.month_date] = {
+      const key = row.month_date.toISOString().slice(0, 7);
+      platformMap[key] = {
         students: parseInt(row.students),
         tutors: parseInt(row.tutors)
       };
@@ -778,20 +779,22 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
 
     const courseMap = {};
     courseGrowth.rows.forEach(row => {
-      courseMap[row.month_date] = parseInt(row.courses);
+      const key = row.month_date.toISOString().slice(0, 7); // ✅ FIX
+      courseMap[key] = parseInt(row.courses);
     });
 
     // 5️⃣ Build final fixed 6 months data
-    const finalData = monthsResult.rows.map(row => {
-      const monthDate = row.month_date;
+      const finalData = monthsResult.rows.map(row => {
+        const monthDate = row.month_date; // ✅ FIX
+        const key = new Date(monthDate).toISOString().slice(0, 7);
 
-      return {
-        month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }), // Jan, Feb
-        students: platformMap[monthDate]?.students || 0,
-        tutors: platformMap[monthDate]?.tutors || 0,
-        courses: courseMap[monthDate] || 0
-      };
-    });
+        return {
+          month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }),
+          students: platformMap[key]?.students || 0,
+          tutors: platformMap[key]?.tutors || 0,
+          courses: courseMap[key] || 0
+        };
+      });
 
     const ratingDistribution = await pool.query(`
         SELECT 
@@ -859,7 +862,8 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
     // 3️⃣ Convert to map
     const trendMap = {};
     trendData.rows.forEach(row => {
-      trendMap[row.month_date] = {
+      const key = row.month_date.toISOString().slice(0, 7); // ✅ FIX
+      trendMap[key] = {
         completed: parseInt(row.completed),
         in_progress: parseInt(row.in_progress)
       };
@@ -868,11 +872,12 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
     // 4️⃣ Build final fixed 5 months data
     const finaltrendData = monthsResults.rows.map(row => {
       const monthDate = row.month_date;
+      const key = new Date(monthDate).toISOString().slice(0, 7);
 
       return {
-        month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }), // Jan, Feb
-        completed: trendMap[monthDate]?.completed || 0,
-        in_progress: trendMap[monthDate]?.in_progress || 0
+        month: new Date(monthDate).toLocaleString('en-US', { month: 'short' }),
+        completed: trendMap[key]?.completed || 0,
+        in_progress: trendMap[key]?.in_progress || 0
       };
     });
 
