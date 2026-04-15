@@ -981,73 +981,74 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
 
 
     const monthlyData = await pool.query(`
-  SELECT 
-    m.month_date,
+    SELECT 
+      TO_CHAR(m.month_date, 'YYYY-MM') AS month_key,
+      m.month_date,
 
-    -- ✅ Enrollments
+      -- Enrollments
       (
-      SELECT COUNT(DISTINCT sc.student_id)
-      FROM tbl_student_course sc
-      JOIN tbl_course c ON sc.course_id = c.course_id
-      WHERE c.tutor_id = $1
-      AND sc.created_at >= m.month_date
-      AND sc.created_at < m.month_date + INTERVAL '1 month'
-    ) AS enrollments,
+        SELECT COUNT(DISTINCT sc.student_id)
+        FROM tbl_student_course sc
+        JOIN tbl_course c ON sc.course_id = c.course_id
+        WHERE c.tutor_id = $1
+        AND sc.created_at >= m.month_date
+        AND sc.created_at < m.month_date + INTERVAL '1 month'
+      ) AS enrollments,
 
-    -- ✅ Views
+      -- Views
       (
-      SELECT COUNT(DISTINCT u.user_id)
-      FROM tbl_user u
-      WHERE u.role = 'student'
-      AND u.created_at >= m.month_date
-      AND u.created_at < m.month_date + INTERVAL '1 month'
-    ) AS views,
+        SELECT COUNT(DISTINCT u.user_id)
+        FROM tbl_user u
+        WHERE u.role = 'student'
+        AND u.created_at >= m.month_date
+        AND u.created_at < m.month_date + INTERVAL '1 month'
+      ) AS views,
 
-    -- ✅ Completions
-    (
-      SELECT COUNT(DISTINCT fa.student_id)
-      FROM tbl_student_final_assignment fa
-      JOIN tbl_course c ON fa.course_id = c.course_id
-      WHERE c.tutor_id = $1
-      AND fa.is_unlocked = true
-      AND fa.created_at >= m.month_date
-      AND fa.created_at < m.month_date + INTERVAL '1 month'
-    ) AS completions
+      -- Completions
+      (
+        SELECT COUNT(DISTINCT fa.student_id)
+        FROM tbl_student_final_assignment fa
+        JOIN tbl_course c ON fa.course_id = c.course_id
+        WHERE c.tutor_id = $1
+        AND fa.is_unlocked = true
+        AND fa.created_at >= m.month_date
+        AND fa.created_at < m.month_date + INTERVAL '1 month'
+      ) AS completions
 
-  FROM (
-    SELECT generate_series(
-      DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
-      DATE_TRUNC('month', CURRENT_DATE),
-      INTERVAL '1 month'
-    ) AS month_date
-  ) m
+    FROM (
+      SELECT generate_series(
+        DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
+        DATE_TRUNC('month', CURRENT_DATE),
+        INTERVAL '1 month'
+      ) AS month_date
+    ) m
 
-  ORDER BY m.month_date
-`, [tutor_id]);
+    ORDER BY m.month_date;
+
+      ORDER BY m.month_date
+    `, [tutor_id]);
 
 
-const monthlyMap = {};
+    const monthlyMap = {};
 
-monthlyData.rows.forEach(row => {
-  const key = row.month_date.toLocaleDateString('en-CA').slice(0, 7); // "YYYY-MM"
+    monthlyData.rows.forEach(row => {
+      monthlyMap[row.month_key] = {
+        enrollments: parseInt(row.enrollments),
+        views: parseInt(row.views),
+        completions: parseInt(row.completions)
+      };
+    });
 
-  monthlyMap[key] = {
-    enrollments: parseInt(row.enrollments),
-    views: parseInt(row.views),
-    completions: parseInt(row.completions)
-  };
-});
+    const monthlyGraph = monthsResult.rows.map(row => {
+      const key = row.month_date.toISOString().slice(0, 7); // SAFE now
 
-const monthlyGraph = monthsResult.rows.map(row => {
-  const key = row.month_date.toLocaleDateString('en-CA').slice(0, 7);
-
-  return {
-    month: row.month_date.toLocaleString('en-US', { month: 'short' }),
-    enrollments: monthlyMap[key]?.enrollments || 0,
-    views: monthlyMap[key]?.views || 0,
-    completions: monthlyMap[key]?.completions || 0
-  };
-});
+      return {
+        month: new Date(row.month_date).toLocaleString('en-US', { month: 'short' }),
+        enrollments: monthlyMap[key]?.enrollments || 0,
+        views: monthlyMap[key]?.views || 0,
+        completions: monthlyMap[key]?.completions || 0
+      };
+    });
 
     // =========================
     // 3️⃣ GRADE DISTRIBUTION
