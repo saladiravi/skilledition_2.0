@@ -1156,16 +1156,13 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
         u.full_name AS student_name,
         c.course_title,
 
-       CASE 
-          WHEN COUNT(*) FILTER (WHERE fa.status = 'Completed') = 0 
-            THEN 'Not Started'
-
-          WHEN BOOL_AND(fa.is_unlocked) 
-            AND COUNT(*) FILTER (WHERE fa.status = 'Completed') > 0
-            THEN '100%'
-
-          ELSE '0'
-        END AS progress,
+        ROUND(
+            (
+              COUNT(*) FILTER (WHERE fa.status = 'Completed')::decimal
+              /
+              COUNT(*) 
+            ) * 100,
+          0) AS progress,
 
        ROUND(
           COALESCE(
