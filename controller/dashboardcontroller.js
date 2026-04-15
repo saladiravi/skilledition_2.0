@@ -1152,12 +1152,12 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
     // 5️⃣ STUDENT PERFORMANCE
     // =========================
     const studentPerformanceQuery = await pool.query(`
-      SELECT 
+            SELECT 
         u.full_name AS student_name,
         c.course_title,
 
         CASE 
-          WHEN fa.is_unlocked = true THEN '100%'
+          WHEN BOOL_AND(fa.is_unlocked) THEN '100%'
           ELSE 'In Progress'
         END AS progress,
 
@@ -1174,7 +1174,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
       JOIN tbl_course c ON fa.course_id = c.course_id
       WHERE c.tutor_id = $1
 
-      GROUP BY u.full_name, c.course_title, fa.is_unlocked
+      GROUP BY u.full_name, c.course_title
       ORDER BY avg_score DESC
       LIMIT 10;
     `, [tutor_id]);
