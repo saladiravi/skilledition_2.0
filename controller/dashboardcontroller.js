@@ -71,15 +71,17 @@ exports.getDashboardStats = async (req, res) => {
       graphMap[row.month_key] = parseInt(row.student_count);
     });
 
-    // 4️⃣ Final Graph Data
-    const finalGraph = monthsResult.rows.map(row => {
-    const key = row.month_key;
+ const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-    return {
-      month: new Date(row.month_date).toLocaleString('en-US', { month: 'short' }),
-      student_count: graphMap[key] || 0
-    };
-  });
+const finalGraph = monthsResult.rows.map(row => {
+  const key = row.month_key;
+  const monthIndex = parseInt(key.split('-')[1], 10) - 1;
+
+  return {
+    month: monthNames[monthIndex], // ✅ FIXED
+    student_count: graphMap[key] || 0
+  };
+});
 
     // =======================
     // 🥧 PIE CHART (Course Popularity)
