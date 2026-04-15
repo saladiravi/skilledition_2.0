@@ -101,12 +101,12 @@ exports.studentbuycourse = async (req, res) => {
 
     await createFinalAssignment(client, student_id, course_id);
     const courseRes = await client.query(`
-        SELECT course_name
+        SELECT course_title
         FROM tbl_course
         WHERE course_id = $1
       `, [course_id]);
 
-      const course_name = courseRes.rows[0]?.course_name || 'Course';
+      const course_title = courseRes.rows[0]?.course_title || 'Course';
 
       await client.query('COMMIT');
 
@@ -115,7 +115,7 @@ exports.studentbuycourse = async (req, res) => {
         sender_id: student_id,   // ✅ student
         receiver_id: 4,          // ✅ admin
         type: "Course Purchased",
-        message: `Student purchased course: ${course_name}`,
+        message: `Student purchased course: ${course_title}`,
         type_id: course_id
       });
 
