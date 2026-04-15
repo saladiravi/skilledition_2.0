@@ -760,13 +760,13 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
 
     // 3️⃣ Course Growth
     const courseGrowth = await pool.query(`
-      SELECT 
-        DATE_TRUNC('month', course_created_at) AS month_date,
-        COUNT(*) AS courses
-      FROM tbl_course
-      WHERE course_created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
-      AND created_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
-      GROUP BY month_date
+     SELECT 
+      DATE_TRUNC('month', course_created_at) AS month_date,
+      COUNT(*) AS courses
+    FROM tbl_course
+    WHERE course_created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+    AND course_created_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
+    GROUP BY month_date
     `);
 
     // 4️⃣ Convert query results to maps
