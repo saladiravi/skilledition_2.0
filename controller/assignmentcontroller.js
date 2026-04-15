@@ -1132,6 +1132,28 @@ exports.updatetutorfinalassingmentfeedback = async (req, res) => {
                 message: "Assignment not found"
             });
         }
+        const assignment = result.rows[0];
+
+            // 2️⃣ Get tutor_id from course
+            const tutorRes = await pool.query(`
+            SELECT c.tutor_id
+            FROM tbl_student_final_assignment fa
+            JOIN tbl_course c ON fa.course_id = c.course_id
+            WHERE fa.final_assignment_id = $1
+            `, [final_assignment_id]);
+
+            const tutor_id = tutorRes.rows[0]?.tutor_id;
+
+            // 3️⃣ Send notification to Admin (admin_id = 4)
+            if (tutor_id) {
+            await sendNotification({
+                sender_id: tutor_id,        // ✅ tutor
+                receiver_id: 4,             // ✅ admin
+                type: "Final Assignment Submited",
+                message: `Tutor submitted feedback for final assignment`,
+                type_id: final_assignment_id
+            });
+            }
 
         return res.status(200).json({
             statusCode: 200,

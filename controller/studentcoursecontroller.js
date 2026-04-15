@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { getSignedVideoUrl } = require('../utils/s3upload');
+const {sendNotification}=require('../utils/notification')
 
 
 function timeToSeconds(time) {
@@ -99,11 +100,26 @@ exports.studentbuycourse = async (req, res) => {
 
 
     await createFinalAssignment(client, student_id, course_id);
+    const courseRes = await client.query(`
+        SELECT course_name
+        FROM tbl_course
+        WHERE course_id = $1
+      `, [course_id]);
 
+      const course_name = courseRes.rows[0]?.course_name || 'Course';
 
-    await client.query('COMMIT');
+      await client.query('COMMIT');
 
-    return res.status(200).json({
+      // 7️⃣ 🔔 Send notification to Admin
+      await sendNotification({
+        sender_id: student_id,   // ✅ student
+        receiver_id: 4,          // ✅ admin
+        type: "Course Purchased",
+        message: `Student purchased course: ${course_name}`,
+        type_id: course_id
+      });
+
+   return res.status(200).json({
       statusCode: 200,
       message: 'Course purchased successfully'
     });
@@ -1833,12 +1849,7 @@ exports.writeFinalExam = async (req, res) => {
 
     const assignment = assignmentRes.rows[0];
 
-    // if (assignment.is_unlocked === true) {
-    //   return res.status(403).json({
-    //     statusCode: 403,
-    //     message: "Exam is locked"
-    //   });
-    // }
+ 
 
     if (assignment.status === "Completed") {
       return res.status(400).json({
@@ -1920,7 +1931,28 @@ exports.writeFinalExam = async (req, res) => {
         final_assignment_id
       ]
     );
+// 5️⃣ Get tutor_id
+    const tutorRes = await pool.query(
+      `
+      SELECT tutor_id 
+      FROM tbl_course 
+      WHERE course_id = $1
+      `,
+      [assignment.course_id]
+    );
 
+    if (tutorRes.rows.length > 0) {
+      const tutor_id = tutorRes.rows[0].tutor_id;
+
+      // 6️⃣ Send Notification
+      await sendNotification({
+        sender_id: assignment.student_id,   // student
+        receiver_id: tutor_id,              // tutor
+        type: "Final Assignment Submited",
+        message: `Student has submitted the final exam.`,
+        type_id: final_assignment_id
+      });
+    }
     return res.status(200).json({
       statusCode: 200,
       message: "Final Exam submitted successfully",
