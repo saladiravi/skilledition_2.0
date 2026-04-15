@@ -1,5 +1,5 @@
 const con = require('../config/db');
-
+const { sendNotification } = require('../utils/notification');
 
 function formatDurationHMS(seconds) {
   const hrs = Math.floor(seconds / 3600);
@@ -75,6 +75,14 @@ exports.addfeedback = async (req, res) => {
     const result = await con.query(`INSERT INTO tbl_feedback (student_id, tutor_id, course_id, rating, enjoy_most, review) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [student_id, tutor_id, course_id || null, rating, enjoy_most || null, review || null]
     );
+
+     await sendNotification({
+      sender_id: student_id,   // ✅ student
+      receiver_id: tutor_id,   // ✅ tutor
+      type: "FEEDBACK_SUBMITTED",
+      message: `You received new feedback from student`,
+      type_id: result.rows[0].feedback_id
+    });
 
     return res.status(200).json({
       statusCode: 200,
