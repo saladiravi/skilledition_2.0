@@ -58,7 +58,7 @@ exports.getDashboardStats = async (req, res) => {
         TO_CHAR(created_at, 'YYYY-MM') AS month_key,
         COUNT(*) AS student_count
       FROM tbl_user
-      WHERE role = 'student'
+     WHERE role = 'student'
       AND created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
       AND created_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
       GROUP BY month_key
