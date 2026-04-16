@@ -79,7 +79,7 @@ exports.addfeedback = async (req, res) => {
      await sendNotification({
       sender_id: student_id,   // ✅ student
       receiver_id: tutor_id,   // ✅ tutor
-      type: "FEEDBACK_SUBMITTED",
+      type: "Feedback Submitted",
       message: `You received new feedback from student`,
       type_id: result.rows[0].feedback_id
     });
