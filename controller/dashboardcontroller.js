@@ -956,7 +956,8 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         (SELECT COUNT(*) FROM tbl_course) AS total_courses,
         (SELECT COALESCE(SUM(order_amount::numeric), 0) FROM tbl_student_course) AS total_revenue,
 
-        (SELECT COUNT(*) FROM tbl_student_course) AS enrolled_students,
+        (SELECT COUNT(DISTINCT student_id) 
+          FROM tbl_student_course) AS enrolled_students,
         (SELECT COUNT(*) FROM tbl_student_final_assignment WHERE is_unlocked = true) AS completed_students,
         (SELECT COUNT(*) FROM tbl_student_final_assignment WHERE is_unlocked = false) AS in_progress_students,
         (SELECT ROUND(AVG(total_marks::numeric), 2) 
