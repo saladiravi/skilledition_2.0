@@ -951,7 +951,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
     // =======================
     const result = await pool.query(`
       SELECT 
-        (SELECT COUNT(*) FROM tbl_student_course) AS total_students,
+       (SELECT COUNT(*) FROM tbl_student_course) AS total_students,
         (SELECT COUNT(DISTINCT tutor_id) FROM tbl_course) AS active_tutors,
         (SELECT COUNT(*) FROM tbl_course) AS total_courses,
         (SELECT COALESCE(SUM(order_amount::numeric), 0) FROM tbl_student_course) AS total_revenue,
