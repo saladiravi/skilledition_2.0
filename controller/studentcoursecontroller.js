@@ -2769,48 +2769,41 @@ exports.getstudentoverview = async (req, res) => {
       GROUP BY tc.course_id, tc.course_title, tcat.category_name, tu.full_name
       ORDER BY tc.course_id DESC
     `;
- const pieChartQuery = `
-      SELECT 
-  tc.course_id,
-  tc.course_title,
+const pieChartQuery = `
+  SELECT 
+    tc.course_id,
+    tc.course_title,
 
-  ROUND(
-    (
-      COUNT(DISTINCT svp.module_video_id)
-      FILTER (WHERE svp.is_completed = true) * 100.0
-      / NULLIF(COUNT(DISTINCT tmv.module_video_id), 0)
-    )
-    /
-    total_courses.total_count
-  , 2) AS completed_percentage
+    COALESCE(
+      ROUND(
+        (
+          COUNT(DISTINCT svp.module_video_id)
+          FILTER (WHERE svp.is_completed = true) * 100.0
+          / NULLIF(COUNT(DISTINCT tmv.module_video_id), 0)
+        ), 
+      2),
+    0) AS completed_percentage
 
-FROM tbl_student_course sc
+  FROM tbl_student_course sc
 
-JOIN tbl_course tc
-  ON sc.course_id = tc.course_id
+  JOIN tbl_course tc
+    ON sc.course_id = tc.course_id
 
-JOIN tbl_module tm
-  ON tc.course_id = tm.course_id
+  JOIN tbl_module tm
+    ON tc.course_id = tm.course_id
 
-JOIN tbl_module_videos tmv
-  ON tm.module_id = tmv.module_id
+  JOIN tbl_module_videos tmv
+    ON tm.module_id = tmv.module_id
 
-LEFT JOIN tbl_student_course_progress svp
-  ON tmv.module_video_id = svp.module_video_id
-  AND svp.student_id = $1
+  LEFT JOIN tbl_student_course_progress svp
+    ON tmv.module_video_id = svp.module_video_id
+    AND svp.student_id = $1
 
--- ✅ FIX: separate total courses calculation
-CROSS JOIN (
-  SELECT COUNT(DISTINCT course_id) AS total_count
-  FROM tbl_student_course
-  WHERE student_id = $1
-) AS total_courses
+  WHERE sc.student_id = $1
 
-WHERE sc.student_id = $1
-
-GROUP BY tc.course_id, tc.course_title, total_courses.total_count
-ORDER BY tc.course_id
-    `;
+  GROUP BY tc.course_id, tc.course_title
+  ORDER BY tc.course_id;
+`;
     const coursesection = `
       SELECT 
         tc.course_id,
