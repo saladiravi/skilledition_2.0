@@ -1,17 +1,54 @@
 const pool=require('../config/db');
 
 
-exports.getnotification = async (req, res) => {
+// exports.getnotification = async (req, res) => {
+//   const { receiver_id } = req.body;
+
+//   try {
+//     const result = await pool.query(
+//       `SELECT 
+//          n.*, 
+//          u.full_name AS sender_name
+//        FROM tbl_notifications n
+//        JOIN tbl_user u 
+//          ON n.sender_id = u.user_id
+//        WHERE n.receiver_id = $1
+//        ORDER BY n.notification_id DESC`,
+//       [receiver_id]
+//     );
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       notification_data: result.rows
+//     });
+
+//   } catch (error) {
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: 'Internal Server Error'
+//     });
+//   }
+// };
+
+ exports.getnotification = async (req, res) => {
   const { receiver_id } = req.body;
 
   try {
     const result = await pool.query(
       `SELECT 
          n.*, 
-         u.full_name AS sender_name
+         sender.full_name AS sender_name,
+         receiver.role AS receiver_role
        FROM tbl_notifications n
-       JOIN tbl_user u 
-         ON n.sender_id = u.user_id
+       
+       -- sender join
+       JOIN tbl_user sender 
+         ON n.sender_id = sender.user_id
+       
+       -- receiver join
+       JOIN tbl_user receiver 
+         ON n.receiver_id = receiver.user_id
+       
        WHERE n.receiver_id = $1
        ORDER BY n.notification_id DESC`,
       [receiver_id]
@@ -23,14 +60,13 @@ exports.getnotification = async (req, res) => {
     });
 
   } catch (error) {
+    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: 'Internal Server Error'
     });
   }
 };
-
- 
 
  exports.markNotificationAsRead = async (req, res) => {
   const { notification_id } = req.body;
