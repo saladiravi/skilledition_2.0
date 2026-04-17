@@ -48,13 +48,50 @@ exports.addinternship = async (req, res) => {
       });
     }
 
-    await pool.query(`
-            INSERT INTO tbl_internship 
-            (student_id, project_name,phone_number, github_url, web_url, description, applied_date) 
-            VALUES ($1, $2, $3, $4, $5,$6, NOW())
-        `,
-      [student_id, project_name,phone_number, github_url, web_url, description]);
+    // await pool.query(`
+    //         INSERT INTO tbl_internship 
+    //         (student_id, project_name,phone_number, github_url, web_url, description, applied_date) 
+    //         VALUES ($1, $2, $3, $4, $5,$6, NOW())
+    //     `,
+    //   [student_id, project_name,phone_number, github_url, web_url, description]);
 
+
+    const internshipResult = await pool.query(`
+      INSERT INTO tbl_internship 
+      (student_id, project_name, phone_number, github_url, web_url, description, applied_date) 
+      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      RETURNING internship_id
+    `,
+    [student_id, project_name, phone_number, github_url, web_url, description]);
+
+    const internship_id = internshipResult.rows[0].internship_id;
+
+    // ============================
+    // 4️⃣ GET ADMIN ID (DYNAMIC)
+    // ============================
+    const adminResult = await pool.query(`
+      SELECT user_id 
+      FROM tbl_user 
+      WHERE role = 'admin' 
+      LIMIT 1
+    `);
+
+    const admin_id = adminResult.rows[0]?.user_id;
+
+    // ============================
+    // 5️⃣ SEND NOTIFICATION
+    // ============================
+    if (admin_id) {
+      await sendNotification({
+        sender_id: student_id,
+        receiver_id: admin_id,
+        type: 'internship',
+        message: `${project_name} internship application submitted`,
+        type_id: internship_id
+      });
+    }
+
+    
     return res.status(200).json({
       statusCode: 200,
       message: "Submitted Successfully"
