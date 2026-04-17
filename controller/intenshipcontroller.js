@@ -86,12 +86,12 @@ exports.addinternship = async (req, res) => {
         sender_id: student_id,
         receiver_id: admin_id,
         type: 'internship',
-        message: `${project_name} internship application submitted`,
+        message: `Internship application submitted`,
         type_id: internship_id
       });
     }
 
-    
+
     return res.status(200).json({
       statusCode: 200,
       message: "Submitted Successfully"
