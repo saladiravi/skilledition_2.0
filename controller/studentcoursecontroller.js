@@ -2769,31 +2769,37 @@ exports.getstudentoverview = async (req, res) => {
       GROUP BY tc.course_id, tc.course_title, tcat.category_name, tu.full_name
       ORDER BY tc.course_id DESC
     `;
-const pieChartQuery = `
-SELECT 
-  COUNT(DISTINCT ta.assignment_id) AS total_assignments,
+      const pieChartQuery = `
+      SELECT 
+        tc.course_id,
+        tc.course_title,
 
-  COUNT(DISTINCT tsa.assignment_id) FILTER (
-    WHERE tsa.status = 'Completed'
-  ) AS completed_assignments
+        COUNT(DISTINCT ta.assignment_id) AS total_assignments,
 
-FROM tbl_student_course sc
+        COUNT(DISTINCT tsa.assignment_id) FILTER (
+          WHERE LOWER(tsa.status) = 'completed'
+        ) AS completed_assignments
 
-JOIN tbl_course tc
-  ON sc.course_id = tc.course_id
+      FROM tbl_student_course sc
 
-JOIN tbl_module tm
-  ON tc.course_id = tm.course_id
+      JOIN tbl_course tc
+        ON sc.course_id = tc.course_id
 
-JOIN tbl_assignment ta
-  ON tm.module_id = ta.module_id
+      JOIN tbl_module tm
+        ON tc.course_id = tm.course_id
 
-LEFT JOIN tbl_student_assignment tsa
-  ON ta.assignment_id = tsa.assignment_id
-  AND tsa.student_id = $1
+      JOIN tbl_assignment ta
+        ON tm.module_id = ta.module_id
 
-WHERE sc.student_id = $1
-`;
+      LEFT JOIN tbl_student_assignment tsa
+        ON ta.assignment_id = tsa.assignment_id
+        AND tsa.student_id = $1
+
+      WHERE sc.student_id = $1
+
+      GROUP BY tc.course_id, tc.course_title
+      ORDER BY tc.course_id;
+      `;
     const coursesection = `
       SELECT 
         tc.course_id,
@@ -3048,16 +3054,11 @@ const total = Number(pieRow.total_assignments);
 const completed = Number(pieRow.completed_assignments);
 const pending = Math.max(total - completed, 0);
 
-const pieChartData = [
-  {
-    name: "Completed",
-    value: completed
-  },
-  {
-    name: "Pending",
-    value: pending
-  }
-];
+const pieChartData = pieChart.rows.map(row => ({
+  course_title: row.course_title,
+  total: Number(row.total_assignments),
+  completed: Number(row.completed_assignments)
+}));
     // If student did not purchase any course
     if (courseData.length === 0) {
 
