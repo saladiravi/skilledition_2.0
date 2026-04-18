@@ -702,7 +702,7 @@ exports.getChatList = async (req, res) => {
           last_msg.created_at,
           last_msg.sender_id
 
-        ORDER BY last_message_time DESC NULLS LAST
+        ORDER BY last_msg.created_at DESC NULLS LAST
       `;
     }
 
