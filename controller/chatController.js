@@ -286,11 +286,210 @@ exports.getMessages = async (req, res) => {
 };
 
 
+// exports.getChatList = async (req, res) => {
+//   const { user_id } = req.body;
+
+//   try {
+
+//     // 1️⃣ Get user role
+//     const userResult = await pool.query(
+//       `SELECT role FROM tbl_user WHERE user_id = $1`,
+//       [user_id]
+//     );
+
+//     if (userResult.rows.length === 0) {
+//       return res.status(404).json({
+//         statusCode: 404,
+//         message: "User not found"
+//       });
+//     }
+
+//     const role = userResult.rows[0].role;
+
+//     let result;
+
+//     // ===================================================
+//     // 🎓 STUDENT
+//     // ===================================================
+//     if (role === "student") {
+
+//       result = await pool.query(
+//         `SELECT 
+//             sc.course_id,
+//             c.course_title,
+//             c.tutor_id,
+//             u.full_name AS tutor_name,
+//             cr.chat_room_id,
+
+//             COUNT(tcm.chat_id) FILTER (
+//               WHERE tcm.message_seen = false
+//               AND tcm.sender_id != $1
+//             ) AS unseen_count,
+//           MAX(tcm.created_at) AS last_message_time
+
+//          FROM tbl_student_course sc
+
+//          JOIN tbl_course c 
+//            ON sc.course_id = c.course_id
+
+//          JOIN tbl_user u 
+//            ON c.tutor_id = u.user_id
+
+//          LEFT JOIN tbl_chat_room cr
+//            ON cr.course_id = sc.course_id
+//            AND cr.student_id = sc.student_id
+
+//          LEFT JOIN tbl_chat_messages tcm
+//            ON cr.chat_room_id = tcm.chat_room_id
+
+//          WHERE sc.student_id = $1
+
+//          GROUP BY 
+//            sc.course_id,
+//            c.course_title,
+//            c.tutor_id,
+//            u.full_name,
+//            cr.chat_room_id
+
+//          ORDER BY last_message_time DESC NULLS LAST`,
+//         [user_id]
+//       );
+//     }
+
+//     // ===================================================
+//     // 👨‍🏫 TUTOR
+//     // ===================================================
+//     else if (role === "tutor") {
+
+//       result = await pool.query(
+//         `SELECT 
+//             sc.course_id,
+//             c.course_title,
+//             sc.student_id,
+//             u.full_name AS student_name,
+//             cr.chat_room_id,
+
+//             COUNT(tcm.chat_id) FILTER (
+//               WHERE tcm.message_seen = false
+//               AND tcm.sender_id != $1
+//             ) AS unseen_count,
+//         MAX(tcm.created_at) AS last_message_time
+//          FROM tbl_student_course sc
+
+//          JOIN tbl_course c 
+//            ON sc.course_id = c.course_id
+
+//          JOIN tbl_user u 
+//            ON sc.student_id = u.user_id
+
+//          LEFT JOIN tbl_chat_room cr
+//            ON cr.course_id = sc.course_id
+//            AND cr.student_id = sc.student_id
+
+//          LEFT JOIN tbl_chat_messages tcm
+//            ON cr.chat_room_id = tcm.chat_room_id
+
+//          WHERE c.tutor_id = $1
+
+//          GROUP BY
+//            sc.course_id,
+//            c.course_title,
+//            sc.student_id,
+//            u.full_name,
+//            cr.chat_room_id
+
+//          ORDER BY last_message_time DESC NULLS LAST`,
+//         [user_id]
+//       );
+//     }
+
+//     // ===================================================
+//     // 👑 ADMIN
+//     // ===================================================
+//     else if (role === "admin") {
+
+//       result = await pool.query(
+//         `SELECT 
+//             sc.course_id,
+//             c.course_title,
+
+//             c.tutor_id,
+//             t.full_name AS tutor_name,
+
+//             sc.student_id,
+//             s.full_name AS student_name,
+
+//             cr.chat_room_id,
+
+//             COUNT(tcm.chat_id) FILTER (
+//               WHERE tcm.message_seen = false
+//               AND tcm.sender_id != $1
+//             ) AS unseen_count,
+//         MAX(tcm.created_at) AS last_message_time
+//          FROM tbl_student_course sc
+
+//          JOIN tbl_course c 
+//            ON sc.course_id = c.course_id
+
+//          JOIN tbl_user t 
+//            ON c.tutor_id = t.user_id
+
+//          JOIN tbl_user s 
+//            ON sc.student_id = s.user_id
+
+//          LEFT JOIN tbl_chat_room cr
+//            ON cr.course_id = sc.course_id
+//            AND cr.student_id = sc.student_id
+
+//          LEFT JOIN tbl_chat_messages tcm
+//            ON cr.chat_room_id = tcm.chat_room_id
+
+//          GROUP BY
+//            sc.course_id,
+//            c.course_title,
+//            c.tutor_id,
+//            t.full_name,
+//            sc.student_id,
+//            s.full_name,
+//            cr.chat_room_id
+
+//          ORDER BY last_message_time DESC NULLS LAST`,
+//         [user_id]
+//       );
+//     }
+
+//     else {
+//       return res.status(403).json({
+//         statusCode: 403,
+//         message: "Invalid role"
+//       });
+//     }
+
+
+
+//     res.status(200).json({
+//       statusCode: 200,
+//       message: "Chat list fetched successfully",
+//       chatList: result.rows
+//     });
+
+//   } catch (error) {
+
+//     console.error(error);
+
+//     res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error"
+//     });
+
+//   }
+// };
+
+
 exports.getChatList = async (req, res) => {
   const { user_id } = req.body;
 
   try {
-
     // 1️⃣ Get user role
     const userResult = await pool.query(
       `SELECT role FROM tbl_user WHERE user_id = $1`,
@@ -306,156 +505,205 @@ exports.getChatList = async (req, res) => {
 
     const role = userResult.rows[0].role;
 
-    let result;
+    let query = "";
 
     // ===================================================
     // 🎓 STUDENT
     // ===================================================
     if (role === "student") {
+      query = `
+        SELECT 
+          sc.course_id,
+          c.course_title,
+          c.tutor_id,
+          u.full_name AS tutor_name,
+          cr.chat_room_id,
 
-      result = await pool.query(
-        `SELECT 
-            sc.course_id,
-            c.course_title,
-            c.tutor_id,
-            u.full_name AS tutor_name,
-            cr.chat_room_id,
+          COUNT(tcm.chat_id) FILTER (
+            WHERE tcm.message_seen = false
+            AND tcm.sender_id != $1
+          ) AS unseen_count,
 
-            COUNT(tcm.chat_id) FILTER (
-              WHERE tcm.message_seen = false
-              AND tcm.sender_id != $1
-            ) AS unseen_count,
-          MAX(tcm.created_at) AS last_message_time
+          last_msg.message AS last_message,
+          last_msg.created_at AS last_message_time,
+          last_msg.sender_id AS last_message_sender
 
-         FROM tbl_student_course sc
+        FROM tbl_student_course sc
 
-         JOIN tbl_course c 
-           ON sc.course_id = c.course_id
+        JOIN tbl_course c 
+          ON sc.course_id = c.course_id
 
-         JOIN tbl_user u 
-           ON c.tutor_id = u.user_id
+        JOIN tbl_user u 
+          ON c.tutor_id = u.user_id
 
-         LEFT JOIN tbl_chat_room cr
-           ON cr.course_id = sc.course_id
-           AND cr.student_id = sc.student_id
+        LEFT JOIN tbl_chat_room cr
+          ON cr.course_id = sc.course_id
+          AND cr.student_id = sc.student_id
 
-         LEFT JOIN tbl_chat_messages tcm
-           ON cr.chat_room_id = tcm.chat_room_id
+        -- ✅ latest message
+        LEFT JOIN LATERAL (
+          SELECT 
+            tcm.message,
+            tcm.created_at,
+            tcm.sender_id
+          FROM tbl_chat_messages tcm
+          WHERE tcm.chat_room_id = cr.chat_room_id
+          ORDER BY tcm.created_at DESC
+          LIMIT 1
+        ) last_msg ON true
 
-         WHERE sc.student_id = $1
+        -- ✅ for unseen count
+        LEFT JOIN tbl_chat_messages tcm
+          ON cr.chat_room_id = tcm.chat_room_id
 
-         GROUP BY 
-           sc.course_id,
-           c.course_title,
-           c.tutor_id,
-           u.full_name,
-           cr.chat_room_id
+        WHERE sc.student_id = $1
 
-         ORDER BY last_message_time DESC NULLS LAST`,
-        [user_id]
-      );
+        GROUP BY 
+          sc.course_id,
+          c.course_title,
+          c.tutor_id,
+          u.full_name,
+          cr.chat_room_id,
+          last_msg.message,
+          last_msg.created_at,
+          last_msg.sender_id
+
+        ORDER BY last_message_time DESC NULLS LAST
+      `;
     }
 
     // ===================================================
     // 👨‍🏫 TUTOR
     // ===================================================
     else if (role === "tutor") {
+      query = `
+        SELECT 
+          sc.course_id,
+          c.course_title,
+          sc.student_id,
+          u.full_name AS student_name,
+          cr.chat_room_id,
 
-      result = await pool.query(
-        `SELECT 
-            sc.course_id,
-            c.course_title,
-            sc.student_id,
-            u.full_name AS student_name,
-            cr.chat_room_id,
+          COUNT(tcm.chat_id) FILTER (
+            WHERE tcm.message_seen = false
+            AND tcm.sender_id != $1
+          ) AS unseen_count,
 
-            COUNT(tcm.chat_id) FILTER (
-              WHERE tcm.message_seen = false
-              AND tcm.sender_id != $1
-            ) AS unseen_count,
-        MAX(tcm.created_at) AS last_message_time
-         FROM tbl_student_course sc
+          last_msg.message AS last_message,
+          last_msg.created_at AS last_message_time,
+          last_msg.sender_id AS last_message_sender
 
-         JOIN tbl_course c 
-           ON sc.course_id = c.course_id
+        FROM tbl_student_course sc
 
-         JOIN tbl_user u 
-           ON sc.student_id = u.user_id
+        JOIN tbl_course c 
+          ON sc.course_id = c.course_id
 
-         LEFT JOIN tbl_chat_room cr
-           ON cr.course_id = sc.course_id
-           AND cr.student_id = sc.student_id
+        JOIN tbl_user u 
+          ON sc.student_id = u.user_id
 
-         LEFT JOIN tbl_chat_messages tcm
-           ON cr.chat_room_id = tcm.chat_room_id
+        LEFT JOIN tbl_chat_room cr
+          ON cr.course_id = sc.course_id
+          AND cr.student_id = sc.student_id
 
-         WHERE c.tutor_id = $1
+        LEFT JOIN LATERAL (
+          SELECT 
+            tcm.message,
+            tcm.created_at,
+            tcm.sender_id
+          FROM tbl_chat_messages tcm
+          WHERE tcm.chat_room_id = cr.chat_room_id
+          ORDER BY tcm.created_at DESC
+          LIMIT 1
+        ) last_msg ON true
 
-         GROUP BY
-           sc.course_id,
-           c.course_title,
-           sc.student_id,
-           u.full_name,
-           cr.chat_room_id
+        LEFT JOIN tbl_chat_messages tcm
+          ON cr.chat_room_id = tcm.chat_room_id
 
-         ORDER BY last_message_time DESC NULLS LAST`,
-        [user_id]
-      );
+        WHERE c.tutor_id = $1
+
+        GROUP BY
+          sc.course_id,
+          c.course_title,
+          sc.student_id,
+          u.full_name,
+          cr.chat_room_id,
+          last_msg.message,
+          last_msg.created_at,
+          last_msg.sender_id
+
+        ORDER BY last_message_time DESC NULLS LAST
+      `;
     }
 
     // ===================================================
     // 👑 ADMIN
     // ===================================================
     else if (role === "admin") {
+      query = `
+        SELECT 
+          sc.course_id,
+          c.course_title,
 
-      result = await pool.query(
-        `SELECT 
-            sc.course_id,
-            c.course_title,
+          c.tutor_id,
+          t.full_name AS tutor_name,
 
-            c.tutor_id,
-            t.full_name AS tutor_name,
+          sc.student_id,
+          s.full_name AS student_name,
 
-            sc.student_id,
-            s.full_name AS student_name,
+          cr.chat_room_id,
 
-            cr.chat_room_id,
+          COUNT(tcm.chat_id) FILTER (
+            WHERE tcm.message_seen = false
+            AND tcm.sender_id != $1
+          ) AS unseen_count,
 
-            COUNT(tcm.chat_id) FILTER (
-              WHERE tcm.message_seen = false
-              AND tcm.sender_id != $1
-            ) AS unseen_count,
-        MAX(tcm.created_at) AS last_message_time
-         FROM tbl_student_course sc
+          last_msg.message AS last_message,
+          last_msg.created_at AS last_message_time,
+          last_msg.sender_id AS last_message_sender
 
-         JOIN tbl_course c 
-           ON sc.course_id = c.course_id
+        FROM tbl_student_course sc
 
-         JOIN tbl_user t 
-           ON c.tutor_id = t.user_id
+        JOIN tbl_course c 
+          ON sc.course_id = c.course_id
 
-         JOIN tbl_user s 
-           ON sc.student_id = s.user_id
+        JOIN tbl_user t 
+          ON c.tutor_id = t.user_id
 
-         LEFT JOIN tbl_chat_room cr
-           ON cr.course_id = sc.course_id
-           AND cr.student_id = sc.student_id
+        JOIN tbl_user s 
+          ON sc.student_id = s.user_id
 
-         LEFT JOIN tbl_chat_messages tcm
-           ON cr.chat_room_id = tcm.chat_room_id
+        LEFT JOIN tbl_chat_room cr
+          ON cr.course_id = sc.course_id
+          AND cr.student_id = sc.student_id
 
-         GROUP BY
-           sc.course_id,
-           c.course_title,
-           c.tutor_id,
-           t.full_name,
-           sc.student_id,
-           s.full_name,
-           cr.chat_room_id
+        LEFT JOIN LATERAL (
+          SELECT 
+            tcm.message,
+            tcm.created_at,
+            tcm.sender_id
+          FROM tbl_chat_messages tcm
+          WHERE tcm.chat_room_id = cr.chat_room_id
+          ORDER BY tcm.created_at DESC
+          LIMIT 1
+        ) last_msg ON true
 
-         ORDER BY last_message_time DESC NULLS LAST`,
-        [user_id]
-      );
+        LEFT JOIN tbl_chat_messages tcm
+          ON cr.chat_room_id = tcm.chat_room_id
+
+        GROUP BY
+          sc.course_id,
+          c.course_title,
+          c.tutor_id,
+          t.full_name,
+          sc.student_id,
+          s.full_name,
+          cr.chat_room_id,
+          last_msg.message,
+          last_msg.created_at,
+          last_msg.sender_id
+
+        ORDER BY last_message_time DESC NULLS LAST
+      `;
     }
 
     else {
@@ -465,23 +713,22 @@ exports.getChatList = async (req, res) => {
       });
     }
 
+    // 🔥 Execute query
+    const result = await pool.query(query, [user_id]);
 
-
-    res.status(200).json({
+    return res.status(200).json({
       statusCode: 200,
       message: "Chat list fetched successfully",
       chatList: result.rows
     });
 
   } catch (error) {
-
     console.error(error);
 
-    res.status(500).json({
+    return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
     });
-
   }
 };
 
