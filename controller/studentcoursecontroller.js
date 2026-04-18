@@ -2894,22 +2894,26 @@ exports.getstudentoverview = async (req, res) => {
     `;
 
     // 4️⃣ Mentors
-    const mentorQuery = `
-      SELECT DISTINCT
-        tu.user_id,
-        tu.full_name,
-        tu.role
+const mentorQuery = `
+  SELECT 
+    tc.course_id,
+    tc.course_title,
+    tu.user_id,
+    tu.full_name,
+    tu.role
 
-      FROM tbl_student_course sc
+  FROM tbl_student_course sc
 
-      JOIN tbl_course tc
-        ON sc.course_id = tc.course_id
+  JOIN tbl_course tc
+    ON sc.course_id = tc.course_id
 
-      JOIN tbl_user tu
-        ON tc.tutor_id = tu.user_id
+  JOIN tbl_user tu
+    ON tc.tutor_id = tu.user_id
 
-      WHERE sc.student_id = $1
-    `;
+  WHERE sc.student_id = $1
+
+  ORDER BY tc.course_id
+`;
 
     // 5️⃣ Learning Time
  const learningTimeQuery = `
