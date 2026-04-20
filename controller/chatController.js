@@ -247,12 +247,19 @@ exports.getMessages = async (req, res) => {
               m.file_url,
               m.message_type,
               m.file_url AS file,
+              m.edited,
              TO_CHAR(m.created_at AT TIME ZONE 'Asia/Kolkata', 'DD-MM-YYYY HH12-MI AM'),
               u.full_name,
-              u.role
+              u.role,
+              c.course_title
               
        FROM tbl_chat_messages m
        JOIN tbl_user u ON m.sender_id = u.user_id
+       JOIN tbl_chat_room cr 
+       ON m.chat_room_id = cr.chat_room_id
+
+      JOIN tbl_course c 
+      ON cr.course_id = c.course_id
           
        WHERE m.chat_room_id = $1
        ORDER BY m.created_at ASC`,
@@ -762,7 +769,8 @@ exports.updateMessage = async (req, res) => {
         `UPDATE tbl_chat_messages
          SET message = NULL,
              file_url = $1,
-             message_type = $2
+             message_type = $2,
+             edited = true
          WHERE chat_id = $3
          RETURNING *`,
         [fileUrl, messageType, chat_id]
@@ -786,7 +794,8 @@ exports.updateMessage = async (req, res) => {
         `UPDATE tbl_chat_messages
          SET message = $1,
              file_url = NULL,
-             message_type = 'text'
+             message_type = 'text',
+             edited = true
          WHERE chat_id = $2
          RETURNING *`,
         [message, chat_id]
