@@ -1471,8 +1471,10 @@ exports.getallstudentcertificates = async (req, res) => {
                         WHERE status = 'Published'
                     ) AS no_of_courses,
 
-                    -- ✅ Certificate Issued Students
-                    COUNT(tcr.student_id) AS certificate_issued_students,
+                    (
+                    SELECT COUNT(DISTINCT student_id)
+                     FROM tbl_certificates
+                    ) AS certificate_issued_students,
 
                     -- ✅ Completion Ratio
                     CASE 
