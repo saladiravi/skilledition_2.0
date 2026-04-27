@@ -2116,12 +2116,10 @@ exports.gettutordetailsbyId = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Tutors fetched successfully",
       data: rows
     });
 
   } catch (error) {
-    console.error("getAllTutorbystatusnew Error:", error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal server error"
