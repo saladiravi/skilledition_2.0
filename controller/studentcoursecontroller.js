@@ -506,11 +506,18 @@ exports.getstudentcourse = async (req, res) => {
         });
       }
     }
-
+const finalAssignmentRes = await pool.query(`
+  SELECT final_assignment_id, assignment_title
+  FROM tbl_student_final_assignment
+  WHERE course_id = $1 AND student_id = $2
+  LIMIT 1
+`, [course_id, student_id]);
+const finalAssignment = finalAssignmentRes.rows[0] || null;
     return res.status(200).json({
       statusCode: 200,
       message: 'Fetched Sucessfully',
-      data: course
+      data: course,
+      finalAssignment:finalAssignment
     });
 
   } catch (error) {
