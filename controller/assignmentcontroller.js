@@ -964,10 +964,7 @@ exports.gettotalfinalassignment = async (req, res) => {
 
                         COUNT(*) FILTER (WHERE tsf.tutor_status = 'Pending') AS pending_review,
 
-                       COUNT(*) FILTER (
-                                WHERE tsf.grade IS NOT NULL 
-                                AND tsf.grade <> ''
-                            ) AS graded,
+                      COUNT(*) FILTER (WHERE tsf.tutor_status = 'Graded') AS graded,
 
                         COALESCE(
                             ROUND(

@@ -2121,15 +2121,11 @@ exports.getadmincoursewithstatus = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Admin courses fetched successfully",
-      data: Object.values(courses)
+       data: Object.values(courses)
     });
 
   } catch (error) {
-
-    console.error("getadmintotalcourse Error:", error);
-
-    return res.status(500).json({
+     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
     });
