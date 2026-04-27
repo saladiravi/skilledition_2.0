@@ -1278,15 +1278,9 @@ exports.updatefinalassigmentbyadmin = async (req, res) => {
 
         // 1️⃣ Get assignment details
         const assignmentResult = await pool.query(
-            `SELECT 
-                tsfa.tutor_status, 
-                tsfa.student_id, 
-                tsfa.course_id,
-                tc.course_title
-            FROM tbl_student_final_assignment tsfa
-            JOIN tbl_course tc 
-                ON tc.course_id = tsfa.course_id
-            WHERE tsfa.final_assignment_id = $1`,
+            `SELECT tutor_status, student_id, course_id
+       FROM tbl_student_final_assignment
+       WHERE final_assignment_id = $1`,
             [final_assignment_id]
         );
 
@@ -1298,7 +1292,7 @@ exports.updatefinalassigmentbyadmin = async (req, res) => {
         }
 
         const assignment = assignmentResult.rows[0];
-    const { student_id, course_id, course_title } = assignment;
+
         // 2️⃣ Check tutor status
         if (assignment.tutor_status === 'Tutor Pending') {
             return res.status(400).json({
@@ -1358,7 +1352,7 @@ exports.updatefinalassigmentbyadmin = async (req, res) => {
             sender_id: 4, // admin default
             receiver_id: student_id,
             type: 'certificate',
-            message: `Your certificate has been generated for course ${course_title}`,
+            message: `Your certificate has been generated for course ${course_id}`,
             type_id: certificate_id
         });
 
