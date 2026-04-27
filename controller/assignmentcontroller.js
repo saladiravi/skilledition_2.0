@@ -1238,7 +1238,9 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
                 AND tsf.course_id = tcr.course_id
                 
                 WHERE tsf.status = 'Completed'
-                ORDER BY tsf.submitted_at DESC;
+                ORDER BY 
+                tsf.tutor_status = 'Pending' DESC,
+                tsf.submitted_at DESC;
         `);
 
         const s = stats.rows[0];
