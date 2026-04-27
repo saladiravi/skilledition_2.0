@@ -1278,9 +1278,15 @@ exports.updatefinalassigmentbyadmin = async (req, res) => {
 
         // 1️⃣ Get assignment details
         const assignmentResult = await pool.query(
-            `SELECT tutor_status, student_id, course_id
-       FROM tbl_student_final_assignment
-       WHERE final_assignment_id = $1`,
+            `SELECT 
+                tsfa.tutor_status, 
+                tsfa.student_id, 
+                tsfa.course_id,
+                tc.course_title
+            FROM tbl_student_final_assignment tsfa
+            JOIN tbl_course tc 
+                ON tc.course_id = tsfa.course_id
+            WHERE tsfa.final_assignment_id = $1`,
             [final_assignment_id]
         );
 
@@ -1304,20 +1310,20 @@ exports.updatefinalassigmentbyadmin = async (req, res) => {
         // 3️⃣ Update admin status
         await pool.query(
             `UPDATE tbl_student_final_assignment
-       SET admin_status = 'Submitted'
-       WHERE final_assignment_id = $1`,
-            [final_assignment_id]
+            SET admin_status = 'Submitted'
+            WHERE final_assignment_id = $1`,
+                    [final_assignment_id]
         );
 
-        const { student_id, course_id } = assignment;
+          const { student_id, course_id, course_title } = assignment;
 
         // 4️⃣ Check if certificate already exists
         const certificateCheck = await pool.query(
             `SELECT certificate_id
-       FROM tbl_certificates
-       WHERE student_id = $1 AND course_id = $2`,
-            [student_id, course_id]
-        );
+            FROM tbl_certificates
+            WHERE student_id = $1 AND course_id = $2`,
+                    [student_id, course_id]
+            );
 
         if (certificateCheck.rows.length > 0) {
             return res.status(200).json({
@@ -1352,7 +1358,7 @@ exports.updatefinalassigmentbyadmin = async (req, res) => {
             sender_id: 4, // admin default
             receiver_id: student_id,
             type: 'certificate',
-            message: `Your certificate has been generated for course ${course_id}`,
+            message: `Congratulations! Your certificate for "${course_title}" has been generated successfully`,
             type_id: certificate_id
         });
 
