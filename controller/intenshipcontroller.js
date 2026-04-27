@@ -191,7 +191,7 @@ exports.gettotalinternship = async (req, res) => {
        FROM tbl_user u
        INNER JOIN tbl_internship i 
             ON u.user_id = i.student_id
-       ORDER BY i.internship_id ASC`
+       ORDER BY i.applied_date DESC;`
     );
 
     // if (result.rows.length === 0) {
