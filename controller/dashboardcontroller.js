@@ -1348,7 +1348,8 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
     // });
 
 const monthlyGraph = monthlyData.rows.map(row => ({
-  month: new Date(row.month_date).toLocaleString('en-US', { month: 'short' }),
+  month: new Date(row.month_key + '-01')
+            .toLocaleString('en-US', { month: 'short' }),
   enrollments: parseInt(row.enrollments),
   views: parseInt(row.views),
   completions: parseInt(row.completions),
