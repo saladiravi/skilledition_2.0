@@ -136,12 +136,7 @@ const finalGraph = monthsResult.rows.map(row => {
 
     UNION ALL
 
-    SELECT u.full_name, 'assignment' AS type, sa.created_at AS activity_date
-    FROM tbl_student_assignment sa
-    JOIN tbl_user u ON u.user_id = sa.student_id
-    WHERE sa.created_at IS NOT NULL
 
-    UNION ALL
 
     SELECT u.full_name, 'final_exam' AS type, sfa.submitted_at AS activity_date
     FROM tbl_student_final_assignment sfa
