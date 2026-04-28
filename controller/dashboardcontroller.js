@@ -1281,7 +1281,20 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
     SELECT 
       TO_CHAR(m.month_date, 'YYYY-MM') AS month_key,
       m.month_date,
-
+      (
+    SELECT json_agg(course_data)
+    FROM (
+      SELECT 
+        c.course_title,
+        COUNT(DISTINCT sc.student_id) AS enrollments
+      FROM tbl_student_course sc
+      JOIN tbl_course c ON sc.course_id = c.course_id
+      WHERE c.tutor_id = $1
+      AND sc.created_at >= m.month_date
+      AND sc.created_at < m.month_date + INTERVAL '1 month'
+      GROUP BY c.course_id, c.course_title
+    ) course_data
+  ) AS courses
       -- Enrollments
       (
         SELECT COUNT(DISTINCT sc.student_id)
@@ -1334,16 +1347,13 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
       };
     });
 
-    const monthlyGraph = monthsResult.rows.map(row => {
-      const key = row.month_date.toISOString().slice(0, 7); // SAFE now
-
-      return {
-        month: new Date(row.month_date).toLocaleString('en-US', { month: 'short' }),
-        enrollments: monthlyMap[key]?.enrollments || 0,
-        views: monthlyMap[key]?.views || 0,
-        completions: monthlyMap[key]?.completions || 0
-      };
-    });
+const monthlyGraph = monthlyData.rows.map(row => ({
+  month: new Date(row.month_date).toLocaleString('en-US', { month: 'short' }),
+  enrollments: parseInt(row.enrollments),
+  views: parseInt(row.views),
+  completions: parseInt(row.completions),
+  courses: row.courses || []   // ✅ course-wise data
+}));
 
     // =========================
     // 3️⃣ GRADE DISTRIBUTION
