@@ -1431,7 +1431,7 @@ const monthlyGraph = monthlyData.rows.map(row => ({
             SELECT 
         u.full_name AS student_name,
         c.course_title,
-      
+      fa.grade,
         ROUND(
             (
               COUNT(*) FILTER (WHERE fa.status = 'Completed')::decimal
@@ -1462,7 +1462,7 @@ const monthlyGraph = monthlyData.rows.map(row => ({
       JOIN tbl_course c ON fa.course_id = c.course_id
       WHERE c.tutor_id = $1
 
-      GROUP BY u.full_name, c.course_title
+      GROUP BY u.full_name, c.course_title,fa.grade
       ORDER BY avg_score DESC
       LIMIT 10;
     `, [tutor_id]);
