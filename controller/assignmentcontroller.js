@@ -989,10 +989,7 @@ exports.gettotalfinalassignment = async (req, res) => {
                     JOIN tbl_course tc 
                         ON tc.course_id = tsf.course_id
 
-                    LEFT JOIN tbl_student_course tsc
-                         ON tsc.course_id = tc.course_id
-
-                    WHERE tc.tutor_id = $1
+                   WHERE tc.tutor_id = $1
                     `;
 
         const statsResult = await pool.query(statsQuery, [tutor_id]);
