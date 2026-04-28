@@ -1431,7 +1431,7 @@ const monthlyGraph = monthlyData.rows.map(row => ({
             SELECT 
         u.full_name AS student_name,
         c.course_title,
-        fa.grade,
+      
         ROUND(
             (
               COUNT(*) FILTER (WHERE fa.status = 'Completed')::decimal
