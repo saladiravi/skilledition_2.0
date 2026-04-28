@@ -1037,7 +1037,7 @@ exports.gettotalfinalassignment = async (req, res) => {
                 total_courses: statsResult.rows[0].total_courses,
                 pending_review: statsResult.rows[0].pending_review,
                  pending_assignments: statsResult.rows[0].pending_assignments,
-                rejected_assignments: statsResult.rows[0].rejected_assignments,
+                completed_assignments: statsResult.rows[0].completed_assignments,
                 total_purchased_courses: statsResult.rows[0].total_purchased_courses,
                 graded: statsResult.rows[0].graded,
                 average_score: statsResult.rows[0].average_score
