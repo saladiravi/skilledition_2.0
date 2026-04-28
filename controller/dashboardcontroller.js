@@ -1327,10 +1327,10 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
 
       FROM (
       SELECT generate_series(
-        DATE_TRUNC('month', NOW()) - INTERVAL '3 months',
-        DATE_TRUNC('month', NOW()) + INTERVAL '1 month',
-        INTERVAL '1 month'
-      ) AS month_date
+      DATE_TRUNC('month', NOW()) - INTERVAL '4 months',  -- start
+      DATE_TRUNC('month', NOW()),                        -- end (current month)
+      INTERVAL '1 month'
+       ) AS month_date
     ) m
 
     ORDER BY m.month_date
