@@ -406,12 +406,14 @@ exports.getTutorAssignmentDetails = async (req, res) => {
         let totalQuestions = 0;
         let pendingAssignments = 0;
         let publishedAssignments = 0;
+        let rejectedAssignments = 0;
 
         result.rows.forEach(row => {
             totalAssignments += 1;
             totalQuestions += Number(row.total_questions);
             if (row.status === 'Pending') pendingAssignments += 1;
-            if (row.status === 'Published') publishedAssignments += 1;
+            else if (row.status === 'Published') publishedAssignments += 1;
+            else if (row.status === 'Rejected') rejectedAssignments += 1;
             // COURSE LEVEL
             if (!courseMap[row.course_id]) {
                 courseMap[row.course_id] = {
@@ -480,6 +482,7 @@ exports.getTutorAssignmentDetails = async (req, res) => {
                 total_assignments: totalAssignments,
                 published_assignments: publishedAssignments,
                 pending_assignments: pendingAssignments,
+                rejected_assignments: rejectedAssignments,
                 total_questions: totalQuestions
             },
             data: finalData
