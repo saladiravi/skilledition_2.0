@@ -165,7 +165,7 @@ const finalGraph = monthsResult.rows.map(row => {
   ) AS activity
 
   ORDER BY activity_date DESC
-  LIMIT 10
+  LIMIT 30
 `);
     // =======================
     // ✅ FINAL RESPONSE
