@@ -507,7 +507,7 @@ exports.getstudentcourse = async (req, res) => {
       }
     }
 const finalAssignmentRes = await pool.query(`
-  SELECT final_assignment_id, assignment_title
+  SELECT final_assignment_id, assignment_title,is_unlocked
   FROM tbl_student_final_assignment
   WHERE course_id = $1 AND student_id = $2
   LIMIT 1
