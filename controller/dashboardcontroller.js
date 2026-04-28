@@ -1229,7 +1229,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
     const statsQuery = await pool.query(`
       SELECT
         COUNT(DISTINCT sc.student_id) AS total_students,
-        COUNT(DISTINCT c.course_id) AS total_course
+        COUNT(DISTINCT c.course_id) AS total_course,
 
         (
           SELECT COUNT(*)
