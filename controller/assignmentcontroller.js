@@ -959,6 +959,8 @@ exports.gettotalfinalassignment = async (req, res) => {
         const statsQuery = `
                     SELECT
                         COUNT(*) FILTER (WHERE tsf.status = 'Completed') AS all_assignments,
+                        COUNT(*) FILTER (WHERE tsf.status = 'Pending') AS pending_assignments,
+                        COUNT(*) FILTER (WHERE tsf.status = 'Rejected') AS rejected_assignments,
 
                         COUNT(DISTINCT tsf.course_id) AS total_courses,
 
@@ -972,12 +974,23 @@ exports.gettotalfinalassignment = async (req, res) => {
                                     (tsf.correct_answers::decimal / NULLIF(tsf.total_questions::decimal,0)) * 100
                                 ),2
                             ),
-                        0) AS average_score
+                        0) AS average_score,
+
+                    (
+                        SELECT COUNT(*)
+                        FROM tbl_student_course tsc
+                        JOIN tbl_course tc2     
+                            ON tc2.course_id = tsc.course_id
+                        WHERE tc2.tutor_id = $1
+                    ) AS total_purchased_courses
 
                     FROM tbl_student_final_assignment tsf
 
                     JOIN tbl_course tc 
                         ON tc.course_id = tsf.course_id
+
+                    LEFT JOIN tbl_student_course tsc
+                         ON tsc.course_id = tc.course_id
 
                     WHERE tc.tutor_id = $1
                     `;
@@ -1023,6 +1036,9 @@ exports.gettotalfinalassignment = async (req, res) => {
                 all_assignments: statsResult.rows[0].all_assignments,
                 total_courses: statsResult.rows[0].total_courses,
                 pending_review: statsResult.rows[0].pending_review,
+                 pending_assignments: statsResult.rows[0].pending_assignments,
+                rejected_assignments: statsResult.rows[0].rejected_assignments,
+                total_purchased_courses: statsResult.rows[0].total_purchased_courses,
                 graded: statsResult.rows[0].graded,
                 average_score: statsResult.rows[0].average_score
             },
