@@ -1438,15 +1438,17 @@ const monthlyGraph = monthlyData.rows.map(row => ({
             ) * 100,
           0) AS progress,
 
-   ROUND(
-      COALESCE(
-        AVG(
-          (fa.total_marks * 100.0) / NULLIF(fa.total_questions, 0)
-        ) FILTER (
-          WHERE fa.status = 'Completed'
-        ),
-      0),
-    2) AS avg_score,
+       ROUND(
+          COALESCE(
+            AVG(fa.total_marks::int)
+            FILTER (
+              WHERE 
+                fa.status = 'Completed' 
+                AND fa.total_marks ~ '^[0-9]+$'
+            ),
+          0),
+        2) AS avg_score,
+        
 
         CASE 
           WHEN MAX(fa.created_at) >= NOW() - INTERVAL '7 days'
