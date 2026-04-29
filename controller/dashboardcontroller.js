@@ -130,20 +130,20 @@ const recentSubmissions = await pool.query(`
     TO_CHAR(activity_date, 'DD-MM-YYYY') AS activity_date
   FROM (
 
-    SELECT u.full_name, 'registration' AS type, u.created_at AS activity_date
+    SELECT u.full_name, 'Registration' AS type, u.created_at AS activity_date
     FROM tbl_user u
     WHERE u.created_at >= NOW() - INTERVAL '2 days'
 
     UNION ALL
 
-    SELECT u.full_name, 'final_exam' AS type, sfa.submitted_at AS activity_date
+    SELECT u.full_name, 'Final Exam' AS type, sfa.submitted_at AS activity_date
     FROM tbl_student_final_assignment sfa
     JOIN tbl_user u ON u.user_id = sfa.student_id
     WHERE sfa.submitted_at >= NOW() - INTERVAL '2 days'
 
     UNION ALL
 
-    SELECT u.full_name, 'internship' AS type, i.applied_date AS activity_date
+    SELECT u.full_name, 'Internship' AS type, i.applied_date AS activity_date
     FROM tbl_internship i
     JOIN tbl_user u ON u.user_id = i.student_id
     WHERE i.applied_date >= NOW() - INTERVAL '2 days'
