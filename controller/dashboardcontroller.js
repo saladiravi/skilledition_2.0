@@ -1164,6 +1164,63 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
       ORDER BY avg_score DESC
     `);
 
+  const studentcourseprogress = await pool.query(`
+  SELECT 
+    sc.student_course_id,
+    sc.course_id,
+    c.course_title,
+    sc.student_id,
+    u.full_name,
+    u.phone_number,
+    u.email,
+    u.student_reg_number,
+
+    -- ✅ Assignment Status (use status column)
+    CASE 
+      WHEN sfa.status = 'Completed' THEN 'Completed'
+      ELSE 'In Progress'
+    END AS assignment_status,
+
+    -- ✅ Certificate Status
+    CASE 
+      WHEN cert.certificate_id IS NOT NULL THEN 'Issued'
+      ELSE 'Pending'
+    END AS certificate_status,
+
+    -- ✅ Internship Status
+    CASE 
+      WHEN i.internship_id IS NOT NULL THEN 'Applied'
+      ELSE 'Pending'
+    END AS internship_status
+
+  FROM tbl_student_course sc
+
+  JOIN tbl_user u 
+    ON sc.student_id = u.user_id
+
+  JOIN tbl_course c 
+    ON sc.course_id = c.course_id
+
+  -- ✅ Assignment table
+  LEFT JOIN tbl_student_final_assignment sfa 
+    ON sc.student_id = sfa.student_id 
+    AND sc.course_id = sfa.course_id
+
+  -- ✅ Certificate table
+  LEFT JOIN tbl_certificates cert 
+    ON sc.student_id = cert.student_id 
+    AND sc.course_id = cert.course_id
+
+  -- ✅ Internship table (IMPORTANT FIX)
+  LEFT JOIN tbl_internship i 
+    ON sc.student_id = i.student_id
+
+  ORDER BY 
+    (sfa.status = 'Completed') DESC,     -- Completed first
+    (cert.certificate_id IS NOT NULL) DESC, -- Issued first
+    (i.internship_id IS NOT NULL) DESC,  -- Applied first
+    sc.created_at DESC
+`);
     // =======================
     // ✅ RESPONSE
     // =======================
@@ -1189,6 +1246,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
           student_satisfaction: result.rows[0].student_satisfaction,
         },
         studentPurchases: studentPurchases.rows,
+           studentcourseprogress: studentcourseprogress.rows,
         charts: {
           platformGrowth: finalData,
           coursePerformance: coursePerformance.rows,
