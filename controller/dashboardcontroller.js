@@ -1597,6 +1597,8 @@ exports.studentpurchaselist = async (req, res) => {
           WHERE sc.created_at >= NOW() - INTERVAL '7 days'
         )::int AS last_week_purchases,
 
+       COUNT(*)::int AS total_purchased_courses,
+
         COALESCE(SUM(sc.order_amount), 0)::numeric AS total_revenue
 
       FROM tbl_student_course sc
