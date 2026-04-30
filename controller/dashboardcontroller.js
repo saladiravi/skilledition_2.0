@@ -1533,16 +1533,15 @@ exports.studentpurchaselist = async (req, res) => {
     // ✅ 1. Get stats
     const statsResult = await pool.query(`
       SELECT 
-        COUNT(DISTINCT sc.student_id) AS total_students,
-        
+        COUNT(DISTINCT sc.student_id)::int AS total_students,
+
         COUNT(*) FILTER (
           WHERE sc.created_at >= NOW() - INTERVAL '7 days'
-        ) AS last_week_purchases,
+        )::int AS last_week_purchases,
 
-        COALESCE(SUM(sc.order_amount), 0) AS total_revenue
+        COALESCE(SUM(sc.order_amount), 0)::numeric AS total_revenue
 
       FROM tbl_student_course sc
-      WHERE sc.payment_status = 'Completed'
     `);
 
     // ✅ 2. Get purchase list
