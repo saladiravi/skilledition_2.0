@@ -980,29 +980,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
          FROM tbl_feedback) AS student_satisfaction
     `);
 
-    // =======================
-    // 📄 STUDENT PURCHASES
-    // =======================
-    const studentPurchases = await pool.query(`
-      SELECT 
-        sc.student_course_id,
-        sc.course_id,
-        c.course_title,
-        sc.student_id,
-        u.full_name,
-        u.phone_number,
-        u.email,
-        u.student_reg_number,
-        sc.order_amount,
-        sc.transaction_id,
-        sc.payment_status,
-        TO_CHAR(sc.created_at AT TIME ZONE 'Asia/Kolkata', 'DD-MM-YYYY') AS submitted_at
-      FROM tbl_student_course sc
-      JOIN tbl_user u ON sc.student_id = u.user_id
-      JOIN tbl_course c ON sc.course_id = c.course_id
-      ORDER BY sc.created_at DESC
-    `);
-
+  
     // =======================
     // 📊 MONTH SERIES (FIXED)
     // =======================
@@ -1245,7 +1223,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
           completion_rate: result.rows[0].completion_rate,
           student_satisfaction: result.rows[0].student_satisfaction,
         },
-        studentPurchases: studentPurchases.rows,
+      
            studentcourseprogress: studentcourseprogress.rows,
         charts: {
           platformGrowth: finalData,
