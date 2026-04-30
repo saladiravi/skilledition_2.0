@@ -1179,7 +1179,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
     CASE 
       WHEN sfa.status = 'Completed' THEN 'Completed'
       ELSE 'In Progress'
-    END AS assignment_status,
+    END AS course_completion,
 
     -- ✅ Certificate Status
     CASE 
