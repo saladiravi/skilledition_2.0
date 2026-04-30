@@ -1525,3 +1525,58 @@ const monthlyGraph = monthlyData.rows.map(row => ({
     });
   }
 };
+
+
+exports.studentpurchaselist = async (req, res) => {
+  try {
+
+    // ✅ 1. Get stats
+    const statsResult = await pool.query(`
+      SELECT 
+        COUNT(DISTINCT sc.student_id) AS total_students,
+        
+        COUNT(*) FILTER (
+          WHERE sc.created_at >= NOW() - INTERVAL '7 days'
+        ) AS last_week_purchases,
+
+        COALESCE(SUM(sc.order_amount), 0) AS total_revenue
+
+      FROM tbl_student_course sc
+      WHERE sc.payment_status = 'Completed'
+    `);
+
+    // ✅ 2. Get purchase list
+    const studentPurchases = await pool.query(`
+      SELECT 
+        sc.student_course_id,
+        sc.course_id,
+        c.course_title,
+        sc.student_id,
+        u.full_name,
+        u.phone_number,
+        u.email,
+        u.student_reg_number,
+        sc.order_amount,
+        sc.transaction_id,
+        sc.payment_status,
+        TO_CHAR(sc.created_at AT TIME ZONE 'Asia/Kolkata', 'DD-MM-YYYY') AS submitted_at
+      FROM tbl_student_course sc
+      JOIN tbl_user u ON sc.student_id = u.user_id
+      JOIN tbl_course c ON sc.course_id = c.course_id
+      ORDER BY sc.created_at DESC
+    `);
+
+    return res.status(200).json({
+      statusCode: 200,
+      stats: statsResult.rows[0],
+      data: studentPurchases.rows
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: 'Internal Server Error'
+    });
+  }
+};
