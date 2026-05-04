@@ -1767,12 +1767,12 @@ const createFinalAssignment = async (client, student_id, course_id) => {
 exports.getfinalquestions = async (req, res) => {
   const { final_assignment_id } = req.body;
 
-  if (!final_assignment_id) {
-    return res.status(400).json({
-      statusCode: 400,
-      message: 'Missing Required Field'
-    });
-  }
+  // if (!final_assignment_id) {
+  //   return res.status(400).json({
+  //     statusCode: 400,
+  //     message: 'Missing Required Field'
+  //   });
+  // }
 
   try {
 
