@@ -170,23 +170,47 @@ exports.gettutorNotificationDashboard = async (req, res) => {
     const [countsResult, notificationsResult] = await Promise.all([
 
       // 📊 Dashboard Counts
-      pool.query(`
-        SELECT 
-          COUNT(*) AS total_notifications,
+      // pool.query(`
+      //   SELECT 
+      //     COUNT(*) AS total_notifications,
 
-          COUNT(*) FILTER (WHERE type = 'assignment') AS assignments,
+      //     COUNT(*) FILTER (WHERE type = 'assignment') AS assignments,
 
-          COUNT(*) FILTER (WHERE type = 'query') AS queries,
+      //     COUNT(*) FILTER (WHERE type = 'query') AS queries,
  
 
-          COUNT(*) FILTER (WHERE type = 'feedback') AS feedbacks,
+      //     COUNT(*) FILTER (WHERE type = 'feedback') AS feedbacks,
 
-          COUNT(*) FILTER (WHERE is_read = false) AS unread_count
+      //     COUNT(*) FILTER (WHERE is_read = false) AS unread_count
 
-        FROM tbl_notifications
-        WHERE receiver_id = $1
-      `, [tutor_id]),
+      //   FROM tbl_notifications
+      //   WHERE receiver_id = $1
+      // `, [tutor_id]),
 
+
+      pool.query(`
+  SELECT 
+    COUNT(*) AS total_notifications,
+
+    COUNT(*) FILTER (
+      WHERE type = 'Final Assignment Submited'
+    ) AS assignments,
+
+    COUNT(*) FILTER (
+      WHERE type = 'chat'
+    ) AS chat,
+
+    COUNT(*) FILTER (
+      WHERE type = 'Feedback Submitted'
+    ) AS feedbacks,
+
+    COUNT(*) FILTER (
+      WHERE is_read = false
+    ) AS unread_count
+
+  FROM tbl_notifications
+  WHERE receiver_id = $1
+`, [tutor_id]),
 
       // 🔔 Notifications List
    pool.query(`
