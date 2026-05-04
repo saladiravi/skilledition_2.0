@@ -1767,12 +1767,12 @@ const createFinalAssignment = async (client, student_id, course_id) => {
 exports.getfinalquestions = async (req, res) => {
   const { final_assignment_id } = req.body;
 
-  // if (!final_assignment_id) {
-  //   return res.status(400).json({
-  //     statusCode: 400,
-  //     message: 'Missing Required Field'
-  //   });
-  // }
+  if (!final_assignment_id) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: 'Missing Required Field'
+    });
+  }
 
   try {
 
@@ -1840,12 +1840,12 @@ exports.writeFinalExam = async (req, res) => {
   try {
     const { final_assignment_id, answers } = req.body;
 
-    if (!final_assignment_id || !answers || answers.length === 0) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Missing required fields"
-      });
-    }
+    // if (!final_assignment_id || !answers || answers.length === 0) {
+    //   return res.status(400).json({
+    //     statusCode: 400,
+    //     message: "Missing required fields"
+    //   });
+    // }
 
     // 1️⃣ Check if assignment exists & unlocked
     const assignmentRes = await pool.query(
