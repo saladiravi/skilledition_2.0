@@ -1466,38 +1466,15 @@ const monthlyGraph = monthlyData.rows.map(row => ({
         u.full_name AS student_name,
         c.course_title,
       fa.grade,
-        ROUND(
-            (
-              COUNT(*) FILTER (WHERE fa.status = 'Completed')::decimal
-              /
-              COUNT(*) 
-            ) * 100,
-          0) AS progress,
-
-       ROUND(
-          COALESCE(
-            AVG(fa.total_marks::int)
-            FILTER (
-              WHERE 
-                fa.status = 'Completed' 
-                AND fa.total_marks ~ '^[0-9]+$'
-            ),
-          0),
-        2) AS avg_score,
+      fa.total_marks
         
-
-        CASE 
-          WHEN MAX(fa.created_at) >= NOW() - INTERVAL '7 days'
-          THEN 'Active'
-          ELSE 'Inactive'
-        END AS activity_status
 
       FROM tbl_student_final_assignment fa
       JOIN tbl_user u ON fa.student_id = u.user_id
       JOIN tbl_course c ON fa.course_id = c.course_id
       WHERE c.tutor_id = $1
 
-      GROUP BY u.full_name, c.course_title,fa.grade
+      GROUP BY u.full_name, c.course_title,fa.grade,fa.total_marks
       ORDER BY avg_score DESC
       LIMIT 10;
     `, [tutor_id]);
