@@ -1078,7 +1078,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         c.course_id,
         c.course_title,
         COUNT(DISTINCT sc.student_id) AS enrolled,
-        COUNT(DISTINCT sfa.student_id) FILTER (WHERE sfa.is_unlocked = true) AS completed
+        COUNT(DISTINCT sfa.student_id) FILTER (WHERE sfa.status = 'Completed') AS completed
       FROM tbl_course c
       LEFT JOIN tbl_student_course sc ON c.course_id = sc.course_id
       LEFT JOIN tbl_student_final_assignment sfa ON c.course_id = sfa.course_id
