@@ -1103,7 +1103,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
     const trendData = await pool.query(`
       SELECT 
         TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM') AS month_key,
-        COUNT(*) FILTER (WHERE is_unlocked = true) AS completed,
+        COUNT(*) FILTER (WHERE status='Completed') AS completed,
         COUNT(*) FILTER (WHERE is_unlocked = false) AS in_progress
       FROM tbl_student_final_assignment
       WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
