@@ -2146,8 +2146,11 @@ exports.tutordashboards = async (req, res) => {
 
         COUNT(DISTINCT sc.student_id) AS active_students,
 
-        COUNT(DISTINCT tsfa.final_assignment_id)
-        FILTER (WHERE tsfa.tutor_status = 'Pending') AS assignments_pending,
+       COUNT(DISTINCT tsfa.final_assignment_id)
+          FILTER (
+              WHERE tsfa.status = 'Completed'
+              AND tsfa.tutor_status = 'Pending'
+          ) AS assignments_pending,
 
         ROUND(AVG(DISTINCT f.rating)::numeric,1) AS average_rating
 
