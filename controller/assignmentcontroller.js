@@ -962,7 +962,7 @@ exports.gettotalfinalassignment = async (req, res) => {
         const statsQuery = `
                     SELECT
                         COUNT(*) FILTER (WHERE tsf.status = 'Completed') AS completed_assignments,
-                        COUNT(*) FILTER (WHERE tsf.status = 'Pending') AS pending_assignments,
+                        COUNT(*) FILTER (WHERE tsf.status = 'Pending' AND tsf.tutor_status = 'Pending') AS pending_assignments,
                         COUNT(DISTINCT tsf.final_assignment_id) AS all_assignments,
 
                         COUNT(DISTINCT tsf.course_id) AS total_courses,
