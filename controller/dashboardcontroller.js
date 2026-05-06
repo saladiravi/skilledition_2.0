@@ -130,7 +130,7 @@ const recentSubmissions = await pool.query(`
     TO_CHAR(activity_date, 'DD-MM-YYYY') AS activity_date
   FROM (
 
-    SELECT u.full_name, 'Registration' AS type, u.created_at AS activity_date
+    SELECT u.full_name, u.role, 'Registration' AS type, u.created_at AS activity_date
     FROM tbl_user u
     WHERE u.created_at >= NOW() - INTERVAL '2 days'
 
