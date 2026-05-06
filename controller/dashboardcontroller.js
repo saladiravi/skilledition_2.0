@@ -1580,14 +1580,11 @@ const monthlyGraph = monthlyData.rows.map(row => ({
     ) AS assignment_completion,
 
     -- ✅ Avg Study Time
-(
+   (
   SELECT COALESCE(
     TO_CHAR(
       make_interval(
-        secs => (
-          SUM(EXTRACT(EPOCH FROM watched::time))
-          / NULLIF(COUNT(DISTINCT scp.student_id), 0)
-        )::int
+        secs => AVG(EXTRACT(EPOCH FROM watched::time))::int
       ),
       'HH24:MI:SS'
     ),
@@ -1597,7 +1594,6 @@ const monthlyGraph = monthlyData.rows.map(row => ({
   JOIN tbl_course c ON scp.course_id = c.course_id
   WHERE c.tutor_id = $1
   AND watched IS NOT NULL
-  AND scp.updated_at >= NOW() - INTERVAL '7 days'
 ) AS avg_study_time
 
 `, [tutor_id]);
