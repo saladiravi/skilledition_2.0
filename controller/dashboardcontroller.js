@@ -123,34 +123,88 @@ const finalGraph = monthsResult.rows.map(row => {
     // 🕒 RECENT SUBMISSIONS
     // =======================
 
+// const recentSubmissions = await pool.query(`
+//   SELECT 
+//     full_name,
+//     type,
+//     TO_CHAR(activity_date, 'DD-MM-YYYY') AS activity_date
+//   FROM (
+
+//     SELECT u.full_name, u.role, 'Registration' AS type, u.created_at AS activity_date
+//     FROM tbl_user u
+//     WHERE u.created_at >= NOW() - INTERVAL '2 days'
+
+//     UNION ALL
+
+//     SELECT u.full_name, 'Final Exam' AS type, sfa.submitted_at AS activity_date
+//     FROM tbl_student_final_assignment sfa
+//     JOIN tbl_user u ON u.user_id = sfa.student_id
+//     WHERE sfa.submitted_at >= NOW() - INTERVAL '2 days'
+
+//     UNION ALL
+
+//     SELECT u.full_name, 'Internship' AS type, i.applied_date AS activity_date
+//     FROM tbl_internship i
+//     JOIN tbl_user u ON u.user_id = i.student_id
+//     WHERE i.applied_date >= NOW() - INTERVAL '2 days'
+
+//     UNION ALL
+
+//     SELECT u.full_name, 'Course Purchased' AS type, sc.created_at AS activity_date
+//     FROM tbl_student_course sc
+//     JOIN tbl_user u ON u.user_id = sc.student_id
+//     WHERE sc.created_at >= NOW() - INTERVAL '2 days'
+
+//   ) AS activity
+
+//   ORDER BY activity_date DESC
+// `);
+
 const recentSubmissions = await pool.query(`
   SELECT 
     full_name,
+    role,
     type,
     TO_CHAR(activity_date, 'DD-MM-YYYY') AS activity_date
   FROM (
 
-    SELECT u.full_name, u.role, 'Registration' AS type, u.created_at AS activity_date
+    SELECT 
+      u.full_name, 
+      u.role,
+      'Registration' AS type, 
+      u.created_at AS activity_date
     FROM tbl_user u
     WHERE u.created_at >= NOW() - INTERVAL '2 days'
 
     UNION ALL
 
-    SELECT u.full_name, 'Final Exam' AS type, sfa.submitted_at AS activity_date
+    SELECT 
+      u.full_name,
+      u.role,
+      'Final Exam' AS type, 
+      sfa.submitted_at AS activity_date
     FROM tbl_student_final_assignment sfa
     JOIN tbl_user u ON u.user_id = sfa.student_id
     WHERE sfa.submitted_at >= NOW() - INTERVAL '2 days'
 
     UNION ALL
 
-    SELECT u.full_name, 'Internship' AS type, i.applied_date AS activity_date
+    SELECT 
+      u.full_name,
+      u.role,
+      'Internship' AS type, 
+      i.applied_date AS activity_date
     FROM tbl_internship i
     JOIN tbl_user u ON u.user_id = i.student_id
     WHERE i.applied_date >= NOW() - INTERVAL '2 days'
 
     UNION ALL
 
-    SELECT u.full_name, 'Course Purchased' AS type, sc.created_at AS activity_date
+    SELECT 
+      u.full_name,
+      u.role,
+      'Course Purchased' AS type, 
+      sc.created_at AS activity_date
     FROM tbl_student_course sc
     JOIN tbl_user u ON u.user_id = sc.student_id
     WHERE sc.created_at >= NOW() - INTERVAL '2 days'
