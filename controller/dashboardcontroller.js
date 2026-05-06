@@ -1580,15 +1580,21 @@ const monthlyGraph = monthlyData.rows.map(row => ({
     ) AS assignment_completion,
 
     -- ✅ Avg Study Time
-    (
-      SELECT COALESCE(
-        TO_CHAR(AVG(watched::interval), 'HH24:MI'),
-        '00:00'
-      )
-      FROM tbl_student_course_progress scp
-      JOIN tbl_course c ON scp.course_id = c.course_id
-      WHERE c.tutor_id = $1
-    ) AS avg_study_time
+   (
+  SELECT COALESCE(
+    TO_CHAR(
+      make_interval(
+        secs => AVG(EXTRACT(EPOCH FROM watched::time))::int
+      ),
+      'HH24:MI:SS'
+    ),
+    '00:00:00'
+  )
+  FROM tbl_student_course_progress scp
+  JOIN tbl_course c ON scp.course_id = c.course_id
+  WHERE c.tutor_id = $1
+  AND watched IS NOT NULL
+) AS avg_study_time
 
 `, [tutor_id]);
 
