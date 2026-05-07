@@ -3742,9 +3742,15 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
                 AVG(student_score)::numeric, 2
               )
               FROM (
-                SELECT 
-                  student_id,
-                  ((SUM(correct_answers)::decimal / NULLIF(SUM(total_questions),0)) * 100)::numeric AS student_score
+               SELECT 
+            student_id,
+            (
+              (
+                SUM(correct_answers::numeric)
+                /
+                NULLIF(SUM(total_questions::numeric),0)
+              ) * 100
+            )::numeric AS student_score
                 FROM tbl_student_final_assignment
                 WHERE student_id = $1
                 AND correct_answers IS NOT NULL
@@ -3856,43 +3862,54 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
     `;
 
     // Activity Query
-    const activityQuery = `
-      SELECT 
-        tc.course_title,
-        tcat.category_name,
-        COALESCE(tmv.video_title, ta.assignment_title) AS video_title,
+   
+const activityQuery = `
+SELECT 
+  tc.course_title,
+  tcat.category_name,
+  COALESCE(tmv.video_title, ta.assignment_title) AS video_title,
 
-        CASE
-          WHEN EXTRACT(EPOCH FROM (NOW() - activity_time)) < 60
-            THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - activity_time))) || ' seconds ago'
+  CASE
+    WHEN EXTRACT(EPOCH FROM (NOW() - activity_time)) < 60
+      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - activity_time))) || ' seconds ago'
 
-          WHEN EXTRACT(EPOCH FROM (NOW() - activity_time)) < 3600
-            THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - activity_time)) / 60) || ' minutes ago'
+    WHEN EXTRACT(EPOCH FROM (NOW() - activity_time)) < 3600
+      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - activity_time)) / 60) || ' minutes ago'
 
-          WHEN EXTRACT(EPOCH FROM (NOW() - activity_time)) < 86400
-            THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - activity_time)) / 3600) || ' hours ago'
+    WHEN EXTRACT(EPOCH FROM (NOW() - activity_time)) < 86400
+      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - activity_time)) / 3600) || ' hours ago'
 
-          ELSE
-            FLOOR(EXTRACT(EPOCH FROM (NOW() - activity_time)) / 86400) || ' days ago'
-        END AS activity_time
+    ELSE
+      FLOOR(EXTRACT(EPOCH FROM (NOW() - activity_time)) / 86400) || ' days ago'
+  END AS activity_time
 
-      FROM (
-        SELECT 
-          scp.*,
-          COALESCE(scp.completed_at, scp.unlocked_at) AS activity_time
-        FROM tbl_student_course_progress scp
-        WHERE scp.student_id = $1
-        AND scp.is_completed = true
-      ) scp
+FROM (
+  SELECT 
+    scp.*,
+    scp.completed_at AS activity_time
+  FROM tbl_student_course_progress scp
+  WHERE scp.student_id = $1
+  AND scp.is_completed = true
+  AND scp.completed_at IS NOT NULL
+) scp
 
-      LEFT JOIN tbl_module_videos tmv ON scp.module_video_id = tmv.module_video_id
-      LEFT JOIN tbl_assignment ta ON scp.assignment_id = ta.assignment_id
-      LEFT JOIN tbl_course tc ON scp.course_id = tc.course_id
-      LEFT JOIN tbl_category tcat ON tc.category_id = tcat.category_id
+LEFT JOIN tbl_module_videos tmv 
+  ON scp.module_video_id = tmv.module_video_id
 
-      ORDER BY activity_time DESC
-      LIMIT 5
-    `;
+LEFT JOIN tbl_assignment ta 
+  ON scp.assignment_id = ta.assignment_id
+
+LEFT JOIN tbl_course tc 
+  ON scp.course_id = tc.course_id
+
+LEFT JOIN tbl_category tcat 
+  ON tc.category_id = tcat.category_id
+
+ORDER BY activity_time DESC
+LIMIT 5
+`;
+ 
+
 
     // Overall Progress Query
     const overallProgressQuery = `
@@ -3970,5 +3987,4 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
     });
   }
 };
- 
  
