@@ -2445,15 +2445,7 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
         COUNT(DISTINCT tsfa.final_assignment_id)
         FILTER (WHERE tsfa.status = 'Completed') AS assignments_completed,
 
-        COALESCE(
-          ROUND(
-            AVG(
-              (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
-            ),
-            2
-          ),
-          0
-        ) AS average_score
+       COALESCE(tsfa.total_marks, 0) AS total_marks
 
       FROM tbl_student_course tsc
 
