@@ -2439,13 +2439,13 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
         tu.full_name,
         tu.email,
         tu.phone_number,
-
+        tsfa.total_marks
         COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
 
         COUNT(DISTINCT tsfa.final_assignment_id)
-        FILTER (WHERE tsfa.status = 'Completed') AS assignments_completed,
+        FILTER (WHERE tsfa.status = 'Completed') AS assignments_completed
 
-     COALESCE(MAX(tsfa.total_marks), 0) AS total_marks
+    
 
       FROM tbl_student_course tsc
 
@@ -2463,7 +2463,8 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
         tu.user_id,
         tu.full_name,
         tu.email,
-        tu.phone_number
+        tu.phone_number,
+        tsfa.total_marks
     `;
 
     // =========================
