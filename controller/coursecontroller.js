@@ -2445,13 +2445,7 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
         COUNT(DISTINCT tsfa.final_assignment_id)
         FILTER (WHERE tsfa.status = 'Completed') AS assignments_completed,
 
-       (
-        SELECT COALESCE(total_marks, 0)
-        FROM tbl_student_final_assignment tsfa2
-        WHERE tsfa2.student_id = tu.user_id
-          AND tsfa2.course_id = $2
-        LIMIT 1
-      ) AS total_marks
+     COALESCE(MAX(tsfa.total_marks), 0) AS total_marks
 
       FROM tbl_student_course tsc
 
