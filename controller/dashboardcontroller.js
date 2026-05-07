@@ -1330,10 +1330,23 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
           )
         ) AS total_views,
 
-        COALESCE(ROUND(
-          (COUNT(*) FILTER (WHERE fa.status = 'Completed') * 100.0) /
-          NULLIF(COUNT(fa.final_assignment_id),0), 2
-        ),0) AS avg_completion,
+        (
+      SELECT COALESCE(
+        ROUND(
+          (
+            COUNT(*) FILTER (WHERE fa2.status = 'Completed') * 100.0
+          )
+          /
+          NULLIF(COUNT(fa2.final_assignment_id),0),
+          2
+        ),
+        0
+      )
+      FROM tbl_student_final_assignment fa2
+      JOIN tbl_course c2
+        ON fa2.course_id = c2.course_id
+      WHERE c2.tutor_id = $1
+    ) AS avg_completion,
 
        (
           SELECT COALESCE(
