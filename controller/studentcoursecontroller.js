@@ -3419,12 +3419,21 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
           COUNT(DISTINCT tcert.certificate_id) AS certificates,
 
           COALESCE(
-              ROUND(
-                  AVG(
-                      (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
-                  ),2
-              ),
-          0) AS average_score,
+            (
+                SELECT ROUND(
+                    AVG(student_score), 2
+                )
+                FROM (
+                    SELECT 
+                        student_id,
+                        (SUM(correct_answers)::decimal / NULLIF(SUM(total_questions),0)) * 100 AS student_score
+                    FROM tbl_student_final_assignment
+                    WHERE student_id = $1
+                    AND correct_answers IS NOT NULL
+                    GROUP BY student_id
+                ) scores
+            ),
+            0) AS average_score,
 
                 CASE
             WHEN EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) < 60
@@ -3470,45 +3479,56 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
     `;
 
     // Courses with progress
-    const courseQuery = `
+  const courseQuery = `
       SELECT 
-        tc.course_id,
-        tc.course_title,
-        tcat.category_name,
+          tc.course_id,
+          tc.course_title,
+          tcat.category_name,
 
-   COALESCE(
-    ROUND(
-      (
-        COUNT(DISTINCT svp.module_video_id)
-        FILTER (WHERE svp.is_completed = true)::decimal
-        /
-        NULLIF(COUNT(DISTINCT tmv.module_video_id),0)
-      ) * 100, 
-    2),
-  0) AS progress_percentage
+          CASE
+            WHEN EXISTS (
+              SELECT 1
+              FROM tbl_student_final_assignment tsfa
+              WHERE tsfa.student_id = $1
+              AND tsfa.course_id = tc.course_id
+              AND tsfa.status = 'Completed'
+            )
+            THEN 100
+
+            ELSE COALESCE(
+              ROUND(
+                (
+                  COUNT(DISTINCT svp.module_video_id)
+                  FILTER (WHERE svp.is_completed = true)::decimal
+                  /
+                  NULLIF(COUNT(DISTINCT tmv.module_video_id),0)
+                ) * 100,
+              2),
+            0)
+          END AS progress_percentage
 
       FROM tbl_student_course sc
 
       JOIN tbl_course tc
-        ON sc.course_id = tc.course_id
+          ON sc.course_id = tc.course_id
 
       JOIN tbl_category tcat
-        ON tc.category_id = tcat.category_id
+          ON tc.category_id = tcat.category_id
 
       JOIN tbl_module tm
-        ON tc.course_id = tm.course_id
+          ON tc.course_id = tm.course_id
 
       JOIN tbl_module_videos tmv
-        ON tm.module_id = tmv.module_id
+          ON tm.module_id = tmv.module_id
 
       LEFT JOIN tbl_student_course_progress svp
-        ON tmv.module_video_id = svp.module_video_id
-        AND svp.student_id = $1
+          ON tmv.module_video_id = svp.module_video_id
+          AND svp.student_id = $1
 
       WHERE sc.student_id = $1
 
       GROUP BY tc.course_id, tc.course_title, tcat.category_name
-    `;
+      `;
 
     // Assignments
     const assignmentQuery = `
