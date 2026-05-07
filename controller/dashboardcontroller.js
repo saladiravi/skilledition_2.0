@@ -1582,35 +1582,20 @@ const monthlyGraph = monthlyData.rows.map(row => ({
     -- ✅ Avg Study Time
 (
   SELECT COALESCE(
-    ROUND(
-      (
-        SUM(EXTRACT(EPOCH FROM scp.watched::time))
-        /
-        NULLIF(
-          (
-            SELECT 
-              SUM(EXTRACT(EPOCH FROM tmv.video_duration::time))
-              *
-              COUNT(DISTINCT sc.student_id)
-
-            FROM tbl_student_course sc
-            JOIN tbl_course c2
-              ON sc.course_id = c2.course_id
-
-            JOIN tbl_module tm
-              ON c2.course_id = tm.course_id
-
-            JOIN tbl_module_videos tmv
-              ON tm.module_id = tmv.module_id
-
-            WHERE c2.tutor_id = $1
-          ),
-          0
-        )
-      ) * 100,
-      2
+    TO_CHAR(
+      make_interval(
+        secs => (
+          SUM(EXTRACT(EPOCH FROM scp.watched::time))
+          /
+          NULLIF(
+            COUNT(DISTINCT scp.student_id),
+            0
+          )
+        )::int
+      ),
+      'HH24:MI:SS'
     ),
-    0
+    '00:00:00'
   )
 
   FROM tbl_student_course_progress scp
@@ -1620,8 +1605,7 @@ const monthlyGraph = monthlyData.rows.map(row => ({
   WHERE c.tutor_id = $1
   AND scp.watched IS NOT NULL
 
- ) AS avg_study_time
-
+) AS avg_study_time
 `, [tutor_id]);
 
     // =========================
