@@ -1469,24 +1469,28 @@ const monthlyGraph = monthlyData.rows.map(row => ({
     // =========================
     // 3️⃣ GRADE DISTRIBUTION
     // =========================
-    const gradeQuery = await pool.query(`
-      SELECT
-        COUNT(*) FILTER (WHERE grade = 'A+') AS "A+",
-        COUNT(*) FILTER (WHERE grade = 'A') AS "A",
-        COUNT(*) FILTER (WHERE grade = 'B') AS "B",
-        COUNT(*) FILTER (WHERE grade = 'C') AS "C",
-        COUNT(*) FILTER (WHERE grade NOT IN ('A+','A','B','C')) AS "Below"
-      FROM tbl_student_final_assignment fa
-      JOIN tbl_course c ON fa.course_id = c.course_id
-      WHERE c.tutor_id = $1
-      AND fa.is_unlocked = true
-    `, [tutor_id]);
+        const gradeQuery = await pool.query(`
+          SELECT
+            COUNT(*) FILTER (WHERE grade = 'A') AS "A",
+            COUNT(*) FILTER (WHERE grade = 'B') AS "B",
+            COUNT(*) FILTER (WHERE grade = 'C') AS "C",
+            COUNT(*) FILTER (WHERE grade = 'D') AS "D"
+          FROM tbl_student_final_assignment fa
+          JOIN tbl_course c ON fa.course_id = c.course_id
+          WHERE c.tutor_id = $1
+          AND fa.is_unlocked = true
+        `, [tutor_id]);
 
-    const g = gradeQuery.rows[0];
+      const g = gradeQuery.rows[0];
 
-    const gradeChart = {
-      xAxis: ["A+", "A", "B", "C", "Below"],
-      yAxis: [g["A+"], g["A"], g["B"], g["C"], g["Below"]]
+      const gradeChart = {
+        xAxis: ["A (80-100)", "B (60-80)", "C (50-60)", "D (<50)"],
+        yAxis: [
+          Number(g["A"]),
+          Number(g["B"]),
+          Number(g["C"]),
+          Number(g["D"])
+        ]
     };
 
     // =========================
