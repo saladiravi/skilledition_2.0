@@ -1922,8 +1922,7 @@ exports.writeFinalExam = async (req, res) => {
         const percentage = (correctCount / totalQuestions) * 100;
 
     let grade = "D";
-    const percentage = (correctCount / totalQuestions) * 100;
-
+ 
     if (percentage >= 80 && percentage <= 100) {
       grade = "A";
     } else if (percentage >= 60 && percentage < 80) {
