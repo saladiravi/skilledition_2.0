@@ -1009,11 +1009,11 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         (SELECT COUNT(*) FROM tbl_student_final_assignment WHERE is_unlocked = false) AS in_progress_students,
         (SELECT ROUND(AVG(total_marks::numeric), 2) 
         FROM tbl_student_final_assignment
-        WHERE is_unlocked = true) AS avg_percentage,
+        WHERE status = 'Completed') AS avg_percentage,
 
         (SELECT ROUND(AVG(total_marks::numeric), 2) 
         FROM tbl_student_final_assignment
-        WHERE is_unlocked = true) AS avg_assignment_score,
+        WHERE status = 'Completed') AS avg_assignment_score,
         
         (SELECT ROUND(AVG(total_hours), 2)
           FROM (
@@ -1025,7 +1025,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
           ) t) AS avg_learning_hours,
 
         (SELECT ROUND(
-            (COUNT(DISTINCT CASE WHEN is_unlocked = true THEN student_id END) * 100.0)
+            (COUNT(DISTINCT CASE WHEN status = 'Completed' THEN student_id END) * 100.0)
             / NULLIF(COUNT(DISTINCT student_id), 0),
          2)
          FROM tbl_student_final_assignment) AS completion_rate,
