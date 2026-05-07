@@ -26,8 +26,9 @@ exports.getDashboardStats = async (req, res) => {
     // 🔹 INTERNSHIP
     // =======================
     const internship = await pool.query(`
-      SELECT COUNT(*) AS internship_requests
+     SELECT COUNT(*) AS internship_requests
       FROM tbl_internship
+      WHERE status = 'Pending';
     `);
 
     // =======================
