@@ -3698,6 +3698,7 @@ exports.getadminstudentmanagement = async (req, res) => {
 
 
  
+ 
 exports.getadminstudentmanagementbyid = async (req, res) => {
   const { student_id } = req.body;
 
@@ -3738,12 +3739,12 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
           COALESCE(
             (
               SELECT ROUND(
-                AVG(student_score), 2
+                AVG(student_score)::numeric, 2
               )
               FROM (
                 SELECT 
                   student_id,
-                  (SUM(correct_answers)::decimal / NULLIF(SUM(total_questions),0)) * 100 AS student_score
+                  ((SUM(correct_answers)::decimal / NULLIF(SUM(total_questions),0)) * 100)::numeric AS student_score
                 FROM tbl_student_final_assignment
                 WHERE student_id = $1
                 AND correct_answers IS NOT NULL
@@ -3773,15 +3774,9 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
           END AS batch
 
       FROM tbl_student_course tsc
-
-      JOIN tbl_user tu 
-        ON tu.user_id = tsc.student_id
-
-      LEFT JOIN tbl_student_final_assignment tsfa
-        ON tsfa.student_id = tu.user_id
-
-      LEFT JOIN tbl_certificates tcert
-        ON tcert.student_id = tu.user_id
+      JOIN tbl_user tu ON tu.user_id = tsc.student_id
+      LEFT JOIN tbl_student_final_assignment tsfa ON tsfa.student_id = tu.user_id
+      LEFT JOIN tbl_certificates tcert ON tcert.student_id = tu.user_id
 
       WHERE tu.user_id = $1
 
@@ -3807,7 +3802,7 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
               AND tsfa.course_id = tc.course_id
               AND tsfa.status = 'Completed'
             )
-            THEN 100
+            THEN 100::numeric
 
             ELSE COALESCE(
               ROUND(
@@ -3816,24 +3811,16 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
                   FILTER (WHERE svp.is_completed = true)::decimal
                   /
                   NULLIF(COUNT(DISTINCT tmv.module_video_id),0)
-                ) * 100,
+                ) * 100::numeric,
               2),
             0)
           END AS progress_percentage
 
       FROM tbl_student_course sc
-
-      JOIN tbl_course tc
-        ON sc.course_id = tc.course_id
-
-      JOIN tbl_category tcat
-        ON tc.category_id = tcat.category_id
-
-      JOIN tbl_module tm
-        ON tc.course_id = tm.course_id
-
-      JOIN tbl_module_videos tmv
-        ON tm.module_id = tmv.module_id
+      JOIN tbl_course tc ON sc.course_id = tc.course_id
+      JOIN tbl_category tcat ON tc.category_id = tcat.category_id
+      JOIN tbl_module tm ON tc.course_id = tm.course_id
+      JOIN tbl_module_videos tmv ON tm.module_id = tmv.module_id
 
       LEFT JOIN tbl_student_course_progress svp
         ON tmv.module_video_id = svp.module_video_id
@@ -3856,19 +3843,14 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
         END AS status
 
       FROM tbl_student_course sc
-
-      JOIN tbl_module tm
-        ON sc.course_id = tm.course_id
-
-      JOIN tbl_assignment ta
-        ON tm.module_id = ta.module_id
+      JOIN tbl_module tm ON sc.course_id = tm.course_id
+      JOIN tbl_assignment ta ON tm.module_id = ta.module_id
 
       LEFT JOIN tbl_student_course_progress scp
         ON ta.assignment_id = scp.assignment_id
         AND scp.student_id = $1
 
       WHERE sc.student_id = $1
-
       ORDER BY ta.assignment_date DESC
       LIMIT 3
     `;
@@ -3903,17 +3885,10 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
         AND scp.is_completed = true
       ) scp
 
-      LEFT JOIN tbl_module_videos tmv
-        ON scp.module_video_id = tmv.module_video_id
-
-      LEFT JOIN tbl_assignment ta
-        ON scp.assignment_id = ta.assignment_id
-
-      LEFT JOIN tbl_course tc
-        ON scp.course_id = tc.course_id
-
-      LEFT JOIN tbl_category tcat
-        ON tc.category_id = tcat.category_id
+      LEFT JOIN tbl_module_videos tmv ON scp.module_video_id = tmv.module_video_id
+      LEFT JOIN tbl_assignment ta ON scp.assignment_id = ta.assignment_id
+      LEFT JOIN tbl_course tc ON scp.course_id = tc.course_id
+      LEFT JOIN tbl_category tcat ON tc.category_id = tcat.category_id
 
       ORDER BY activity_time DESC
       LIMIT 5
@@ -3924,7 +3899,7 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
       SELECT 
       COALESCE(
         ROUND(
-          AVG(course_progress),
+          AVG(course_progress)::numeric,
         2),
       0) AS overall_progress_percentage
 
@@ -3940,7 +3915,7 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
               AND tsfa.course_id = tc.course_id
               AND tsfa.status = 'Completed'
             )
-            THEN 100
+            THEN 100::numeric
 
             ELSE COALESCE(
               (
@@ -3948,27 +3923,20 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
                 FILTER (WHERE scp.is_completed = true)::decimal
                 /
                 NULLIF(COUNT(DISTINCT tmv.module_video_id),0)
-              ) * 100,
+              ) * 100::numeric,
             0)
           END AS course_progress
 
         FROM tbl_student_course sc
-
-        JOIN tbl_course tc
-          ON sc.course_id = tc.course_id
-
-        JOIN tbl_module tm
-          ON tc.course_id = tm.course_id
-
-        JOIN tbl_module_videos tmv
-          ON tm.module_id = tmv.module_id
+        JOIN tbl_course tc ON sc.course_id = tc.course_id
+        JOIN tbl_module tm ON tc.course_id = tm.course_id
+        JOIN tbl_module_videos tmv ON tm.module_id = tmv.module_id
 
         LEFT JOIN tbl_student_course_progress scp
           ON tmv.module_video_id = scp.module_video_id
           AND scp.student_id = $1
 
         WHERE sc.student_id = $1
-
         GROUP BY tc.course_id
       ) progress
     `;
@@ -4002,4 +3970,5 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
     });
   }
 };
-
+ 
+ 
