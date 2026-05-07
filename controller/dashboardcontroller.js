@@ -1335,7 +1335,16 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
           NULLIF(COUNT(fa.final_assignment_id),0), 2
         ),0) AS avg_completion,
 
-        COALESCE(ROUND(AVG(f.rating),2),0) AS avg_rating
+       (
+          SELECT COALESCE(
+            ROUND(AVG(f2.rating), 2),
+            0
+          )
+          FROM tbl_feedback f2
+          JOIN tbl_course c2
+            ON f2.course_id = c2.course_id
+          WHERE c2.tutor_id = $1
+        ) AS avg_rating
 
       FROM tbl_course c
       LEFT JOIN tbl_student_course sc ON c.course_id = sc.course_id
