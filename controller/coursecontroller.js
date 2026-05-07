@@ -652,7 +652,17 @@ exports.gettotalcourse = async (req, res) => {
         tu.user_id AS student_id,
         tu.full_name AS student_name,
 
-        COUNT(DISTINCT tsc.student_id) AS enrolled_count
+       (
+        SELECT COUNT(DISTINCT sc2.student_id)
+        FROM tbl_student_course sc2
+        WHERE sc2.course_id = tc.course_id
+      ) AS enrolled_count,
+
+      (
+        SELECT COALESCE(ROUND(AVG(f2.rating),2),0)
+        FROM tbl_feedback f2
+        WHERE f2.course_id = tc.course_id
+      ) AS avg_rating
 
       FROM tbl_course tc
       JOIN tbl_category tcg 
@@ -698,6 +708,7 @@ exports.gettotalcourse = async (req, res) => {
           level: row.level,
           course_image: row.course_image,
           status: row.course_status,
+          avg_rating: Number(row.avg_rating),
           category: {
             category_id: row.category_id,
             category_name: row.category_name
@@ -732,19 +743,7 @@ exports.gettotalcourse = async (req, res) => {
         course.modules.push(module);
       }
 
-      // ---------- VIDEO ----------
-      // if (row.module_video_id && module) {
-      //   const signedUrl = await getSignedVideoUrl(row.video);
-      //   module.videos.push({
-      //     module_video_id: row.module_video_id,
-      //     video_url: signedUrl,
-      //     video: row.video,
-      //     video_title: row.video_title,
-      //     status: row.video_status,
-      //     reason: row.reason,
-      //     video_duration: row.video_duration
-      //   });
-      // }
+ 
 
       if (row.module_video_id && module) {
 
@@ -781,23 +780,7 @@ exports.gettotalcourse = async (req, res) => {
       }
     }
 
-    // ---------- SHOW ONLY REJECTED VIDEOS ----------
-    // for (const course of Object.values(coursesMap)) {
-    //   for (const module of course.modules) {
-    //     const rejectedVideos = module.videos.filter(
-    //       v => v.status === 'Rejected'
-    //     );
-
-    //     if (rejectedVideos.length > 0) {
-    //       module.videos = rejectedVideos;
-    //     }
-    //   }
-
-    //   // ---------- NO STUDENTS -> NULL ----------
-    //   if (course.students.length === 0) {
-    //     course.students = null;
-    //   }
-    // }
+ 
 
 
     // ---------- FILTER VIDEOS BY STATUS PRIORITY ----------
