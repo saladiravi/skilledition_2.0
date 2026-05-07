@@ -1484,7 +1484,7 @@ const monthlyGraph = monthlyData.rows.map(row => ({
       const g = gradeQuery.rows[0];
 
       const gradeChart = {
-        xAxis: ["A (80-100)", "B (60-80)", "C (50-60)", "D (<50)"],
+        xAxis: ["A (100-80)", "B (80-60)", "C (60-50)", "D (<50)"],
         yAxis: [
           Number(g["A"]),
           Number(g["B"]),
