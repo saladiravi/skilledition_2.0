@@ -2152,7 +2152,7 @@ exports.tutordashboards = async (req, res) => {
               AND tsfa.tutor_status = 'Pending'
           ) AS assignments_pending,
 
-        ROUND(AVG(DISTINCT f.rating)::numeric,1) AS average_rating
+        ROUND(AVG(f.rating)::numeric,2) AS average_rating
 
         FROM tbl_course c
 
