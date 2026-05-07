@@ -200,7 +200,7 @@ exports.getTutorFeedbacks = async (req, res) => {
               (COUNT(*) FILTER (WHERE response IS NOT NULL)::decimal 
               / NULLIF(COUNT(*),0)) * 100, 2
             ) AS response_rate,
-            ROUND(AVG(rating)::numeric, 1) AS average_rating,
+            ROUND(AVG(rating)::numeric, 2) AS average_rating,
             COUNT(*) AS total_reviews,
             COUNT(*) FILTER (WHERE rating = 5) AS total_5_star
         FROM tbl_feedback
