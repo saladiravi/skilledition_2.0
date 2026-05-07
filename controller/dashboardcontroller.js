@@ -1331,7 +1331,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
         ) AS total_views,
 
         COALESCE(ROUND(
-          (COUNT(*) FILTER (WHERE fa.is_unlocked = true) * 100.0) /
+          (COUNT(*) FILTER (WHERE fa.status = 'Completed') * 100.0) /
           NULLIF(COUNT(fa.final_assignment_id),0), 2
         ),0) AS avg_completion,
 
