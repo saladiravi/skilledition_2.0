@@ -1919,13 +1919,20 @@ exports.writeFinalExam = async (req, res) => {
     const totalMarks = correctCount; // 1 mark per question
 
     // 3️⃣ Calculate Grade (Optional Logic)
-    let grade = "F";
+        const percentage = (correctCount / totalQuestions) * 100;
+
+    let grade = "D";
     const percentage = (correctCount / totalQuestions) * 100;
 
-    if (percentage >= 90) grade = "A+";
-    else if (percentage >= 75) grade = "A";
-    else if (percentage >= 60) grade = "B";
-    else if (percentage >= 50) grade = "C";
+    if (percentage >= 80 && percentage <= 100) {
+      grade = "A";
+    } else if (percentage >= 60 && percentage < 80) {
+      grade = "B";
+    } else if (percentage >= 50 && percentage < 60) {
+      grade = "C";
+    } else {
+      grade = "D";
+    }
 
     // 4️⃣ Update Final Assignment
     await pool.query(
