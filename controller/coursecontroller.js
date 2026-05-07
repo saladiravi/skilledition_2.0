@@ -2439,7 +2439,7 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
         tu.full_name,
         tu.email,
         tu.phone_number,
-        tsfa.total_marks
+        tsfa.total_marks,
         COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
 
         COUNT(DISTINCT tsfa.final_assignment_id)
