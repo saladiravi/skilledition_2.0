@@ -2253,20 +2253,191 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
 
 
 
+// exports.gettutorstudentdetailsbyid = async (req, res) => {
+
+//   const { student_id } = req.body;
+
+//   if (!student_id) {
+//     return res.status(400).json({
+//       statusCode: 400,
+//       message: "student_id is required"
+//     });
+//   }
+
+//   try {
+//     const studentCheck = await pool.query(
+//       `SELECT user_id, full_name FROM tbl_user WHERE user_id = $1`,
+//       [student_id]
+//     );
+
+//     if (studentCheck.rows.length === 0) {
+//       return res.status(404).json({
+//         statusCode: 404,
+//         message: "Student not found"
+//       });
+//     }
+
+//     // Profile + Stats
+//     const profileQuery = `
+//         SELECT 
+//             tu.full_name,
+//             tu.email,
+//             tu.phone_number,
+
+//             COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
+
+//             COUNT(*) FILTER (WHERE tsfa.status = 'Completed') AS assignments_completed,
+
+//                COALESCE(
+//               ROUND(
+//                   AVG(
+//                       (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
+//                   ),2
+//               ),
+//           0) AS average_score
+
+//         FROM tbl_student_course tsc
+
+//         JOIN tbl_user tu 
+//             ON tu.user_id = tsc.student_id
+
+//         LEFT JOIN tbl_student ts
+//             ON ts.user_id = tu.user_id
+
+//         LEFT JOIN tbl_student_final_assignment tsfa
+//             ON tsfa.student_id = tu.user_id
+
+//         LEFT JOIN tbl_certificates tcert
+//             ON tcert.student_id = tu.user_id
+
+//         WHERE tu.user_id = $1
+
+//         GROUP BY 
+//             tu.user_id,
+//             tu.full_name,
+//             tu.email,
+//             tu.phone_number
+//         `;
+
+
+//     const overallProgressQuery = `
+//       SELECT 
+//       COALESCE(
+//         ROUND(
+//           (
+//             COUNT(DISTINCT scp.module_video_id)
+//             FILTER (WHERE scp.is_completed = true)::decimal
+//             /
+//             NULLIF(COUNT(DISTINCT tmv.module_video_id),0)
+//           ) * 100,
+//         2),
+//       0) AS overall_progress_percentage
+
+//       FROM tbl_student_course sc
+
+//       JOIN tbl_module tm
+//         ON sc.course_id = tm.course_id
+
+//       JOIN tbl_module_videos tmv
+//         ON tm.module_id = tmv.module_id
+
+//       LEFT JOIN tbl_student_course_progress scp
+//         ON tmv.module_video_id = scp.module_video_id
+//         AND scp.student_id = $1
+
+//       WHERE sc.student_id = $1
+//       `;
+
+//     const activityQuery = `
+//       SELECT 
+//         tc.course_title,
+//         tcat.category_name,
+       
+//       COALESCE(tmv.video_title, ta.assignment_title) AS video_title,
+//         CASE
+//     WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 60
+//       THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at)))) || ' seconds ago'
+
+//     WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 3600
+//       THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 60) || ' minutes ago'
+
+//     WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 86400
+//       THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 3600) || ' hours ago'
+
+//     ELSE
+//       FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 86400) || ' days ago'
+//   END AS activity_time
+
+//       FROM tbl_student_course_progress scp
+
+//       LEFT JOIN tbl_module_videos tmv
+//         ON scp.module_video_id = tmv.module_video_id
+
+//       LEFT JOIN tbl_assignment ta
+//          ON scp.assignment_id = ta.assignment_id  
+
+//       LEFT JOIN tbl_module tm
+//         ON scp.module_id = tm.module_id
+
+//       LEFT JOIN tbl_course tc
+//         ON scp.course_id = tc.course_id
+
+//       LEFT JOIN tbl_category tcat
+//         ON tc.category_id = tcat.category_id
+
+//       WHERE scp.student_id = $1
+//       AND scp.is_completed = true
+//       ORDER BY activity_time DESC
+//       LIMIT 5
+//     `;
+
+//     // Run all queries together
+//     const [profile, overall, activity] = await Promise.all([
+//       pool.query(profileQuery, [student_id]),
+//       pool.query(overallProgressQuery, [student_id]),
+//       pool.query(activityQuery, [student_id])
+//     ]);
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: "Dashboard fetched successfully",
+//       data: {
+//         profile: profile.rows[0] || null,
+//         overall_progress: overall.rows[0].overall_progress_percentage,
+//         recent_activity: activity.rows
+//       }
+//     });
+
+//   } catch (error) {
+
+//     console.error(error);
+
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error"
+//     });
+
+//   }
+
+// };
+
+
+
 exports.gettutorstudentdetailsbyid = async (req, res) => {
+  const { student_id, course_id } = req.body;
 
-  const { student_id } = req.body;
-
-  if (!student_id) {
+  if (!student_id || !course_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "student_id is required"
+      message: "student_id and course_id are required"
     });
   }
 
   try {
     const studentCheck = await pool.query(
-      `SELECT user_id, full_name FROM tbl_user WHERE user_id = $1`,
+      `SELECT user_id, full_name 
+       FROM tbl_user 
+       WHERE user_id = $1`,
       [student_id]
     );
 
@@ -2277,66 +2448,66 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
       });
     }
 
+    // =========================
     // Profile + Stats
+    // =========================
     const profileQuery = `
-        SELECT 
-            tu.full_name,
-            tu.email,
-            tu.phone_number,
+      SELECT 
+        tu.full_name,
+        tu.email,
+        tu.phone_number,
 
-            COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
+        COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
 
-            COUNT(*) FILTER (WHERE tsfa.status = 'Completed') AS assignments_completed,
+        COUNT(DISTINCT tsfa.final_assignment_id)
+        FILTER (WHERE tsfa.status = 'Completed') AS assignments_completed,
 
-               COALESCE(
-              ROUND(
-                  AVG(
-                      (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
-                  ),2
-              ),
-          0) AS average_score
+        COALESCE(
+          ROUND(
+            AVG(
+              (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
+            ),
+            2
+          ),
+          0
+        ) AS average_score
 
-        FROM tbl_student_course tsc
+      FROM tbl_student_course tsc
 
-        JOIN tbl_user tu 
-            ON tu.user_id = tsc.student_id
+      JOIN tbl_user tu 
+        ON tu.user_id = tsc.student_id
 
-        LEFT JOIN tbl_student ts
-            ON ts.user_id = tu.user_id
+      LEFT JOIN tbl_student_final_assignment tsfa
+        ON tsfa.student_id = tu.user_id
+        AND tsfa.course_id = $2
 
-        LEFT JOIN tbl_student_final_assignment tsfa
-            ON tsfa.student_id = tu.user_id
+      WHERE tu.user_id = $1
+      AND tsc.course_id = $2
 
-        LEFT JOIN tbl_certificates tcert
-            ON tcert.student_id = tu.user_id
+      GROUP BY 
+        tu.user_id,
+        tu.full_name,
+        tu.email,
+        tu.phone_number
+    `;
 
-        WHERE tu.user_id = $1
-
-        GROUP BY 
-            tu.user_id,
-            tu.full_name,
-            tu.email,
-            tu.phone_number
-        `;
-
-
+    // =========================
+    // Overall Progress
+    // =========================
     const overallProgressQuery = `
       SELECT 
-      COALESCE(
-        ROUND(
-          (
-            COUNT(DISTINCT scp.module_video_id)
-            FILTER (WHERE scp.is_completed = true)::decimal
-            /
-            NULLIF(COUNT(DISTINCT tmv.module_video_id),0)
-          ) * 100,
-        2),
-      0) AS overall_progress_percentage
+        COALESCE(
+          ROUND(
+            (
+              COUNT(DISTINCT scp.module_video_id)
+              FILTER (WHERE scp.is_completed = true)::decimal
+              /
+              NULLIF(COUNT(DISTINCT tmv.module_video_id),0)
+            ) * 100,
+          2),
+        0) AS overall_progress_percentage
 
-      FROM tbl_student_course sc
-
-      JOIN tbl_module tm
-        ON sc.course_id = tm.course_id
+      FROM tbl_module tm
 
       JOIN tbl_module_videos tmv
         ON tm.module_id = tmv.module_id
@@ -2344,29 +2515,33 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
       LEFT JOIN tbl_student_course_progress scp
         ON tmv.module_video_id = scp.module_video_id
         AND scp.student_id = $1
+        AND scp.course_id = $2
 
-      WHERE sc.student_id = $1
-      `;
+      WHERE tm.course_id = $2
+    `;
 
+    // =========================
+    // Recent Activity
+    // =========================
     const activityQuery = `
       SELECT 
         tc.course_title,
         tcat.category_name,
-       
-      COALESCE(tmv.video_title, ta.assignment_title) AS video_title,
+        COALESCE(tmv.video_title, ta.assignment_title) AS video_title,
+
         CASE
-    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 60
-      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at)))) || ' seconds ago'
+          WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 60
+            THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at)))) || ' seconds ago'
 
-    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 3600
-      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 60) || ' minutes ago'
+          WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 3600
+            THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 60) || ' minutes ago'
 
-    WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 86400
-      THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 3600) || ' hours ago'
+          WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 86400
+            THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 3600) || ' hours ago'
 
-    ELSE
-      FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 86400) || ' days ago'
-  END AS activity_time
+          ELSE
+            FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) / 86400) || ' days ago'
+        END AS activity_time
 
       FROM tbl_student_course_progress scp
 
@@ -2374,7 +2549,7 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
         ON scp.module_video_id = tmv.module_video_id
 
       LEFT JOIN tbl_assignment ta
-         ON scp.assignment_id = ta.assignment_id  
+        ON scp.assignment_id = ta.assignment_id  
 
       LEFT JOIN tbl_module tm
         ON scp.module_id = tm.module_id
@@ -2386,16 +2561,17 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
         ON tc.category_id = tcat.category_id
 
       WHERE scp.student_id = $1
+      AND scp.course_id = $2
       AND scp.is_completed = true
-      ORDER BY activity_time DESC
+
+      ORDER BY scp.completed_at DESC
       LIMIT 5
     `;
 
-    // Run all queries together
     const [profile, overall, activity] = await Promise.all([
-      pool.query(profileQuery, [student_id]),
-      pool.query(overallProgressQuery, [student_id]),
-      pool.query(activityQuery, [student_id])
+      pool.query(profileQuery, [student_id, course_id]),
+      pool.query(overallProgressQuery, [student_id, course_id]),
+      pool.query(activityQuery, [student_id, course_id])
     ]);
 
     return res.status(200).json({
@@ -2409,14 +2585,11 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
     });
 
   } catch (error) {
-
     console.error(error);
 
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error"
     });
-
   }
-
 };
