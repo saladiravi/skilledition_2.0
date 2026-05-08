@@ -1191,9 +1191,9 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
             SELECT
                 COUNT(*) AS total_assignments,
 
-                COUNT(*) FILTER (
-                    WHERE admin_status = 'Submitted'
-                ) AS completed_assignments,
+                    COUNT(*) FILTER (
+                        WHERE status = 'Completed'
+                    ) AS completed_assignments,
 
                 COUNT(*) FILTER (
                     WHERE admin_status != 'Submitted'
