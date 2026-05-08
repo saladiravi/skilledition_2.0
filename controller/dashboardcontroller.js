@@ -1008,9 +1008,10 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
           FROM tbl_student_course) AS enrolled_students,
         (SELECT COUNT(*) FROM tbl_student_final_assignment WHERE status='Completed') AS completed_students,
         (SELECT COUNT(*) FROM tbl_student_final_assignment WHERE status = 'Pending') AS in_progress_students,
-        (SELECT ROUND(AVG(total_marks::numeric), 2) 
-        FROM tbl_student_final_assignment
-        WHERE status = 'Completed') AS avg_percentage,
+        (
+          SELECT COUNT(*)
+            FROM tbl_student_final_assignment
+        ) AS total_course_purchase,
 
         (SELECT ROUND(AVG(total_marks::numeric), 2) 
         FROM tbl_student_final_assignment
