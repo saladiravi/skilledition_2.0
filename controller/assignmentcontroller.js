@@ -1479,45 +1479,49 @@ exports.getstudentcertificates = async (req, res) => {
 
 exports.getallstudentcertificates = async (req, res) => {
     try {
-        const statsQuery = await pool.query(`
-                SELECT
-                    -- ✅ Total Students
-                    COUNT(DISTINCT tu.user_id) FILTER (
-                        WHERE tu.role = 'student'
-                    ) AS total_students,
+     const statsQuery = await pool.query(`
+            SELECT
+                COUNT(DISTINCT tsc.student_id) AS enrolled_students,
 
-                    (
-                        SELECT COUNT(*) 
-                        FROM tbl_course 
-                        WHERE status = 'Published'
-                    ) AS no_of_courses,
+                (
+                    SELECT COUNT(*)
+                    FROM tbl_course
+                    WHERE status = 'Published'
+                ) AS no_of_courses,
 
-                    (
-                    SELECT COUNT(student_id)
-                     FROM tbl_certificates
-                    ) AS certificate_issued_students,
+                (
+                    SELECT COUNT(DISTINCT student_id)
+                    FROM tbl_certificates
+                ) AS certificate_issued_students,
 
-                    -- ✅ Completion Ratio
-                    CASE 
-                        WHEN COUNT(*) FILTER (WHERE tsfa.is_unlocked = true) = 0 
-                        THEN 0
-                        ELSE ROUND(
-                            COUNT(DISTINCT tcr.certificate_id)::decimal 
-                            /
-                            COUNT(*) FILTER (WHERE tsfa.is_unlocked = true) * 100
-                        ,2)
-                    END AS completion_ratio
+                CASE
+                    WHEN COUNT(DISTINCT tsfa.final_assignment_id)
+                        FILTER (WHERE tsfa.is_unlocked = true) = 0
+                    THEN 0
 
-                FROM tbl_user tu
+                    ELSE ROUND(
+                        COUNT(DISTINCT tcr.certificate_id)::decimal
+                        /
+                        COUNT(DISTINCT tsfa.final_assignment_id)
+                        FILTER (WHERE tsfa.status = 'Completed') * 100,
+                        2
+                    )
+                END AS completion_ratio
 
-                LEFT JOIN tbl_student_final_assignment tsfa 
-                    ON tsfa.student_id = tu.user_id
+            FROM tbl_user tu
 
-                LEFT JOIN tbl_certificates tcr
-                    ON tcr.student_id = tu.user_id
-                LEFT JOIN tbl_course tc
-                    ON tc.course_id = tcr.course_id
-        `);
+            LEFT JOIN tbl_student_course tsc
+                ON tsc.student_id = tu.user_id
+
+            LEFT JOIN tbl_student_final_assignment tsfa
+                ON tsfa.student_id = tu.user_id
+
+            LEFT JOIN tbl_certificates tcr
+                ON tcr.student_id = tu.user_id
+
+            LEFT JOIN tbl_course tc
+                ON tc.course_id = tcr.course_id
+            `);
 
         const result = await pool.query(`
         SELECT  
