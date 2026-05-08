@@ -1271,7 +1271,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
           enrolled_students: result.rows[0].enrolled_students,
           completed_students: result.rows[0].completed_students,
           in_progress_students: result.rows[0].in_progress_students,
-          avg_percentage: result.rows[0].avg_percentage,
+          total_course_purchase: result.rows[0].total_course_purchase,
         },
         engagementMetrics: {
           avg_assignment_score: result.rows[0].avg_assignment_score,
