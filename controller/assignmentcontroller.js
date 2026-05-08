@@ -1275,7 +1275,8 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
             statusCode: 200,
             message: 'fetched successfully',
             stats: {
-                total_assignments: s.total_assignments,
+                total_assignments:s.total_assignment,
+                completed_assignments: s.total_assignments,
                 pending_review: s.pending_assignments,
                 completion_percentage: completionPercentage + "%",
                 students: s.total_students
