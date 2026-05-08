@@ -1007,7 +1007,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         (SELECT COUNT(DISTINCT student_id) 
           FROM tbl_student_course) AS enrolled_students,
         (SELECT COUNT(*) FROM tbl_student_final_assignment WHERE status='Completed') AS completed_students,
-        (SELECT COUNT(*) FROM tbl_student_final_assignment WHERE is_unlocked = false) AS in_progress_students,
+        (SELECT COUNT(*) FROM tbl_student_final_assignment WHERE status = 'Pending') AS in_progress_students,
         (SELECT ROUND(AVG(total_marks::numeric), 2) 
         FROM tbl_student_final_assignment
         WHERE status = 'Completed') AS avg_percentage,
@@ -1159,7 +1159,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
       SELECT 
         TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM') AS month_key,
         COUNT(*) FILTER (WHERE status='Completed') AS completed,
-        COUNT(*) FILTER (WHERE is_unlocked = false) AS in_progress
+        COUNT(*) FILTER (WHERE status = 'Pending') AS in_progress
       FROM tbl_student_final_assignment
       WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
       AND created_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
