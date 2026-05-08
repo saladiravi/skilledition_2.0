@@ -3260,40 +3260,41 @@ exports.getadminstudentmanagement = async (req, res) => {
 
   try {
 
-       const statsQuery = await pool.query(`
-            SELECT
-        -- ✅ Total Students (only role = student)
-        COUNT(DISTINCT tu.user_id) FILTER (
-          WHERE tu.role = 'student'
-        ) AS total_students,
+      const statsQuery = await pool.query(`
+      SELECT
+          COUNT(DISTINCT tu.user_id) FILTER (
+              WHERE tu.role = 'student'
+          ) AS total_students,
 
-        -- ✅ Active Students (purchased at least 1 course)
-        COUNT(DISTINCT tsc.student_id) AS active_students,
- 
+          COUNT(DISTINCT tsc.student_id) AS active_students,
 
-        -- ✅ Avg Progress
-        COALESCE(
-          ROUND(
-            AVG(
-              (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
-            ), 2
-          ),
-        0) AS avg_progress,
+          (
+              SELECT COALESCE(
+                  ROUND(
+                      AVG(
+                          (
+                              correct_answers::decimal
+                              /
+                              NULLIF(total_questions::decimal, 0)
+                          ) * 100
+                      ),
+                      2
+                  ),
+                  0
+              )
+              FROM tbl_student_final_assignment
+          ) AS avg_progress,
 
-        -- ✅ Certificates Issued (from tbl_certificates)
-        COUNT(DISTINCT tc.certificate_id) AS certificates_issued
+            COUNT(DISTINCT tc.certificate_id) AS certificates_issued
 
-      FROM tbl_user tu
+        FROM tbl_user tu
 
-      LEFT JOIN tbl_student_course tsc 
-        ON tsc.student_id = tu.user_id
+        LEFT JOIN tbl_student_course tsc 
+            ON tsc.student_id = tu.user_id
 
-      LEFT JOIN tbl_student_final_assignment tsfa 
-        ON tsfa.student_id = tu.user_id
-
-      LEFT JOIN tbl_certificates tc
-        ON tc.student_id = tu.user_id
-    `);
+        LEFT JOIN tbl_certificates tc
+            ON tc.student_id = tu.user_id
+        `);
   const query = await pool.query(`
   SELECT
       tu.user_id AS student_id, 
