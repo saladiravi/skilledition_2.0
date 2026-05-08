@@ -1187,23 +1187,31 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
 
     try {
         // 📊 Stats Query
-      const stats = await pool.query(`
+         const stats = await pool.query(`
             SELECT
-                COUNT(*) AS total_assignments,
+                COUNT(*) AS total_assignment,
+                COUNT(*) FILTER (
+                    WHERE status = 'Completed'
+                ) AS total_assignments,
 
                 COUNT(*) FILTER (
                     WHERE status = 'Completed'
+                    AND tutor_status != 'Pending'
+                    AND admin_status != 'Pending'
                 ) AS completed_assignments,
 
                 COUNT(*) FILTER (
-                    WHERE status != 'Completed'
+                    WHERE status = 'Completed'
+                    AND (
+                        tutor_status = 'Pending'
+                        OR admin_status = 'Pending'
+                    )
                 ) AS pending_assignments,
 
                 COUNT(DISTINCT student_id) AS total_students
 
             FROM tbl_student_final_assignment
         `);
-
         const result = await pool.query(`
             SELECT 
                 tsf.final_assignment_id,
@@ -1261,8 +1269,8 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
         const s = stats.rows[0];
 
         const completionPercentage =
-            s.total_assignments > 0
-                ? ((s.completed_assignments / s.total_assignments) * 100).toFixed(0)
+            s.total_assignment > 0
+                ? ((s.completed_assignments / s.total_assignment) * 100).toFixed(0)
                 : 0;
 
         return res.status(200).json({
