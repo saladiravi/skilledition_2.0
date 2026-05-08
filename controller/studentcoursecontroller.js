@@ -3794,7 +3794,7 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
     `;
 
     // Course Query
-   const courseQuery = `
+  const courseQuery = `
       SELECT 
           tc.course_id,
           tc.course_title,
@@ -3825,21 +3825,23 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
           END AS progress_percentage
 
       FROM tbl_student_course sc
-      JOIN tbl_course tc 
+
+      JOIN tbl_course tc
           ON sc.course_id = tc.course_id
 
-      JOIN tbl_category tcat 
+      JOIN tbl_category tcat
           ON tc.category_id = tcat.category_id
 
-      JOIN tbl_module tm 
+      JOIN tbl_module tm
           ON tc.course_id = tm.course_id
 
-      JOIN tbl_module_videos tmv 
+      JOIN tbl_module_videos tmv
           ON tm.module_id = tmv.module_id
 
       LEFT JOIN tbl_student_course_progress svp
           ON tmv.module_video_id = svp.module_video_id
           AND svp.student_id = $1
+          AND svp.course_id = tc.course_id
 
       WHERE sc.student_id = $1
 
