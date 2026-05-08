@@ -170,6 +170,26 @@ exports.getinternship = async (req, res) => {
 
 exports.gettotalinternship = async (req, res) => {
   try {
+    const statsQuery = await pool.query(`
+          SELECT
+              (
+                  SELECT COUNT(DISTINCT student_id)
+                  FROM tbl_student_course
+              ) AS enrolled_students,
+
+              COUNT(*) AS total_applied_internships,
+
+              COUNT(*) FILTER (
+                  WHERE status = 'Approved'
+              ) AS total_approved_internships,
+
+              COUNT(*) FILTER (
+                  WHERE status = 'Pending'
+              ) AS total_pending_internships
+
+          FROM tbl_internship
+      `);
+
     const result = await pool.query(
       `SELECT 
           u.user_id,
@@ -211,10 +231,12 @@ exports.gettotalinternship = async (req, res) => {
         return row;
       })
     );
+    const stats = statsQuery.rows[0];
 
     return res.status(200).json({
       statusCode: 200,
       message: "Internship Applications Fetched Successfully",
+      stats,
       data: updatedRows
     });
 
