@@ -3801,29 +3801,31 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
           tcat.category_name,
 
           CASE
-              WHEN EXISTS (
-                  SELECT 1
-                  FROM tbl_student_final_assignment tsfa
-                  WHERE tsfa.student_id = $1
-                    AND tsfa.course_id = tc.course_id
-                    AND tsfa.status = 'Completed'
-              )
-              THEN 100
+            WHEN EXISTS (
+                SELECT 1
+                FROM tbl_student_final_assignment tsfa
+                WHERE tsfa.student_id = $1
+                  AND tsfa.course_id = tc.course_id
+                  AND tsfa.status = 'Completed'
+            )
+            THEN 100
 
-              ELSE COALESCE(
-                  ROUND(
-                      (
-                          COUNT(DISTINCT svp.module_video_id)
-                          FILTER (WHERE svp.is_completed = true)::decimal
-                          /
-                          NULLIF(COUNT(DISTINCT tmv.module_video_id), 0)
-                      ) * 100,
-                      2
-                  ),
-                  0
-              )
-          END AS progress_percentage
-
+            ELSE COALESCE(
+                LEAST(
+                    ROUND(
+                        (
+                            COUNT(DISTINCT svp.module_video_id)
+                            FILTER (WHERE svp.is_completed = true)::decimal
+                            /
+                            NULLIF(COUNT(DISTINCT tmv.module_video_id), 0)
+                        ) * 100,
+                        2
+                    ),
+                    99
+                ),
+                0
+            )
+        END AS progress_percentage
       FROM tbl_student_course sc
 
       JOIN tbl_course tc
