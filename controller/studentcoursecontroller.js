@@ -3737,25 +3737,34 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
           COUNT(DISTINCT tcert.certificate_id) AS certificates,
 
           COALESCE(
-              (
-                  SELECT ROUND(
-                      AVG(course_score)::numeric,
-                      2
-                  )
-                  FROM (
-                      SELECT 
-                          (
-                              correct_answers::numeric
-                              /
-                              NULLIF(total_questions::numeric, 0)
-                          ) * 100 AS course_score
-                      FROM tbl_student_final_assignment
-                      WHERE student_id = $1
-                        AND status = 'Completed'
-                        AND correct_answers IS NOT NULL
-                  ) scores
-              ),
-          0) AS average_score,
+            (
+                SELECT ROUND(
+                    AVG(course_score),
+                    2
+                )
+                FROM (
+                    SELECT 
+                        course_id,
+                        ROUND(
+                            (
+                                correct_answers::numeric
+                                /
+                                NULLIF(total_questions::numeric, 0)
+                            ) * 100,
+                            2
+                        ) AS course_score
+                    FROM tbl_student_final_assignment
+                    WHERE student_id = $1
+                      AND status = 'Completed'
+                      AND correct_answers IS NOT NULL
+                    GROUP BY 
+                        course_id,
+                        correct_answers,
+                        total_questions
+                ) scores
+            ),
+        0
+        ) AS average_score,
 
           CASE
             WHEN EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) < 60
