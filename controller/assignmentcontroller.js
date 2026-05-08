@@ -1496,7 +1496,7 @@ exports.getallstudentcertificates = async (req, res) => {
 
                 CASE
                     WHEN COUNT(DISTINCT tsfa.final_assignment_id)
-                        FILTER (WHERE tsfa.is_unlocked = true) = 0
+                        FILTER (WHERE tsfa.status = 'Completed') = 0
                     THEN 0
 
                     ELSE ROUND(
