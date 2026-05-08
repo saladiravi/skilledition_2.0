@@ -1188,21 +1188,21 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
     try {
         // 📊 Stats Query
       const stats = await pool.query(`
-                SELECT
-                    COUNT(*) AS total_assignments,
+            SELECT
+                COUNT(*) AS total_assignments,
 
-                    COUNT(*) FILTER (
-                        WHERE status = 'Completed'
-                    ) AS completed_assignments,
+                COUNT(*) FILTER (
+                    WHERE status = 'Completed'
+                ) AS completed_assignments,
 
-                    COUNT(*) FILTER (
-                        WHERE admin_status != 'Submitted'
-                    ) AS pending_assignments,
+                COUNT(*) FILTER (
+                    WHERE status != 'Completed'
+                ) AS pending_assignments,
 
-                    COUNT(DISTINCT student_id) AS total_students
+                COUNT(DISTINCT student_id) AS total_students
 
-                FROM tbl_student_final_assignment
-            `);
+            FROM tbl_student_final_assignment
+        `);
 
         const result = await pool.query(`
             SELECT 
