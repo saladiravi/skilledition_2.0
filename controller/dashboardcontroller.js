@@ -1187,16 +1187,33 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
     // =======================
     // 📊 COURSE AVG SCORES
     // =======================
-    const courseAvgScores = await pool.query(`
-      SELECT 
+  const courseAvgScores = await pool.query(`
+    SELECT 
         c.course_title,
-        ROUND(AVG(a.total_marks::numeric), 2) AS avg_score
-      FROM tbl_course c
-      JOIN tbl_student_final_assignment a 
+
+        COUNT(*) AS assignment_count,
+
+        SUM(a.total_marks::numeric) AS total_marks,
+        SUM(a.total_questions::numeric) AS total_questions,
+
+        ROUND(
+            (
+                SUM(a.total_marks::numeric)
+                /
+                NULLIF(SUM(a.total_questions::numeric), 0)
+            ) * 100,
+            2
+        ) AS avg_score
+
+    FROM tbl_course c
+    JOIN tbl_student_final_assignment a
         ON c.course_id = a.course_id
-      GROUP BY c.course_title
-      ORDER BY avg_score DESC
-    `);
+
+    WHERE a.status = 'Completed'
+
+    GROUP BY c.course_title
+    ORDER BY avg_score DESC
+`);
 
   const studentcourseprogress = await pool.query(`
   SELECT 
