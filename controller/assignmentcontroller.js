@@ -1489,8 +1489,8 @@ exports.getallstudentcertificates = async (req, res) => {
                     WHERE status = 'Published'
                 ) AS no_of_courses,
 
-                (
-                    SELECT COUNT(DISTINCT student_id)
+               (
+                    SELECT COUNT(*)
                     FROM tbl_certificates
                 ) AS certificate_issued_students,
 
