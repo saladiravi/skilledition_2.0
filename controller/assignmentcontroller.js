@@ -1196,9 +1196,7 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
 
                 COUNT(*) FILTER (
                     WHERE status = 'Completed'
-                    AND tutor_status != 'Pending'
-                    AND admin_status != 'Pending'
-                ) AS completed_assignments,
+                 ) AS completed_assignments,
 
                 COUNT(*) FILTER (
                     WHERE status = 'Completed'
