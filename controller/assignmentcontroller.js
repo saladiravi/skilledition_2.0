@@ -1196,7 +1196,7 @@ exports.getfinalassignmentsbyadmin = async (req, res) => {
                     ) AS completed_assignments,
 
                     COUNT(*) FILTER (
-                        WHERE status != 'Completed'
+                        WHERE admin_status != 'Submitted'
                     ) AS pending_assignments,
 
                     COUNT(DISTINCT student_id) AS total_students
