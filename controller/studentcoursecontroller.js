@@ -2075,9 +2075,9 @@ exports.writeFinalExam = async (req, res) => {
  
 
     if (assignment.status === "Completed") {
-      return res.status(400).json({
-        statusCode: 400
-      
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Exam already submitted"
       });
     }
 
