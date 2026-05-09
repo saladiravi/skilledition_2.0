@@ -1528,7 +1528,7 @@ const monthlyGraph = monthlyData.rows.map(row => ({
           FROM tbl_student_final_assignment fa
           JOIN tbl_course c ON fa.course_id = c.course_id
           WHERE c.tutor_id = $1
-          AND fa.is_unlocked = true
+          AND fa.status = 'Completed'
         `, [tutor_id]);
 
       const g = gradeQuery.rows[0];
