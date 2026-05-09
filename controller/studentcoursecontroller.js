@@ -3878,7 +3878,7 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
         AND scp.student_id = $1
 
       WHERE sc.student_id = $1
-      ORDER BY ta.assignment_date DESC
+      ORDER BY ta.assignment_date ASC
       LIMIT 3
     `;
 
