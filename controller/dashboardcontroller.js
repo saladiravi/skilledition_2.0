@@ -1013,9 +1013,18 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
             FROM tbl_student_final_assignment
         ) AS total_course_purchase,
 
-        (SELECT ROUND(AVG(total_marks::numeric), 2) 
-        FROM tbl_student_final_assignment
-        WHERE status = 'Completed') AS avg_assignment_score,
+       (SELECT COALESCE(
+        ROUND(
+            AVG(
+                (correct_answers::decimal / NULLIF(total_questions::decimal, 0)) * 100
+            ),
+            2
+        ),
+        0
+          )
+          FROM tbl_student_final_assignment
+          WHERE status = 'Completed'
+      ) AS avg_assignment_score,
         
         (SELECT ROUND(AVG(total_hours), 2)
           FROM (
@@ -1026,11 +1035,16 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
             GROUP BY student_id
           ) t) AS avg_learning_hours,
 
-        (SELECT ROUND(
-            (COUNT(DISTINCT CASE WHEN status = 'Completed' THEN student_id END) * 100.0)
-            / NULLIF(COUNT(DISTINCT student_id), 0),
-         2)
-         FROM tbl_student_final_assignment) AS completion_rate,
+        (SELECT COALESCE(
+                ROUND(
+                    (COUNT(CASE WHEN status = 'Completed' THEN 1 END) * 100.0)
+                    / NULLIF(COUNT(*), 0),
+                    2
+                ),
+                0
+            )
+            FROM tbl_student_final_assignment
+        ) AS completion_rate,
 
         (SELECT ROUND(AVG(rating::numeric), 1)
          FROM tbl_feedback) AS student_satisfaction
