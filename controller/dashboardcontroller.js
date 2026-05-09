@@ -1026,14 +1026,25 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
           WHERE status = 'Completed'
       ) AS avg_assignment_score,
         
-        (SELECT ROUND(AVG(total_hours), 2)
-          FROM (
-            SELECT 
-              student_id, 
-              SUM(EXTRACT(EPOCH FROM watched::interval)) / 3600.0 AS total_hours
-            FROM tbl_student_course_progress
-            GROUP BY student_id
-          ) t) AS avg_learning_hours,
+      (SELECT COALESCE(
+          TO_CHAR(
+            make_interval(
+              secs => (
+                SUM(EXTRACT(EPOCH FROM scp.watched::time))
+                /
+                NULLIF(
+                  COUNT(DISTINCT scp.student_id),
+                  0
+                )
+              )::int
+            ),
+            'HH24:MI:SS'
+          ),
+          '00:00:00'
+        )
+        FROM tbl_student_course_progress scp
+        WHERE scp.watched IS NOT NULL
+      ) AS avg_learning_hours,
 
         (SELECT COALESCE(
                 ROUND(
