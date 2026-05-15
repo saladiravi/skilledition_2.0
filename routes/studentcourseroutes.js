@@ -34,7 +34,7 @@ router.get('/getadminstudentmanagement',verifyToken,allowRoles("admin","student"
 router.post('/getadminstudentmanagementbyid',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getadminstudentmanagementbyid)
 router.post('/getPurchaseList',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getPurchaseList)
 
-router.get('/getPurchaseInvoice',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getPurchaseInvoice)
-router.post('/getadminPurchaseList',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getadminPurchaseList)
+router.post('/getPurchaseInvoice',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getPurchaseInvoice)
+router.get('/getadminPurchaseList',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getadminPurchaseList)
 
 module.exports=router
