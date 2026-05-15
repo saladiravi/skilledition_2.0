@@ -4229,3 +4229,215 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
   }
 };
  
+
+
+exports.getPurchaseList = async (req, res) => {
+
+  try {
+
+    const { student_id } = req.body;
+
+    const result = await pool.query(
+
+      `SELECT
+
+          tsc.student_course_id,
+
+          TO_CHAR(
+            tsc.created_at,
+            'DD/MM/YYYY'
+          ) AS purchase_date,
+
+          'Invoice' AS type,
+
+          tsc.order_id,
+
+          tsc.transaction_id,
+
+          tc.course_title,
+
+          tsc.order_amount,
+
+          tsc.payment_status,
+
+          tsc.payment_method,
+
+          tsc.payment_provider,
+
+          tsc.invoice_number
+
+       FROM tbl_student_course tsc
+
+       JOIN tbl_course tc
+       ON tsc.course_id = tc.course_id
+
+       WHERE tsc.student_id = $1
+
+       ORDER BY tsc.created_at DESC`,
+
+      [student_id]
+
+    );
+
+    return res.status(200).json({
+
+     statusCode:200,
+     message:'Fetched Sucessfully',
+     data:result.rows
+
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+    statusCode:500,
+    message: 'Internal Server Error'
+
+    });
+
+  }
+};
+
+exports.getPurchaseInvoice = async (req, res) => {
+
+  try {
+
+    const { student_course_id } = req.body;
+
+    const result = await pool.query(
+
+      `SELECT
+
+          tsc.student_course_id,
+
+          tsc.order_id,
+
+          tsc.transaction_id,
+
+          tsc.invoice_number,
+
+          tsc.order_amount,
+
+          tsc.payment_method,
+
+          tsc.payment_status,
+
+          TO_CHAR(
+            tsc.created_at,
+            'DD/MM/YYYY'
+          ) AS purchase_date,
+
+          tc.course_title,
+
+          tu.full_name,
+
+          tu.email,
+          ts.address,
+
+          ts.pincode,
+
+          tu.phone_number
+
+       FROM tbl_student_course tsc
+
+       JOIN tbl_course tc
+       ON tsc.course_id = tc.course_id
+
+       JOIN tbl_user tu
+       ON tsc.student_id = tu.user_id
+
+       LEFT JOIN tbl_student ts
+       ON tu.user_id = ts.user_id
+
+       WHERE tsc.student_course_id = $1
+
+       LIMIT 1`,
+
+      [student_course_id]
+
+    );
+
+    if (result.rows.length === 0) {
+     return res.status(404).json({
+        statusCode:404,
+       message: "Invoice not found"
+
+      });
+
+    }
+
+    return res.status(200).json({
+      statusCode:200,
+      message:'Fetched Sucessfully',
+      data: result.rows[0]
+
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      statusCode:500,
+      message: 'Internal Server Error'
+
+    });
+
+  }
+};
+
+
+exports.getadminPurchaseList = async (req, res) => {
+
+  try {
+
+ 
+
+    const result = await pool.query(
+
+      `SELECT
+
+          tsc.student_course_id,
+
+          TO_CHAR(
+            tsc.created_at,
+            'DD/MM/YYYY'
+          ) AS purchase_date,
+
+          'Invoice' AS type,
+
+          tsc.order_id,
+
+          tsc.transaction_id,
+
+          tc.course_title,
+
+          tsc.order_amount,
+
+          tsc.payment_status,
+
+          tsc.payment_method,
+
+          tsc.payment_provider,
+
+          tsc.invoice_number
+
+       FROM tbl_student_course tsc
+
+       JOIN tbl_course tc
+       ON tsc.course_id = tc.course_id
+
+       ORDER BY tsc.created_at DESC`,
+    );
+
+    return res.status(200).json({
+    statusCode:200,
+     message:'Fetched Sucessfully',
+     data:result.rows
+
+    });
+
+  } catch (error) {
+     return res.status(500).json({
+        statusCode:500,
+        message: error.message
+       });
+
+  }
+};
