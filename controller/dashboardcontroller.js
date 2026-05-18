@@ -8,7 +8,9 @@ exports.getDashboardStats = async (req, res) => {
     // =======================
     const users = await pool.query(`
       SELECT
-        COUNT(*) FILTER (WHERE role = 'student') AS total_students,
+        SELECT
+    (SELECT COUNT(student_course_id) 
+     FROM tbl_student_course) AS total_students,
         COUNT(*) FILTER (WHERE role = 'tutor') AS active_tutors
       FROM tbl_user
     `);
@@ -54,16 +56,16 @@ exports.getDashboardStats = async (req, res) => {
     `);
 
     // 2️⃣ Student data
-    const graphData = await pool.query(`
+  const graphData = await pool.query(`
       SELECT
-        TO_CHAR(created_at, 'YYYY-MM') AS month_key,
-        COUNT(*) AS student_count
-      FROM tbl_user
-     WHERE role = 'student'
-      AND created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
-      AND created_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
+        TO_CHAR(purchase_date, 'YYYY-MM') AS month_key,
+        COUNT(student_course_id) AS student_count
+      FROM tbl_student_course
+      WHERE payment_status = 'SUCCESS'
+        AND purchase_date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
+        AND purchase_date < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
       GROUP BY month_key
-      `);
+    `);
 
     // 3️⃣ Map
     const graphMap = {};
