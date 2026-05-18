@@ -8,7 +8,7 @@ exports.getDashboardStats = async (req, res) => {
     // =======================
     const users = await pool.query(`
       SELECT
-        SELECT
+       
     (SELECT COUNT(student_course_id) 
      FROM tbl_student_course) AS total_students,
         COUNT(*) FILTER (WHERE role = 'tutor') AS active_tutors
