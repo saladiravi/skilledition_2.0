@@ -250,9 +250,106 @@ exports.gettotalinternship = async (req, res) => {
 };
 
 
+// exports.updateInternship = async (req, res) => {
+
+
+//   try {
+//     const { internship_id, role, status, start_date, end_date } = req.body;
+
+//     // ✅ Validation
+//     if (!internship_id) {
+//       return res.status(400).json({
+//         statusCode: 400,
+//         message: "internship_id is required"
+//       });
+//     }
+
+//     if (!role || !start_date) {
+//       return res.status(400).json({
+//         statusCode: 400,
+//         message: "role and start_date are required"
+//       });
+//     }
+
+//     let certificateKey = null;
+
+//     // ✅ Check if file uploaded
+//     if (req.files?.intership_certificate?.length > 0) {
+//       certificateKey = await uploadToS3(
+//         req.files.intership_certificate[0],
+//         "internships/certificates"
+//       );
+//     }
+
+//     // ✅ Build dynamic query
+//     let query = `
+//       UPDATE tbl_internship
+//       SET role = $1,
+//           start_date = $2,
+//           status = $3,
+//           end_date = $4
+//     `;
+
+//     const values = [role, start_date, status, end_date];
+//     let paramIndex = 5;
+
+//     // If certificate uploaded, update column
+//     if (certificateKey) {
+//       query += `, intership_certificate = $${paramIndex}`;
+//       values.push(certificateKey);
+//       paramIndex++;
+//     }
+
+//     query += ` WHERE internship_id = $${paramIndex} RETURNING *`;
+//     values.push(internship_id);
+
+//     const result = await pool.query(query, values);
+
+//     if (result.rowCount === 0) {
+//       return res.status(404).json({
+//         statusCode: 404,
+//         message: "Internship not found"
+//       });
+//     }
+
+
+//       const internship = result.rows[0];
+//       const student_id = internship.student_id;
+
+//       // 🔔 Notification
+//       await sendNotification({
+//         sender_id: 4,
+//         receiver_id: student_id,
+//         type: 'internship',
+//         message: `Your internship role has been updated to ${role}`,
+//         type_id: internship_id
+//       });
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: "Internship updated successfully"
+    
+//     });
+
+//   } catch (error) {
+
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error"
+//     });
+//   }
+// };
+
+
+
 exports.updateInternship = async (req, res) => {
   try {
-    const { internship_id, role, status, start_date, end_date } = req.body;
+    const {
+      internship_id,
+      role,
+      start_date,
+      end_date
+    } = req.body;
 
     // ✅ Validation
     if (!internship_id) {
@@ -262,16 +359,16 @@ exports.updateInternship = async (req, res) => {
       });
     }
 
-    if (!role || !start_date) {
+    if (!role) {
       return res.status(400).json({
         statusCode: 400,
-        message: "role and start_date are required"
+        message: "role is required"
       });
     }
 
     let certificateKey = null;
 
-    // ✅ Check if file uploaded
+    // ✅ Upload certificate
     if (req.files?.intership_certificate?.length > 0) {
       certificateKey = await uploadToS3(
         req.files.intership_certificate[0],
@@ -279,26 +376,49 @@ exports.updateInternship = async (req, res) => {
       );
     }
 
-    // ✅ Build dynamic query
+    // ✅ Status Logic
+    let status = "Pending";
+
+    // Start date updated → Approved
+    if (start_date) {
+      status = "Approved";
+    }
+
+    // End date + certificate uploaded → Completed
+    if (end_date && certificateKey) {
+      status = "Completed";
+    }
+
+    // ✅ Dynamic query
     let query = `
       UPDATE tbl_internship
       SET role = $1,
           start_date = $2,
-          status = $3,
-          end_date = $4
+          end_date = $3,
+          status = $4
     `;
 
-    const values = [role, start_date, status, end_date];
+    const values = [
+      role,
+      start_date || null,
+      end_date || null,
+      status
+    ];
+
     let paramIndex = 5;
 
-    // If certificate uploaded, update column
+    // Update certificate if uploaded
     if (certificateKey) {
       query += `, intership_certificate = $${paramIndex}`;
       values.push(certificateKey);
       paramIndex++;
     }
 
-    query += ` WHERE internship_id = $${paramIndex} RETURNING *`;
+    query += `
+      WHERE internship_id = $${paramIndex}
+      RETURNING *
+    `;
+
     values.push(internship_id);
 
     const result = await pool.query(query, values);
@@ -310,26 +430,25 @@ exports.updateInternship = async (req, res) => {
       });
     }
 
+    const internship = result.rows[0];
 
-      const internship = result.rows[0];
-      const student_id = internship.student_id;
-
-      // 🔔 Notification
-      await sendNotification({
-        sender_id: 4,
-        receiver_id: student_id,
-        type: 'internship',
-        message: `Your internship role has been updated to ${role}`,
-        type_id: internship_id
-      });
+    // 🔔 Notification
+    await sendNotification({
+      sender_id: 4,
+      receiver_id: internship.student_id,
+      type: "internship",
+      message: `Your internship status is now ${status}`,
+      type_id: internship_id
+    });
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Internship updated successfully"
-    
+      message: "Internship updated successfully",
+      status
     });
 
   } catch (error) {
+    console.error(error);
 
     return res.status(500).json({
       statusCode: 500,
