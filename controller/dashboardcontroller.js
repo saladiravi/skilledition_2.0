@@ -51,17 +51,21 @@ const monthsResult = await pool.query(`
 `);
 
     // 2️⃣ Student data
-  const graphData = await pool.query(`
-      SELECT
-        TO_CHAR(purchase_date, 'YYYY-MM') AS month_key,
-        COUNT(DISTINCT student_id) AS student_count
-      FROM tbl_student_course
-      WHERE payment_status = 'SUCCESS'
-        AND purchase_date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
-        AND purchase_date < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
-     GROUP BY TO_CHAR(purchase_date, 'YYYY-MM')
-      ORDER BY month_key
-    `);
+ const graphData = await pool.query(`
+  SELECT
+    TO_CHAR(purchase_date, 'YYYY-MM') AS month_key,
+    COUNT(DISTINCT student_id) AS student_count
+  FROM tbl_student_course
+  WHERE payment_status = 'SUCCESS'
+    AND purchase_date >= (
+      DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
+    )::DATE
+    AND purchase_date < (
+      DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
+    )::DATE
+  GROUP BY TO_CHAR(purchase_date, 'YYYY-MM')
+  ORDER BY month_key
+`);
 
     // 3️⃣ Map
     const graphMap = {};
