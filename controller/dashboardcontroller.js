@@ -1285,10 +1285,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
     END AS certificate_status,
 
     -- ✅ Internship Status
-    CASE 
-      WHEN i.internship_id IS NOT NULL THEN 'Applied'
-      ELSE 'Pending'
-    END AS internship_status
+  COALESCE(i.status, 'Pending') AS internship_status
 
   FROM tbl_student_course sc
 
