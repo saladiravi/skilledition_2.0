@@ -1053,6 +1053,20 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
 
     ) AS avg_learning_hours,
 
+    (
+      SELECT COALESCE(
+        TO_CHAR(
+          make_interval(
+            secs => SUM(EXTRACT(EPOCH FROM scp.watched::time))::int
+          ),
+          'HH24:MI:SS'
+        ),
+        '00:00:00'
+      )
+      FROM tbl_student_course_progress scp
+      WHERE scp.watched IS NOT NULL
+    ) AS total_learning_hours,
+
         (SELECT COALESCE(
                 ROUND(
                     (COUNT(CASE WHEN status = 'Completed' THEN 1 END) * 100.0)
@@ -1325,6 +1339,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         engagementMetrics: {
           avg_assignment_score: result.rows[0].avg_assignment_score,
           avg_learning_hours: result.rows[0].avg_learning_hours,
+          total_learning_hours :result.rows[0].total_learning_hours,
           completion_rate: result.rows[0].completion_rate,
           student_satisfaction: result.rows[0].student_satisfaction,
         },
