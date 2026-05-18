@@ -39,21 +39,16 @@ exports.getDashboardStats = async (req, res) => {
     // =======================
 
     // 1️⃣ Generate months
+   // 1️⃣ Generate last 5 months
     const monthsResult = await pool.query(`
-      SELECT 
-      generate_series(
+      SELECT
+        month_date,
+        TO_CHAR(month_date, 'YYYY-MM') AS month_key
+      FROM generate_series(
         DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
         DATE_TRUNC('month', CURRENT_DATE),
         INTERVAL '1 month'
-      ) AS month_date,
-      TO_CHAR(
-        generate_series(
-          DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months',
-          DATE_TRUNC('month', CURRENT_DATE),
-          INTERVAL '1 month'
-        ),
-        'YYYY-MM'
-      ) AS month_key
+      ) AS month_date
     `);
 
     // 2️⃣ Student data
