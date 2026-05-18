@@ -56,8 +56,7 @@ const monthsResult = await pool.query(`
     TO_CHAR(purchase_date, 'YYYY-MM') AS month_key,
     COUNT(DISTINCT student_id) AS student_count
   FROM tbl_student_course
-  WHERE payment_status = 'SUCCESS'
-    AND purchase_date >= (
+    WHERE purchase_date >= (
       DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
     )::DATE
     AND purchase_date < (
