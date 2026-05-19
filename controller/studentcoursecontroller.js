@@ -1,7 +1,21 @@
 const pool = require('../config/db');
 const { getSignedVideoUrl } = require('../utils/s3upload');
 const {sendNotification}=require('../utils/notification')
+const crypto = require("crypto");
+const axios = require("axios");
+const uniqid = require("uniqid");
+const dotenv = require("dotenv");
+const { Cashfree, CFEnvironment } = require("cashfree-pg");
+ 
 
+dotenv.config();
+
+// Initialize Cashfree SDK
+const cashfree = new Cashfree(
+  CFEnvironment.SANDBOX, // change to CFEnvironment.SANDBOX for testing
+  process.env.CASHFREE_APP_ID,
+  process.env.CASHFREE_SECRET_KEY
+);
 
 function timeToSeconds(time) {
   if (!time) return 0;
@@ -137,7 +151,412 @@ exports.studentbuycourse = async (req, res) => {
   }
 };
 
+exports.initiatePayment = async (req, res) => {
+  try {
+    const { student_id, course_id } = req.body;
 
+    if (!student_id || !course_id) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "student_id and course_id are required",
+      });
+    }
+
+    // 1️⃣ Fetch student details
+    const studentResult = await pool.query(
+      `
+      SELECT full_name, email, phone_number
+      FROM tbl_user
+      WHERE user_id = $1
+      `,
+      [student_id]
+    );
+
+    if (studentResult.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Student not found",
+      });
+    }
+
+    const student = studentResult.rows[0];
+
+    // 2️⃣ Fetch course price
+    const courseResult = await pool.query(
+      `
+      SELECT course_title, price
+      FROM tbl_course
+      WHERE course_id = $1
+      `,
+      [course_id]
+    );
+
+    if (courseResult.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Course not found",
+      });
+    }
+
+    const course = courseResult.rows[0];
+    const orderAmount = Number(course.price);
+
+    // 3️⃣ Generate unique order id
+    const orderId = uniqid("CF_");
+
+    // 4️⃣ Save initial order
+    await pool.query(
+      `
+      INSERT INTO tbl_student_course
+      (
+        student_id,
+        course_id,
+        purchase_date,
+        order_id,
+        order_amount,
+        payment_status,
+        payment_provider,
+        status
+      )
+      VALUES
+      (
+        $1,
+        $2,
+        CURRENT_DATE,
+        $3,
+        $4,
+        'PENDING',
+        'CASHFREE',
+        'PENDING'
+      )
+      `,
+      [
+        student_id,
+        course_id,
+        orderId,
+        orderAmount
+      ]
+    );
+
+    // 5️⃣ Cashfree order request
+    const request = {
+      order_amount: orderAmount,
+      order_currency: "INR",
+      order_id: orderId,
+
+      customer_details: {
+        customer_id: `STU_${student_id}`,
+         customer_name: student.full_name,
+    customer_email: student.email,
+    customer_phone: String(student.phone_number),
+      },
+
+      order_meta: {
+        return_url:
+          `http://localhost:3000/student/courses`,
+
+        notify_url:
+          `https://app.skilledition.in/studentcourse/callback`,
+
+        payment_methods: "cc,dc,upi"
+      }
+    };
+
+    // 6️⃣ Create Cashfree order
+    const response = await cashfree.PGCreateOrder(request);
+
+    console.log(
+      "✅ Cashfree Order Created:",
+      response.data
+    );
+
+    return res.status(200).json({
+      statusCode: 200,
+      paymentSessionId:
+        response.data.payment_session_id,
+
+      orderId:
+        response.data.order_id,
+
+      studentName:
+        student.full_name,
+
+      courseName:
+        course.course_title,
+
+      amount:
+        orderAmount,
+
+      paymentLink:
+        response.data.payment_link
+    });
+
+  } catch (error) {
+    console.error(
+      "❌ Error in initiatePayment:",
+      error.response?.data || error.message
+    );
+
+    return res.status(500).json({
+      statusCode: 500,
+      error:
+        error.response?.data || error.message,
+    });
+  }
+};
+
+
+exports.paymentCallback = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+
+    console.log(
+      "PAYMENT CALLBACK:",
+      JSON.stringify(req.body, null, 2)
+    );
+
+    const order_id =
+      req.body?.data?.order?.order_id;
+
+    const payment_status =
+      req.body?.data?.payment?.payment_status;
+
+    const transaction_id =
+      req.body?.data?.payment?.cf_payment_id;
+
+    // ✅ Use payment_group
+    const payment_method =
+      req.body?.data?.payment?.payment_group;
+
+    if (!order_id) {
+      return res.status(400).json({
+        success: false,
+        message: "order_id missing",
+      });
+    }
+
+    await client.query("BEGIN");
+
+    // 1️⃣ Get purchase
+    const purchaseRes = await client.query(
+      `
+      SELECT
+        student_course_id,
+        student_id,
+        course_id,
+        payment_status
+      FROM tbl_student_course
+      WHERE order_id = $1
+      `,
+      [order_id]
+    );
+
+    if (purchaseRes.rows.length === 0) {
+      throw new Error("Purchase record not found");
+    }
+
+    const {
+      student_course_id,
+      student_id,
+      course_id,
+      payment_status: existingStatus
+    } = purchaseRes.rows[0];
+
+    // 2️⃣ Prevent duplicate processing
+    if (existingStatus === "SUCCESS") {
+      await client.query("COMMIT");
+
+      return res.status(200).json({
+        success: true,
+        message: "Already processed",
+      });
+    }
+
+    // 3️⃣ Final status
+    const finalStatus =
+      payment_status === "SUCCESS"
+        ? "SUCCESS"
+        : "FAILED";
+
+    // ✅ Generate invoice only for success
+    let invoice_number = null;
+
+    if (finalStatus === "SUCCESS") {
+
+      const today = new Date();
+
+      invoice_number =
+        `INV-${
+          today.getFullYear()
+        }${
+          String(today.getMonth() + 1)
+            .padStart(2, "0")
+        }${
+          String(today.getDate())
+            .padStart(2, "0")
+        }-${
+          student_id
+        }-${
+          student_course_id
+        }`;
+    }
+
+    // 4️⃣ Update payment details
+    await client.query(
+      `
+      UPDATE tbl_student_course
+      SET
+        transaction_id = $1,
+        payment_status = $2,
+        payment_method = $3,
+        status = $4,
+        invoice_number = $5
+      WHERE order_id = $6
+      `,
+      [
+        transaction_id || null,
+        finalStatus,
+        payment_method || null,
+        finalStatus,
+        invoice_number,
+        order_id
+      ]
+    );
+
+    // ❌ Stop if failed
+    if (finalStatus !== "SUCCESS") {
+
+      await client.query("COMMIT");
+
+      return res.status(200).json({
+        success: true,
+        message: "Payment failed"
+      });
+    }
+
+    // 5️⃣ Remove old progress
+    await client.query(
+      `
+      DELETE FROM tbl_student_course_progress
+      WHERE student_id = $1
+      AND course_id = $2
+      `,
+      [student_id, course_id]
+    );
+
+    // 6️⃣ Insert videos
+    await client.query(
+      `
+      INSERT INTO tbl_student_course_progress
+      (
+        student_id,
+        course_id,
+        module_id,
+        module_video_id,
+        is_unlocked,
+        is_completed
+      )
+      SELECT
+        $1,
+        tm.course_id,
+        tm.module_id,
+        tmv.module_video_id,
+        false,
+        false
+      FROM tbl_module tm
+      JOIN tbl_module_videos tmv
+        ON tm.module_id = tmv.module_id
+      WHERE tm.course_id = $2
+      `,
+      [student_id, course_id]
+    );
+
+    // 7️⃣ Insert assignments
+    await client.query(
+      `
+      INSERT INTO tbl_student_course_progress
+      (
+        student_id,
+        course_id,
+        module_id,
+        module_video_id,
+        assignment_id,
+        is_unlocked,
+        is_completed
+      )
+      SELECT
+        $1,
+        tm.course_id,
+        tm.module_id,
+        NULL,
+        ta.assignment_id,
+        false,
+        false
+      FROM tbl_module tm
+      JOIN tbl_assignment ta
+        ON tm.module_id = ta.module_id
+      WHERE tm.course_id = $2
+      `,
+      [student_id, course_id]
+    );
+
+    // 8️⃣ Unlock first video
+    await client.query(
+      `
+      UPDATE tbl_student_course_progress
+      SET
+        is_unlocked = true,
+        unlocked_at = NOW()
+      WHERE student_id = $1
+      AND course_id = $2
+      AND module_video_id = (
+        SELECT tmv.module_video_id
+        FROM tbl_module tm
+        JOIN tbl_module_videos tmv
+          ON tm.module_id = tmv.module_id
+        WHERE tm.course_id = $2
+        ORDER BY tm.module_id, tmv.module_video_id
+        LIMIT 1
+      )
+      `,
+      [student_id, course_id]
+    );
+
+    // 9️⃣ Final assignment
+    await createFinalAssignment(
+      client,
+      student_id,
+      course_id
+    );
+
+    await client.query("COMMIT");
+
+    return res.status(200).json({
+      success: true,
+      invoice_number,
+      message:
+        "Payment processed successfully",
+    });
+
+  } catch (error) {
+
+    await client.query("ROLLBACK");
+
+    console.error(
+      "CALLBACK ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+
+  } finally {
+    client.release();
+  }
+};
 exports.getStudentMyCourse = async (req, res) => {
   const { student_id } = req.body;
 
