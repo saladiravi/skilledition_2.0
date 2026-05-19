@@ -608,7 +608,7 @@ exports.initiatePayment = async (req, res) => {
         customer_phone: student.phone_number,
       },
       order_meta: {
-        return_url: `https://api.skilledition.in/studentcourse/payment/redirect/${orderId}`,
+        return_url: `https://skilledition.in/student/courses`,
         notify_url: `https://api.skilledition.in/payment/callback`,
         payment_methods: "cc,dc,upi", // optional
       },
