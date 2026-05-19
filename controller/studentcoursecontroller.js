@@ -585,7 +585,24 @@ exports.initiatePayment = async (req, res) => {
     }
 
     const student = studentResult.rows[0];
+  const courseResult = await pool.query(
+      `
+      SELECT course_title, price
+      FROM tbl_course
+      WHERE course_id = $1
+      `,
+      [course_id]
+    );
 
+    if (courseResult.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Course not found",
+      });
+    }
+
+    const course = courseResult.rows[0];
+    const orderAmount = Number(course.price);
     // 2️⃣ Create a unique order ID
     const orderId = uniqid("CF_");
 
@@ -599,7 +616,7 @@ exports.initiatePayment = async (req, res) => {
 
     // 4️⃣ Prepare Cashfree order request
     const request = {
-      order_amount: 1.0, // set dynamic course price if available
+      order_amount: orderAmount, // set dynamic course price if available
       order_currency: "INR",
       order_id: orderId,
       customer_details: {
