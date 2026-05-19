@@ -253,7 +253,7 @@ exports.initiatePayment = async (req, res) => {
 
       order_meta: {
         return_url:
-          `http://localhost:3000/student/courses`,
+          `https://themes-shepherd-attached-shoes.trycloudflare.com/student/courses`,
 
         notify_url:
           `https://app.skilledition.in/studentcourse/callback`,
