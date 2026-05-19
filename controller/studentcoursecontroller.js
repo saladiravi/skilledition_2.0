@@ -672,7 +672,8 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
 
       LEFT JOIN tbl_student_course tsc
         ON tsc.course_id = tc.course_id
-       AND tsc.student_id = $1
+      AND tsc.student_id = $1
+      AND tsc.payment_status = 'SUCCESS'
 
       LEFT JOIN tbl_student_course_progress tscp
         ON tscp.course_id = tc.course_id
