@@ -12,7 +12,7 @@ dotenv.config();
 
 // Initialize Cashfree SDK
 const cashfree = new Cashfree(
-  CFEnvironment.SANDBOX, // change to CFEnvironment.SANDBOX for testing
+  CFEnvironment.PRODUCTION, // change to CFEnvironment.SANDBOX for testing
   process.env.CASHFREE_APP_ID,
   process.env.CASHFREE_SECRET_KEY
 );
