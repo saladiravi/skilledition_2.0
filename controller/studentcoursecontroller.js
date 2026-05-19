@@ -2968,7 +2968,7 @@ exports.getCourseenroleDetails = async (req, res) => {
       const enrollmentResult = await pool.query(`
         SELECT student_course_id
         FROM tbl_student_course
-        WHERE course_id = $1 AND student_id = $2
+        WHERE course_id = $1 AND student_id = $2 AND status='SUCESS'
       `, [course_id, student_id]);
 
       studentCourseId = enrollmentResult.rows.length > 0
