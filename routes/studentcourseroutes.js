@@ -39,81 +39,123 @@ router.post('/getPurchaseInvoice',verifyToken,allowRoles("admin","student","tuto
 router.get('/getadminPurchaseList',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getadminPurchaseList)
 
 
+// router.post('/buycourse',studentcourse.initiatePayment);
+// router.post('/callback',studentcourse.paymentCallback);
+
+// // For showing user a success/failure page after payment
+// router.get(
+//   '/payment/redirect/:transactionId',
+//   async (req, res) => {
+
+//     const { transactionId } = req.params;
+
+//     console.log(
+//       "Transaction ID:",
+//       transactionId
+//     );
+
+//     try {
+
+//       const result = await pool.query(
+//         `
+//         SELECT status
+//         FROM tbl_student_course
+//         WHERE transaction_id = $1
+//         `,
+//         [transactionId]
+//       );
+
+//       console.log(
+//         "DB Result:",
+//         result.rows
+//       );
+
+//       if (result.rows.length === 0) {
+
+//         return res
+//           .status(404)
+//           .send("Transaction not found");
+//       }
+
+//       const status =
+//         result.rows[0].status;
+
+//       console.log(
+//         "Payment Status:",
+//         status
+//       );
+
+//       if (status === "SUCCESS") {
+//         return res.send(
+//           "🎉 Payment Successful!"
+//         );
+//       }
+
+//       if (status === "FAILED") {
+//         return res.send(
+//           "❌ Payment Failed."
+//         );
+//       }
+
+//       return res.send(
+//         "⏳ Payment Pending..."
+//       );
+
+//     } catch (err) {
+
+//       console.error(
+//         "Redirect Error:",
+//         err
+//       );
+
+//       return res.status(500).send(`
+//         <h2>Redirect Error</h2>
+//         <pre>${err.message}</pre>
+//       `);
+//     }
+// });
+
 router.post('/buycourse',studentcourse.initiatePayment);
 router.post('/callback',studentcourse.paymentCallback);
 
 // For showing user a success/failure page after payment
-router.get(
-  '/payment/redirect/:transactionId',
-  async (req, res) => {
+router.get('/test/payment/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
 
-    const { transactionId } = req.params;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Cashfree Payment Test</title>
+      <script src="https://sdk.cashfree.com/js/ui/2.0.0/cashfree.js"></script>
+    </head>
+    <body>
+      <h2>Testing Cashfree Payment</h2>
+      <button id="payBtn">Pay Now</button>
 
-    console.log(
-      "Transaction ID:",
-      transactionId
-    );
+      <script>
+        document.addEventListener("DOMContentLoaded", function () {
+          // Wait for SDK to load
+          if (typeof Cashfree === "undefined") {
+            console.error("❌ Cashfree SDK not loaded");
+            alert("Cashfree SDK failed to load. Check your internet connection.");
+            return;
+          }
 
-    try {
+          const cashfree = Cashfree({ mode: "sandbox" }); // or "production"
 
-      const result = await pool.query(
-        `
-        SELECT status
-        FROM tbl_student_course
-        WHERE transaction_id = $1
-        `,
-        [transactionId]
-      );
+          document.getElementById("payBtn").addEventListener("click", () => {
+            cashfree.checkout({
+              paymentSessionId: "${sessionId}",
+              redirectTarget: "_self"
+            });
+          });
+        });
+      </script>
+    </body>
+    </html>
+  `;
 
-      console.log(
-        "DB Result:",
-        result.rows
-      );
-
-      if (result.rows.length === 0) {
-
-        return res
-          .status(404)
-          .send("Transaction not found");
-      }
-
-      const status =
-        result.rows[0].status;
-
-      console.log(
-        "Payment Status:",
-        status
-      );
-
-      if (status === "SUCCESS") {
-        return res.send(
-          "🎉 Payment Successful!"
-        );
-      }
-
-      if (status === "FAILED") {
-        return res.send(
-          "❌ Payment Failed."
-        );
-      }
-
-      return res.send(
-        "⏳ Payment Pending..."
-      );
-
-    } catch (err) {
-
-      console.error(
-        "Redirect Error:",
-        err
-      );
-
-      return res.status(500).send(`
-        <h2>Redirect Error</h2>
-        <pre>${err.message}</pre>
-      `);
-    }
+  res.send(html);
 });
-
-
 module.exports=router
