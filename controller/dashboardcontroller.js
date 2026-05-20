@@ -1728,18 +1728,28 @@ exports.studentpurchaselist = async (req, res) => {
 
     // ✅ 1. Get stats
     const statsResult = await pool.query(`
-      SELECT 
-        COUNT(DISTINCT sc.student_id)::int AS total_students,
+  SELECT 
+    COUNT(DISTINCT sc.student_id)::int
+      AS total_students,
 
-        COUNT(*) FILTER (
-          WHERE sc.created_at >= NOW() - INTERVAL '7 days'
-        )::int AS last_week_purchases,
+    COUNT(*) FILTER (
+      WHERE sc.created_at >=
+      NOW() - INTERVAL '7 days'
+    )::int
+      AS last_week_purchases,
 
-       COUNT(*)::int AS total_purchased_courses,
+    COUNT(*)::int
+      AS total_purchased_courses,
 
-        COALESCE(SUM(sc.order_amount), 0)::numeric AS total_revenue
+    COALESCE(
+      SUM(sc.order_amount),
+      0
+    )::numeric
+      AS total_revenue
 
-      FROM tbl_student_course sc
+FROM tbl_student_course sc
+
+WHERE sc.status = 'SUCCESS';
     `);
 
     // ✅ 2. Get purchase list
@@ -1754,8 +1764,10 @@ exports.studentpurchaselist = async (req, res) => {
         u.email,
         u.student_reg_number,
         sc.order_amount,
+        sc.order_id,
+        sc.invoice_number,
         sc.transaction_id,
-        sc.payment_status,
+        sc.status,
         TO_CHAR(sc.created_at AT TIME ZONE 'Asia/Kolkata', 'DD-MM-YYYY') AS submitted_at
       FROM tbl_student_course sc
       JOIN tbl_user u ON sc.student_id = u.user_id
