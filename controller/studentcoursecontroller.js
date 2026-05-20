@@ -677,10 +677,7 @@ exports.initiatePayment = async (req, res) => {
   }
 };
 
-exports.paymentCallback = async (
-  req,
-  res
-) => {
+exports.paymentCallback = async (req, res) => {
   try {
 
     console.log(
@@ -692,41 +689,37 @@ exports.paymentCallback = async (
       req.body?.data?.order?.order_id;
 
     const payment_status =
-      req.body?.data?.payment
-        ?.payment_status;
+      req.body?.data?.payment?.payment_status ||
+      req.body?.data?.payment_status ||
+      req.body?.data?.payment?.status;
 
     const transaction_id =
-      req.body?.data?.payment
-        ?.cf_payment_id;
+      req.body?.data?.payment?.cf_payment_id ||
+      req.body?.data?.cf_payment_id;
+
+    console.log("ORDER ID:", order_id);
+    console.log("PAYMENT STATUS:", payment_status);
 
     if (!order_id) {
       return res.status(400).json({
         success: false,
-        message:
-          "order_id missing",
+        message: "order_id missing",
       });
     }
 
-    // Find student & course
-    const purchaseData =
-      await pool.query(
-        `
-        SELECT
-          student_id,
-          course_id
-        FROM tbl_student_course
-        WHERE order_id = $1
-        `,
-        [order_id]
-      );
+    const purchaseData = await pool.query(
+      `
+      SELECT student_id, course_id
+      FROM tbl_student_course
+      WHERE order_id = $1
+      `,
+      [order_id]
+    );
 
-    if (
-      purchaseData.rows.length === 0
-    ) {
+    if (purchaseData.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message:
-          "Purchase not found",
+        message: "Purchase not found",
       });
     }
 
@@ -736,10 +729,9 @@ exports.paymentCallback = async (
     } = purchaseData.rows[0];
 
     if (
-      payment_status === "SUCCESS"
+      payment_status?.toUpperCase() === "SUCCESS"
     ) {
 
-      // Update payment
       await pool.query(
         `
         UPDATE tbl_student_course
@@ -748,13 +740,9 @@ exports.paymentCallback = async (
           transaction_id = $1
         WHERE order_id = $2
         `,
-        [
-          transaction_id,
-          order_id
-        ]
+        [transaction_id, order_id]
       );
 
-      // Call course purchase logic
       await buyCourseAfterPayment(
         student_id,
         course_id
@@ -796,14 +784,14 @@ const buyCourseAfterPayment = async (
     await client.query("BEGIN");
 
     // 1. Insert purchase
-    await client.query(
-      `
-      INSERT INTO tbl_student_course
-      (student_id, course_id)
-      VALUES ($1, $2)
-      `,
-      [student_id, course_id]
-    );
+    // await client.query(
+    //   `
+    //   INSERT INTO tbl_student_course
+    //   (student_id, course_id)
+    //   VALUES ($1, $2)
+    //   `,
+    //   [student_id, course_id]
+    // );
 
     // 2. Insert progress videos
     await client.query(
