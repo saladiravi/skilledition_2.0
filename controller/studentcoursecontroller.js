@@ -5184,7 +5184,7 @@ exports.getPurchaseList = async (req, res) => {
 
           tsc.order_amount,
 
-          tsc.payment_status,
+          tsc.status,
 
           tsc.payment_method,
 
@@ -5245,7 +5245,7 @@ exports.getPurchaseInvoice = async (req, res) => {
 
           tsc.payment_method,
 
-          tsc.payment_status,
+          tsc.status,
 
           TO_CHAR(
             tsc.created_at,
@@ -5336,7 +5336,7 @@ exports.getadminPurchaseList = async (req, res) => {
 
           tsc.order_amount,
 
-          tsc.payment_status,
+          tsc.status,
 
           tsc.payment_method,
 
