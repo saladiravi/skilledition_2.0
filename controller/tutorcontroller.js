@@ -2014,7 +2014,8 @@ exports.tutordashboards = async (req, res) => {
         COUNT(DISTINCT c.course_id)
         FILTER (WHERE c.status = 'Published') AS total_courses,
 
-        COUNT(DISTINCT sc.student_id) AS active_students,
+        COUNT(DISTINCT sc.student_id) 
+          FILTER (WHERE sc.status = 'SUCCESS') AS active_students,
 
        COUNT(DISTINCT tsfa.final_assignment_id)
           FILTER (

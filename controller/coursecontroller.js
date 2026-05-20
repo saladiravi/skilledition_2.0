@@ -629,6 +629,7 @@ exports.gettotalcourse = async (req, res) => {
         SELECT COUNT(DISTINCT sc2.student_id)
         FROM tbl_student_course sc2
         WHERE sc2.course_id = tc.course_id
+        AND sc2.status = 'SUCCESS'
       ) AS enrolled_count,
 
       (
@@ -2343,7 +2344,8 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
 
       WHERE tu.user_id = $1
       AND tsc.course_id = $2
-
+      AND tsc.status = 'SUCCESS'
+      
       GROUP BY 
         tu.user_id,
         tu.full_name,
@@ -2445,9 +2447,7 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
+     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
     });
