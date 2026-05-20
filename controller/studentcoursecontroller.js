@@ -1,12 +1,11 @@
-const pool = require('../config/db');
-const { getSignedVideoUrl } = require('../utils/s3upload');
-const {sendNotification}=require('../utils/notification')
+const pool = require("../config/db");
+const { getSignedVideoUrl } = require("../utils/s3upload");
+const { sendNotification } = require("../utils/notification");
 const crypto = require("crypto");
 const axios = require("axios");
 const uniqid = require("uniqid");
 const dotenv = require("dotenv");
 const { Cashfree, CFEnvironment } = require("cashfree-pg");
- 
 
 dotenv.config();
 
@@ -14,13 +13,13 @@ dotenv.config();
 const cashfree = new Cashfree(
   CFEnvironment.PRODUCTION, // change to CFEnvironment.SANDBOX for testing
   process.env.CASHFREE_APP_ID,
-  process.env.CASHFREE_SECRET_KEY
+  process.env.CASHFREE_SECRET_KEY,
 );
 
 function timeToSeconds(time) {
   if (!time) return 0;
 
-  const parts = time.split(':').map(Number);
+  const parts = time.split(":").map(Number);
 
   if (parts.some(isNaN)) return 0;
 
@@ -35,7 +34,6 @@ function timeToSeconds(time) {
   return Number(time) || 0;
 }
 
-
 function formatDurationHMS(seconds) {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
@@ -48,22 +46,25 @@ function formatDurationHMS(seconds) {
   return `${h}:${m}:${s}`;
 }
 
-
 exports.studentbuycourse = async (req, res) => {
   const { course_id, student_id } = req.body;
 
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     // 1. Insert purchase
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO tbl_student_course (student_id, course_id)
       VALUES ($1, $2)
-    `, [student_id, course_id]);
+    `,
+      [student_id, course_id],
+    );
 
     // 2. Insert progress for all videos (locked by default)
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO tbl_student_course_progress
         (student_id, course_id, module_id, module_video_id, is_unlocked, is_completed)
       SELECT
@@ -76,9 +77,12 @@ exports.studentbuycourse = async (req, res) => {
       FROM tbl_module tm
       JOIN tbl_module_videos tmv ON tm.module_id = tmv.module_id
       WHERE tm.course_id = $2
-    `, [student_id, course_id]);
+    `,
+      [student_id, course_id],
+    );
 
-    await client.query(`
+    await client.query(
+      `
         INSERT INTO tbl_student_course_progress
           (student_id, course_id, module_id, module_video_id, assignment_id, is_unlocked, is_completed)
         SELECT
@@ -92,11 +96,13 @@ exports.studentbuycourse = async (req, res) => {
         FROM tbl_module tm
         JOIN tbl_assignment ta ON tm.module_id = ta.module_id
         WHERE tm.course_id = $2
-      `, [student_id, course_id]);
-
+      `,
+      [student_id, course_id],
+    );
 
     // 3. Unlock first video of first module
-    await client.query(`
+    await client.query(
+      `
       UPDATE tbl_student_course_progress
       SET is_unlocked = true,
             unlocked_at = NOW() AT TIME ZONE 'Asia/Kolkata'
@@ -110,42 +116,44 @@ exports.studentbuycourse = async (req, res) => {
           ORDER BY tm.module_id, tmv.module_video_id
           LIMIT 1
         )
-    `, [student_id, course_id]);
-
+    `,
+      [student_id, course_id],
+    );
 
     await createFinalAssignment(client, student_id, course_id);
-    const courseRes = await client.query(`
+    const courseRes = await client.query(
+      `
         SELECT course_title
         FROM tbl_course
         WHERE course_id = $1
-      `, [course_id]);
+      `,
+      [course_id],
+    );
 
-      const course_title = courseRes.rows[0]?.course_title || 'Course';
+    const course_title = courseRes.rows[0]?.course_title || "Course";
 
-      await client.query('COMMIT');
+    await client.query("COMMIT");
 
-      // 7️⃣ 🔔 Send notification to Admin
-      await sendNotification({
-        sender_id: student_id,   // ✅ student
-        receiver_id: 4,          // ✅ admin
-        type: "Course Purchased",
-        message: `Student purchased course: ${course_title}`,
-        type_id: course_id
-      });
-
-   return res.status(200).json({
-      statusCode: 200,
-      message: 'Course purchased successfully'
+    // 7️⃣ 🔔 Send notification to Admin
+    await sendNotification({
+      sender_id: student_id, // ✅ student
+      receiver_id: 4, // ✅ admin
+      type: "Course Purchased",
+      message: `Student purchased course: ${course_title}`,
+      type_id: course_id,
     });
 
-  }catch (error) {
-  await client.query('ROLLBACK');
-  console.error("FULL ERROR:", error);   // 👈 important
-  return res.status(500).json({
-    statusCode: 500,
-    message: error.message   // 👈 send actual error
-  });
-
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Course purchased successfully",
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("FULL ERROR:", error); // 👈 important
+    return res.status(500).json({
+      statusCode: 500,
+      message: error.message, // 👈 send actual error
+    });
   } finally {
     client.release();
   }
@@ -304,7 +312,6 @@ exports.studentbuycourse = async (req, res) => {
 //     });
 //   }
 // };
-
 
 // exports.paymentCallback = async (req, res) => {
 //   const client = await pool.connect();
@@ -575,7 +582,7 @@ exports.initiatePayment = async (req, res) => {
       FROM tbl_user
       WHERE user_id = $1
       `,
-      [student_id]
+      [student_id],
     );
 
     if (studentResult.rows.length === 0) {
@@ -594,7 +601,7 @@ exports.initiatePayment = async (req, res) => {
       FROM tbl_course
       WHERE course_id = $1
       `,
-      [course_id]
+      [course_id],
     );
 
     if (courseResult.rows.length === 0) {
@@ -611,8 +618,8 @@ exports.initiatePayment = async (req, res) => {
     const orderId = uniqid("CF_");
 
     // Save ORDER ID only
-      await pool.query(
-        `
+    await pool.query(
+      `
         INSERT INTO tbl_student_course
         (
           student_id,
@@ -632,13 +639,8 @@ exports.initiatePayment = async (req, res) => {
           'PENDING'
         )
         `,
-        [
-          student_id,
-          course_id,
-          orderId,
-          orderAmount
-        ]
-      );
+      [student_id, course_id, orderId, orderAmount],
+    );
 
     const request = {
       order_amount: orderAmount,
@@ -652,124 +654,93 @@ exports.initiatePayment = async (req, res) => {
       },
 
       order_meta: {
-        return_url:
-          "https://skilledition.in/student/courses",
+        return_url: "https://skilledition.in/student/courses",
 
-        notify_url:
-          "https://app.skilledition.in/studentcourse/callback",
+        notify_url: "https://app.skilledition.in/studentcourse/callback",
       },
     };
 
-    const response =
-      await cashfree.PGCreateOrder(request);
+    const response = await cashfree.PGCreateOrder(request);
 
     return res.json({
       statusCode: 200,
-      paymentSessionId:
-        response.data.payment_session_id,
+      paymentSessionId: response.data.payment_session_id,
       orderId: response.data.order_id,
-      paymentLink:
-        response.data.payment_link,
+      paymentLink: response.data.payment_link,
     });
-
   } catch (error) {
-    console.log(error);
-
     return res.status(500).json({
       statusCode: 500,
-      error:
-        error.response?.data ||
-        error.message,
+      message: "Internal Server Error",
     });
   }
 };
 
 exports.paymentCallback = async (req, res) => {
   try {
-
-    const order_id =
-      req.body?.data?.order?.order_id;
+    const order_id = req.body?.data?.order?.order_id;
 
     if (!order_id) {
       return res.status(400).json({
         statusCode: 400,
-        message: "order_id required"
+        message: "order_id required",
       });
     }
 
-    const paymentResponse =
-      await cashfree.PGOrderFetchPayments(order_id);
+    const paymentResponse = await cashfree.PGOrderFetchPayments(order_id);
 
-    const payments =
-      paymentResponse.data;
+    const payments = paymentResponse.data;
 
     if (!payments || payments.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "No payment found"
+        message: "No payment found",
       });
     }
 
-    const payment =
-      payments[0];
+    const payment = payments[0];
 
-    const payment_status =
-      payment.payment_status;
+    const payment_status = payment.payment_status;
 
-    const transaction_id =
-      payment.cf_payment_id;
+    const transaction_id = payment.cf_payment_id;
 
-    const payment_method =
-      payment.payment_method;
+    const payment_method = payment.payment_method;
 
-    const purchaseData =
-      await pool.query(
-        `
+    const purchaseData = await pool.query(
+      `
         SELECT student_id, course_id
         FROM tbl_student_course
         WHERE order_id = $1
         `,
-        [order_id]
-      );
+      [order_id],
+    );
 
-    if (
-      purchaseData.rows.length === 0
-    ) {
+    if (purchaseData.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Purchase not found"
+        message: "Purchase not found",
       });
     }
 
-    const {
-      student_id,
-      course_id
-    } = purchaseData.rows[0];
+    const { student_id, course_id } = purchaseData.rows[0];
 
     if (payment_status === "SUCCESS") {
-
       // Generate invoice number
-      const invoiceResult =
-        await pool.query(
-          `
+      const invoiceResult = await pool.query(
+        `
           SELECT COUNT(*) AS total
           FROM tbl_student_course
           WHERE invoice_number
           IS NOT NULL
-          `
-        );
+          `,
+      );
 
-      const count =
-        Number(
-          invoiceResult.rows[0].total
-        ) + 1;
+      const count = Number(invoiceResult.rows[0].total) + 1;
 
-      const invoice_number =
-        `INV-${new Date()
-          .toISOString()
-          .slice(0, 10)
-          .replace(/-/g, "")}-${String(count)
-          .padStart(4, "0")}`;
+      const invoice_number = `INV-${new Date()
+        .toISOString()
+        .slice(0, 10)
+        .replace(/-/g, "")}-${String(count).padStart(4, "0")}`;
 
       // Single update
       await pool.query(
@@ -782,21 +753,11 @@ exports.paymentCallback = async (req, res) => {
           invoice_number = $3
         WHERE order_id = $4
         `,
-        [
-          transaction_id,
-          payment_method,
-          invoice_number,
-          order_id
-        ]
+        [transaction_id, payment_method, invoice_number, order_id],
       );
 
-      await buyCourseAfterPayment(
-        student_id,
-        course_id
-      );
-
+      await buyCourseAfterPayment(student_id, course_id);
     } else {
-
       await pool.query(
         `
         UPDATE tbl_student_course
@@ -804,29 +765,23 @@ exports.paymentCallback = async (req, res) => {
           status = 'FAILED'
         WHERE order_id = $1
         `,
-        [order_id]
+        [order_id],
       );
     }
 
     return res.status(200).json({
-      success: true
+      success: true,
     });
-
   } catch (error) {
-
     console.error(error);
 
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-const buyCourseAfterPayment = async (
-  student_id,
-  course_id
-) => {
-
+const buyCourseAfterPayment = async (student_id, course_id) => {
   const client = await pool.connect();
 
   try {
@@ -866,7 +821,7 @@ const buyCourseAfterPayment = async (
       ON tm.module_id = tmv.module_id
       WHERE tm.course_id = $2
       `,
-      [student_id, course_id]
+      [student_id, course_id],
     );
 
     // Assignment progress
@@ -895,7 +850,7 @@ const buyCourseAfterPayment = async (
       ON tm.module_id = ta.module_id
       WHERE tm.course_id = $2
       `,
-      [student_id, course_id]
+      [student_id, course_id],
     );
 
     // Unlock first video
@@ -919,22 +874,15 @@ const buyCourseAfterPayment = async (
         LIMIT 1
       )
       `,
-      [student_id, course_id]
+      [student_id, course_id],
     );
 
-    await createFinalAssignment(
-      client,
-      student_id,
-      course_id
-    );
+    await createFinalAssignment(client, student_id, course_id);
 
     await client.query("COMMIT");
-
   } catch (error) {
-
     await client.query("ROLLBACK");
     throw error;
-
   } finally {
     client.release();
   }
@@ -952,8 +900,8 @@ const buyCourseAfterPayment = async (
 
 //     // 1️⃣ Fetch student details
 //     const studentResult = await pool.query(
-//       `SELECT full_name, email, phone_number 
-//        FROM tbl_user 
+//       `SELECT full_name, email, phone_number
+//        FROM tbl_user
 //        WHERE user_id = $1`,
 //       [student_id]
 //     );
@@ -989,8 +937,8 @@ const buyCourseAfterPayment = async (
 
 //     // 3️⃣ Save initial order in your DB
 //     await pool.query(
-//       `INSERT INTO tbl_student_course 
-//        (student_id, course_id, purchase_date, transaction_id, status) 
+//       `INSERT INTO tbl_student_course
+//        (student_id, course_id, purchase_date, transaction_id, status)
 //        VALUES ($1, $2, CURRENT_DATE, $3, 'PENDING')`,
 //       [student_id, course_id, orderId]
 //     );
@@ -1033,8 +981,6 @@ const buyCourseAfterPayment = async (
 //   }
 // };
 
-
- 
 // exports.paymentCallback = async (req, res) => {
 //   try {
 //     console.log("📥 Cashfree Callback:", req.body);
@@ -1061,7 +1007,6 @@ const buyCourseAfterPayment = async (
 //   }
 // };
 
-
 exports.getStudentMyCourse = async (req, res) => {
   const { student_id } = req.body;
 
@@ -1069,7 +1014,7 @@ exports.getStudentMyCourse = async (req, res) => {
     if (!student_id) {
       return res.status(400).json({
         statusCode: 400,
-        message: "student_id is required"
+        message: "student_id is required",
       });
     }
 
@@ -1098,30 +1043,28 @@ exports.getStudentMyCourse = async (req, res) => {
 
       WHERE tsc.student_id = $1
       `,
-      [student_id]
+      [student_id],
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "No courses found for this student"
+        message: "No courses found for this student",
       });
     }
 
     return res.status(200).json({
       statusCode: 200,
       message: "Fetched Successfully",
-      result: result.rows
+      result: result.rows,
     });
-
   } catch (error) {
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.getAllCoursesWithEnrollStatus = async (req, res) => {
   const { student_id } = req.body;
@@ -1130,23 +1073,24 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     if (!student_id) {
       return res.status(400).json({
         statusCode: 400,
-        message: "student_id is required"
+        message: "student_id is required",
       });
     }
 
     const checkStudent = await pool.query(
       `SELECT user_id FROM tbl_user WHERE user_id = $1`,
-      [student_id]
+      [student_id],
     );
 
     if (checkStudent.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Student not found"
+        message: "Student not found",
       });
     }
 
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       SELECT
         tc.course_id,
         tc.course_title,
@@ -1210,9 +1154,12 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
         tsc.student_course_id
 
       ORDER BY tc.course_id ASC
-    `, [student_id]);
+    `,
+      [student_id],
+    );
 
-    const activeCourses = await pool.query(`
+    const activeCourses = await pool.query(
+      `
             SELECT 
             CASE 
               WHEN COUNT(*) = 0 THEN '-' 
@@ -1220,10 +1167,13 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
             END AS active_courses
           FROM tbl_student_course
           WHERE student_id = $1
-          `, [student_id]);
+          `,
+      [student_id],
+    );
 
     /* 3️⃣ Learning Progress */
-    const progress = await pool.query(`
+    const progress = await pool.query(
+      `
          SELECT 
           CASE 
             WHEN COUNT(*) = 0 THEN '-' 
@@ -1237,10 +1187,13 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
           END AS learning_progress
         FROM tbl_student_course_progress
         WHERE student_id = $1;
-        `, [student_id]);
+        `,
+      [student_id],
+    );
 
     /* 4️⃣ Learner Satisfaction */
-    const rating = await pool.query(`
+    const rating = await pool.query(
+      `
         SELECT 
         CASE 
           WHEN COUNT(*) = 0 THEN '-' 
@@ -1248,8 +1201,9 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
         END AS learner_satisfaction
       FROM tbl_feedback
       WHERE student_id = $1
-    `, [student_id]);
-
+    `,
+      [student_id],
+    );
 
     return res.status(200).json({
       statusCode: 200,
@@ -1257,16 +1211,15 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
       stats: {
         active_courses: activeCourses.rows[0].active_courses,
         learning_progress: progress.rows[0].learning_progress,
-        learner_satisfaction: rating.rows[0].learner_satisfaction
+        learner_satisfaction: rating.rows[0].learner_satisfaction,
       },
-      result: result.rows
+      result: result.rows,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
@@ -1280,7 +1233,6 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
 //     tc.course_id,
 //     tc.course_title,
 //     tc.no_of_modules,
-   
 
 //     tm.module_id,
 //     tm.module_title,
@@ -1344,7 +1296,7 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
 //     ON tc.tutor_id = tt.user_id
 
 //   WHERE tc.course_id = $1
-//   ORDER BY 
+//   ORDER BY
 //   tm.module_id ASC,
 //   tmv.module_video_id ASC
 // `, [course_id, student_id]);
@@ -1476,7 +1428,8 @@ exports.getstudentcourse = async (req, res) => {
   const { course_id, student_id } = req.body;
 
   try {
-    const { rows } = await pool.query(`
+    const { rows } = await pool.query(
+      `
       SELECT
         tc.course_id,
         tc.course_title,
@@ -1547,11 +1500,13 @@ exports.getstudentcourse = async (req, res) => {
       WHERE tc.course_id = $1
 
       ORDER BY tm.module_id ASC, tmv.module_video_id ASC
-    `, [course_id, student_id]);
+    `,
+      [course_id, student_id],
+    );
 
     if (rows.length === 0) {
       return res.status(404).json({
-        statusCode: 404
+        statusCode: 404,
       });
     }
 
@@ -1560,9 +1515,7 @@ exports.getstudentcourse = async (req, res) => {
     const totalVideoDuration = rows[0].total_video_duration;
 
     const progressPercentage =
-      totalVideos === 0
-        ? 0
-        : Math.round((completedVideos / totalVideos) * 100);
+      totalVideos === 0 ? 0 : Math.round((completedVideos / totalVideos) * 100);
 
     const course = {
       course_id: rows[0].course_id,
@@ -1575,9 +1528,9 @@ exports.getstudentcourse = async (req, res) => {
       progress: {
         total_videos: totalVideos,
         completed_videos: completedVideos,
-        percentage: progressPercentage
+        percentage: progressPercentage,
       },
-      modules: []
+      modules: [],
     };
 
     const moduleMap = {};
@@ -1602,9 +1555,9 @@ exports.getstudentcourse = async (req, res) => {
                 assignment_title: row.assignment_title,
                 is_unlocked: row.assignment_is_unlocked,
                 is_completed: row.assignment_is_completed,
-                unlocked_at: row.assignment_unlocked_at
+                unlocked_at: row.assignment_unlocked_at,
               }
-            : null
+            : null,
         };
 
         course.modules.push(moduleMap[row.module_id]);
@@ -1622,12 +1575,13 @@ exports.getstudentcourse = async (req, res) => {
           video_title: row.video_title,
           video_url: videoUrl,
           is_unlocked: row.is_unlocked,
-          is_completed: row.is_completed
+          is_completed: row.is_completed,
         });
       }
     }
 
-    await pool.query(`
+    await pool.query(
+      `
       UPDATE tbl_student_final_assignment tfa
       SET is_unlocked = true
       WHERE tfa.student_id = $1
@@ -1642,41 +1596,44 @@ exports.getstudentcourse = async (req, res) => {
                 )
             AND scp.is_completed = false
       )
-    `, [student_id]);
+    `,
+      [student_id],
+    );
 
-    const finalAssignmentRes = await pool.query(`
+    const finalAssignmentRes = await pool.query(
+      `
       SELECT final_assignment_id, assignment_title, is_unlocked, status
       FROM tbl_student_final_assignment
       WHERE course_id = $1 AND student_id = $2
       LIMIT 1
-    `, [course_id, student_id]);
+    `,
+      [course_id, student_id],
+    );
 
     const finalAssignment = finalAssignmentRes.rows[0] || null;
 
     // ✅ Only show 100% if final assignment is completed
     course.progress.percentage =
       course.progress.percentage === 100 &&
-      finalAssignment?.status !== 'Completed'
+      finalAssignment?.status !== "Completed"
         ? 99
         : course.progress.percentage;
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Fetched Successfully',
+      message: "Fetched Successfully",
       data: course,
-      finalAssignment
+      finalAssignment,
     });
-
   } catch (error) {
     console.log(error);
 
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error'
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.studentwatchvideo = async (req, res) => {
   const { student_id, module_video_id } = req.body;
@@ -1684,68 +1641,71 @@ exports.studentwatchvideo = async (req, res) => {
   if (!module_video_id || !student_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: 'Missing Required Field'
+      message: "Missing Required Field",
     });
   }
 
   try {
     // 1. Check lock status
-    const lockCheck = await pool.query(`
+    const lockCheck = await pool.query(
+      `
       SELECT is_unlocked
       FROM tbl_student_course_progress
       WHERE student_id = $1
       AND module_video_id = $2
-    `, [student_id, module_video_id]);
+    `,
+      [student_id, module_video_id],
+    );
 
     // If no record found OR locked
-    if (lockCheck.rows.length === 0 || lockCheck.rows[0].is_unlocked === false) {
+    if (
+      lockCheck.rows.length === 0 ||
+      lockCheck.rows[0].is_unlocked === false
+    ) {
       return res.status(403).json({
         statusCode: 403,
-        message: 'Video is locked. Complete previous videos to unlock.'
+        message: "Video is locked. Complete previous videos to unlock.",
       });
     }
 
     // 2. If unlocked → fetch video
-    const data = await pool.query(`
+    const data = await pool.query(
+      `
       SELECT module_video_id, video, video_title
       FROM tbl_module_videos
       WHERE module_video_id = $1
-    `, [module_video_id]);
+    `,
+      [module_video_id],
+    );
 
     if (data.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Video not found'
+        message: "Video not found",
       });
     }
 
     const videoData = data.rows[0];
 
-
     const signedUrl = await getSignedVideoUrl(videoData.video);
-
 
     videoData.video = signedUrl;
     return res.status(200).json({
       statusCode: 200,
-      message: 'watched sucessfully',
-      result: videoData
+      message: "watched sucessfully",
+      result: videoData,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error'
+      message: "Internal Server Error",
     });
   }
 };
 
-
-
 exports.submitExam = async (req, res) => {
   try {
-
     const { assignment_id, student_id, answers } = req.body;
 
     /* ✅ Check if already submitted */
@@ -1759,12 +1719,12 @@ exports.submitExam = async (req, res) => {
 
     const checkResult = await pool.query(checkQuery, [
       assignment_id,
-      student_id
+      student_id,
     ]);
 
     if (checkResult.rows.length > 0) {
       return res.status(400).json({
-        message: "Exam already submitted"
+        message: "Exam already submitted",
       });
     }
 
@@ -1780,23 +1740,21 @@ exports.submitExam = async (req, res) => {
       RETURNING student_assignment_id
     `;
 
-    const assignResult = await pool.query(
-      insertAssignment,
-      [assignment_id, student_id]
-    );
+    const assignResult = await pool.query(insertAssignment, [
+      assignment_id,
+      student_id,
+    ]);
 
     // 🎯 Auto generated ID
-    const student_assignment_id =
-      assignResult.rows[0].student_assignment_id;
+    const student_assignment_id = assignResult.rows[0].student_assignment_id;
 
     let totalMarks = 0;
 
     /* ✅ Save Answers */
     for (let ans of answers) {
-
       const qRes = await pool.query(
         `SELECT answer FROM tbl_questions WHERE question_id=$1`,
-        [ans.question_id]
+        [ans.question_id],
       );
 
       if (!qRes.rows.length) continue;
@@ -1807,7 +1765,8 @@ exports.submitExam = async (req, res) => {
 
       if (isCorrect) totalMarks++;
 
-      await pool.query(`
+      await pool.query(
+        `
         INSERT INTO tbl_student_answers
         (
           student_assignment_id,
@@ -1817,71 +1776,71 @@ exports.submitExam = async (req, res) => {
           is_correct
         )
         VALUES ($1,$2,$3,$4,$5)
-      `, [
-        student_assignment_id,
-        ans.question_id,
-        ans.selected_answer,
-        correct,
-        isCorrect
-      ]);
+      `,
+        [
+          student_assignment_id,
+          ans.question_id,
+          ans.selected_answer,
+          correct,
+          isCorrect,
+        ],
+      );
     }
 
     /* ✅ Update Marks */
-    await pool.query(`
+    await pool.query(
+      `
       UPDATE tbl_student_assignment
       SET total_marks=$1
       WHERE student_assignment_id=$2
-    `, [
-      totalMarks,
-      student_assignment_id
-    ]);
+    `,
+      [totalMarks, student_assignment_id],
+    );
 
     res.json({
       success: true,
 
       student_assignment_id,
-      marks: totalMarks
+      marks: totalMarks,
     });
-
   } catch (err) {
     console.error("Submit Exam Error:", err);
     res.status(500).json({ success: false });
   }
 };
 
-
 exports.updateWatchProgress = async (req, res) => {
-
   const { student_id, module_video_id, watched } = req.body;
 
   if (!student_id || !module_video_id || watched == null) {
     return res.status(400).json({
       statusCode: 400,
-      message: 'Missing Required Fields'
+      message: "Missing Required Fields",
     });
   }
 
   try {
-
     /* ============================
        1. Get Video Info
     ============================*/
 
-    const videoRes = await pool.query(`
+    const videoRes = await pool.query(
+      `
       SELECT module_id, video_duration
       FROM tbl_module_videos
       WHERE module_video_id = $1
-    `, [module_video_id]);
+    `,
+      [module_video_id],
+    );
 
     if (videoRes.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Video not found'
+        message: "Video not found",
       });
     }
 
     const { module_id, video_duration } = videoRes.rows[0];
-
 
     /* ============================
        2. Convert Time
@@ -1890,85 +1849,86 @@ exports.updateWatchProgress = async (req, res) => {
     const watchedSeconds = timeToSeconds(watched);
     const durationSeconds = timeToSeconds(video_duration);
 
-
     /* ============================
        3. Update Watched
     ============================*/
 
-    await pool.query(`
+    await pool.query(
+      `
       UPDATE tbl_student_course_progress
       SET watched = $1
       WHERE student_id = $2
       AND module_video_id = $3
-    `, [watched, student_id, module_video_id]);
-
+    `,
+      [watched, student_id, module_video_id],
+    );
 
     /* ============================
        4. Check Completed
     ============================*/
 
-    const isCompleted =
-      watchedSeconds + 2 >= durationSeconds;
-
+    const isCompleted = watchedSeconds + 2 >= durationSeconds;
 
     if (!isCompleted) {
-
       return res.status(200).json({
         statusCode: 200,
-        message: 'Progress Updated'
+        message: "Progress Updated",
       });
     }
-
 
     /* ============================
        5. Mark Completed
     ============================*/
 
-    await pool.query(`
+    await pool.query(
+      `
       UPDATE tbl_student_course_progress
       SET is_completed = true,
           completed_at = NOW()
       WHERE student_id = $1
       AND module_video_id = $2
-    `, [student_id, module_video_id]);
-
+    `,
+      [student_id, module_video_id],
+    );
 
     /* ============================
        6. Get Video List
     ============================*/
 
-    const listRes = await pool.query(`
+    const listRes = await pool.query(
+      `
       SELECT module_video_id
       FROM tbl_module_videos
       WHERE module_id = $1
       ORDER BY module_video_id
-    `, [module_id]);
+    `,
+      [module_id],
+    );
 
-    const ids = listRes.rows.map(v => Number(v.module_video_id));
+    const ids = listRes.rows.map((v) => Number(v.module_video_id));
 
     const index = ids.indexOf(Number(module_video_id));
-
 
     /* ============================
        7. Unlock Next Video
     ============================*/
 
     if (index !== -1 && index + 1 < ids.length) {
-
       const nextId = ids[index + 1];
 
-
-      const check = await pool.query(`
+      const check = await pool.query(
+        `
         SELECT student_course_progress_id
         FROM tbl_student_course_progress
         WHERE student_id = $1
         AND module_video_id = $2
-      `, [student_id, nextId]);
-
+      `,
+        [student_id, nextId],
+      );
 
       if (check.rows.length === 0) {
-
-        await pool.query(`
+        await pool.query(
+          `
           INSERT INTO tbl_student_course_progress
           (student_id, course_id, module_id, module_video_id, is_unlocked)
           SELECT
@@ -1981,26 +1941,29 @@ exports.updateWatchProgress = async (req, res) => {
           WHERE student_id = $1
           AND module_video_id = $3
           LIMIT 1
-        `, [student_id, nextId, module_video_id]);
-
+        `,
+          [student_id, nextId, module_video_id],
+        );
       } else {
-
-        await pool.query(`
+        await pool.query(
+          `
           UPDATE tbl_student_course_progress
           SET is_unlocked = true,
                 unlocked_at = NOW() AT TIME ZONE 'Asia/Kolkata'
           WHERE student_id = $1
           AND module_video_id = $2
-        `, [student_id, nextId]);
+        `,
+          [student_id, nextId],
+        );
       }
     }
-
 
     /* ============================
      8. Check ALL Videos Completed
   ============================ */
 
-    const allCompletedRes = await pool.query(`
+    const allCompletedRes = await pool.query(
+      `
         SELECT
           COUNT(*) AS total_videos,
           COUNT(
@@ -2010,7 +1973,9 @@ exports.updateWatchProgress = async (req, res) => {
         WHERE student_id = $1
           AND module_id = $2
           AND module_video_id IS NOT NULL
-      `, [student_id, module_id]);
+      `,
+      [student_id, module_id],
+    );
 
     const { total_videos, completed_videos } = allCompletedRes.rows[0];
 
@@ -2023,53 +1988,50 @@ exports.updateWatchProgress = async (req, res) => {
   ============================ */
 
     if (allVideosCompleted) {
-
-      await pool.query(`
+      await pool.query(
+        `
     UPDATE tbl_student_course_progress
     SET is_unlocked = true,
           unlocked_at = NOW() AT TIME ZONE 'Asia/Kolkata'
     WHERE student_id = $1
       AND module_id = $2
       AND assignment_id IS NOT NULL
-  `, [student_id, module_id]);
+  `,
+        [student_id, module_id],
+      );
     }
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Video Completed & Next Unlocked'
+      message: "Video Completed & Next Unlocked",
     });
-
-
   } catch (err) {
-
     console.error(err);
 
     return res.status(500).json({
       statusCode: 500,
-      message: 'Server Error'
+      message: "Server Error",
     });
   }
 };
 
-
 exports.unlockAssignmentAfterModule = async (req, res) => {
-
   const { student_id, module_id } = req.body;
 
   if (!student_id || !module_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: 'Missing Required Fields'
+      message: "Missing Required Fields",
     });
   }
 
   try {
-
     /* ============================
        1. Check All Videos Completed
     ============================*/
 
-    const checkRes = await pool.query(`
+    const checkRes = await pool.query(
+      `
       SELECT
         COUNT(*) AS total,
         COUNT(*) FILTER (WHERE is_completed = true) AS done
@@ -2077,65 +2039,70 @@ exports.unlockAssignmentAfterModule = async (req, res) => {
       WHERE student_id = $1
       AND module_id = $2
       AND module_video_id IS NOT NULL
-    `, [student_id, module_id]);
+    `,
+      [student_id, module_id],
+    );
 
     const { total, done } = checkRes.rows[0];
 
     if (Number(total) === 0) {
       return res.status(400).json({
         statusCode: 400,
-        message: 'No videos in this module'
+        message: "No videos in this module",
       });
     }
 
     if (Number(total) !== Number(done)) {
       return res.status(400).json({
         statusCode: 400,
-        message: 'All videos not completed yet'
+        message: "All videos not completed yet",
       });
     }
-
 
     /* ============================
        2. Get Assignment ID (FIXED)
     ============================*/
 
-    const assignRes = await pool.query(`
+    const assignRes = await pool.query(
+      `
       SELECT assignment_id
       FROM tbl_assignment
       WHERE module_id = $1
-    `, [module_id]);
+    `,
+      [module_id],
+    );
 
     if (assignRes.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'No Assignment Found For This Module'
+        message: "No Assignment Found For This Module",
       });
     }
 
     const assignmentId = assignRes.rows[0].assignment_id;
 
-
     /* ============================
        3. Check Progress Row
     ============================*/
 
-    const checkAssign = await pool.query(`
+    const checkAssign = await pool.query(
+      `
       SELECT student_course_progress_id
       FROM tbl_student_course_progress
       WHERE student_id = $1
       AND assignment_id = $2
-    `, [student_id, assignmentId]);
-
+    `,
+      [student_id, assignmentId],
+    );
 
     /* ============================
        4. Insert / Update
     ============================*/
 
     if (checkAssign.rows.length === 0) {
-
       // Insert if not exists
-      await pool.query(`
+      await pool.query(
+        `
         INSERT INTO tbl_student_course_progress
         (student_id, course_id, module_id, assignment_id, is_unlocked, unlocked_at)
         SELECT
@@ -2149,20 +2116,22 @@ exports.unlockAssignmentAfterModule = async (req, res) => {
         WHERE student_id = $1
         AND module_id = $3
         LIMIT 1
-      `, [student_id, assignmentId, module_id]);
-
+      `,
+        [student_id, assignmentId, module_id],
+      );
     } else {
-
       // Update if exists
-      await pool.query(`
+      await pool.query(
+        `
         UPDATE tbl_student_course_progress
         SET is_unlocked = true,
              unlocked_at = NOW() AT TIME ZONE 'Asia/Kolkata'
         WHERE student_id = $1
         AND assignment_id = $2
-      `, [student_id, assignmentId]);
+      `,
+        [student_id, assignmentId],
+      );
     }
-
 
     /* ============================
        5. Success
@@ -2170,21 +2139,17 @@ exports.unlockAssignmentAfterModule = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Assignment Unlocked Successfully'
+      message: "Assignment Unlocked Successfully",
     });
-
-
   } catch (err) {
-
     console.error(err);
 
     return res.status(500).json({
       statusCode: 500,
-      message: 'Server Error'
+      message: "Server Error",
     });
   }
 };
-
 
 // exports.getexamstudent = async (req, res) => {
 //   try {
@@ -2276,8 +2241,6 @@ exports.unlockAssignmentAfterModule = async (req, res) => {
 //       });
 //     }
 
-
-
 //     // ✅ Extract counts from FIRST row
 //     const {
 //       total_assignments,
@@ -2325,14 +2288,15 @@ exports.getexamstudent = async (req, res) => {
     if (!student_id) {
       return res.status(400).json({
         statusCode: 400,
-        message: "student_id is required"
+        message: "student_id is required",
       });
     }
 
     /* =======================
        1️⃣ ASSIGNMENTS QUERY
     ======================= */
-    const assignmentResult = await pool.query(`
+    const assignmentResult = await pool.query(
+      `
       SELECT
         ta.assignment_id,
         ta.assignment_title,
@@ -2396,12 +2360,15 @@ exports.getexamstudent = async (req, res) => {
         ts.is_unlocked
 
       ORDER BY ta.assignment_id ASC
-    `, [student_id]);
+    `,
+      [student_id],
+    );
 
     /* =======================
        2️⃣ FINAL ASSIGNMENT QUERY
     ======================= */
-    const finalAssignmentResult = await pool.query(`
+    const finalAssignmentResult = await pool.query(
+      `
       SELECT
         tfa.final_assignment_id,
         tc.course_title,
@@ -2418,7 +2385,9 @@ exports.getexamstudent = async (req, res) => {
         ON tfa.course_id = tc.course_id
       WHERE tfa.student_id = $1
        ORDER BY tfa.final_assignment_id ASC
-    `, [student_id]);
+    `,
+      [student_id],
+    );
 
     /* =======================
        3️⃣ HANDLE EMPTY CASE
@@ -2430,24 +2399,21 @@ exports.getexamstudent = async (req, res) => {
           counts: {
             total_assignments: 0,
             pending_assignments: 0,
-            submitted_assignments: 0
+            submitted_assignments: 0,
           },
           assignment: [],
-          finalassignment: finalAssignmentResult.rows
-        }
+          finalassignment: finalAssignmentResult.rows,
+        },
       });
     }
 
     /* =======================
        4️⃣ EXTRACT COUNTS
     ======================= */
-    const {
-      total_assignments,
-      pending_assignments,
-      submitted_assignments
-    } = assignmentResult.rows[0];
+    const { total_assignments, pending_assignments, submitted_assignments } =
+      assignmentResult.rows[0];
 
-    const assignment = assignmentResult.rows.map(row => {
+    const assignment = assignmentResult.rows.map((row) => {
       const {
         total_assignments,
         pending_assignments,
@@ -2457,8 +2423,8 @@ exports.getexamstudent = async (req, res) => {
       return rest;
     });
 
-
-    await pool.query(`
+    await pool.query(
+      `
           UPDATE tbl_student_final_assignment tfa
           SET is_unlocked = true
           WHERE tfa.student_id = $1
@@ -2473,35 +2439,34 @@ exports.getexamstudent = async (req, res) => {
                     )
                 AND scp.is_completed = false
           )
-        `, [student_id]);
-
+        `,
+      [student_id],
+    );
 
     /* =======================
        5️⃣ FINAL RESPONSE
     ======================= */
     return res.status(200).json({
       statusCode: 200,
-      message: 'Fetched Successfully',
+      message: "Fetched Successfully",
       data: {
         counts: {
           total_assignments: Number(total_assignments),
           pending_assignments: Number(pending_assignments),
-          submitted_assignments: Number(submitted_assignments)
+          submitted_assignments: Number(submitted_assignments),
         },
         assignment,
-        finalassignment: finalAssignmentResult.rows
-      }
+        finalassignment: finalAssignmentResult.rows,
+      },
     });
-
   } catch (error) {
     console.error("getexamstudent Error:", error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.writeExam = async (req, res) => {
   try {
@@ -2514,13 +2479,13 @@ exports.writeExam = async (req, res) => {
       FROM tbl_assignment
       WHERE assignment_id = $1
       `,
-      [assignment_id]
+      [assignment_id],
     );
 
     if (assignmentRes.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Assignment not found"
+        message: "Assignment not found",
       });
     }
 
@@ -2534,7 +2499,7 @@ exports.writeExam = async (req, res) => {
       VALUES ($1, $2, 0, 'IN_PROGRESS', NOW())
       RETURNING student_assignment_id
       `,
-      [assignment_id, student_id]
+      [assignment_id, student_id],
     );
 
     const student_assignment_id =
@@ -2548,7 +2513,7 @@ exports.writeExam = async (req, res) => {
 
       const q = await pool.query(
         `SELECT answer FROM tbl_questions WHERE question_id = $1`,
-        [question_id]
+        [question_id],
       );
 
       const correct_answer = q.rows[0].answer;
@@ -2567,8 +2532,8 @@ exports.writeExam = async (req, res) => {
           question_id,
           selected_answer,
           correct_answer,
-          is_correct
-        ]
+          is_correct,
+        ],
       );
     }
 
@@ -2580,7 +2545,7 @@ exports.writeExam = async (req, res) => {
           status = 'Completed'
       WHERE student_assignment_id = $2
       `,
-      [totalMarks, student_assignment_id]
+      [totalMarks, student_assignment_id],
     );
 
     // 5️⃣ Mark current module as completed
@@ -2594,7 +2559,7 @@ exports.writeExam = async (req, res) => {
         AND module_id = $3
         AND assignment_id = $4
       `,
-      [student_id, course_id, module_id, assignment_id]
+      [student_id, course_id, module_id, assignment_id],
     );
 
     // 6️⃣ Unlock NEXT module
@@ -2610,11 +2575,10 @@ exports.writeExam = async (req, res) => {
   ORDER BY module_id ASC
   LIMIT 1
   `,
-      [student_id, course_id, module_id]
+      [student_id, course_id, module_id],
     );
 
     if (nextModuleRes.rows.length > 0) {
-
       const nextModuleId = nextModuleRes.rows[0].module_id;
 
       // Step 2: Get first video of next module
@@ -2626,7 +2590,7 @@ exports.writeExam = async (req, res) => {
     ORDER BY module_video_id ASC
     LIMIT 1
     `,
-        [nextModuleId]
+        [nextModuleId],
       );
 
       if (firstVideoRes.rows.length > 0) {
@@ -2642,7 +2606,7 @@ exports.writeExam = async (req, res) => {
         AND course_id = $2
         AND module_video_id = $3
       `,
-          [student_id, course_id, firstVideoId]
+          [student_id, course_id, firstVideoId],
         );
       }
     }
@@ -2651,16 +2615,13 @@ exports.writeExam = async (req, res) => {
       statusCode: 200,
       message: "Exam submitted successfully",
       student_assignment_id,
-      total_marks: totalMarks
+      total_marks: totalMarks,
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
-
-
 
 exports.getAssignmentById = async (req, res) => {
   const { assignment_id, student_id } = req.body;
@@ -2669,13 +2630,13 @@ exports.getAssignmentById = async (req, res) => {
     // Check assignment exists
     const assignmentData = await pool.query(
       `SELECT * FROM tbl_assignment WHERE assignment_id = $1`,
-      [assignment_id]
+      [assignment_id],
     );
 
     if (assignmentData.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Assignment Not Found"
+        message: "Assignment Not Found",
       });
     }
 
@@ -2683,30 +2644,31 @@ exports.getAssignmentById = async (req, res) => {
       `SELECT is_completed, is_unlocked
             FROM tbl_student_course_progress
             WHERE assignment_id = $1 AND student_id = $2`,
-      [assignment_id, student_id]
+      [assignment_id, student_id],
     );
 
     if (progressCheck.rows.length > 0) {
-
       const progress = progressCheck.rows[0];
 
       if (progress.is_completed === true) {
         return res.status(404).json({
           statusCode: 404,
-          message: "Assignment already completed"
+          message: "Assignment already completed",
         });
       }
 
       if (progress.is_unlocked === false) {
         return res.status(404).json({
           statusCode: 404,
-          message: "Assignment is locked"
+          message: "Assignment is locked",
         });
       }
-
     }
     const assignment = assignmentData.rows[0];
-    const fetchdata = await pool.query(`SELECT * FROM tbl_assignment WHERE assignment_id=$1`, [assignment_id]);
+    const fetchdata = await pool.query(
+      `SELECT * FROM tbl_assignment WHERE assignment_id=$1`,
+      [assignment_id],
+    );
 
     // Fetch questions belonging to this assignment
     const questionData = await pool.query(
@@ -2714,7 +2676,7 @@ exports.getAssignmentById = async (req, res) => {
              FROM tbl_questions 
              WHERE assignment_id = $1
              ORDER BY question_id ASC`,
-      [assignment_id]
+      [assignment_id],
     );
 
     const questions = questionData.rows;
@@ -2726,20 +2688,16 @@ exports.getAssignmentById = async (req, res) => {
         assignment_id: assignment.assignment_id,
         course_id: assignment.course_id,
         assignment_title: assignment.assignment_title,
-        questions: questions
-      }
+        questions: questions,
+      },
     });
-
   } catch (error) {
-
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
-
 
 // const createFinalAssignment = async (client, student_id, course_id) => {
 //   try {
@@ -2782,7 +2740,7 @@ exports.getAssignmentById = async (req, res) => {
 //         JOIN tbl_questions tq ON ta.assignment_id = tq.assignment_id
 //         WHERE ta.course_id = $1
 //           AND ta.module_id = $2
-         
+
 //         ORDER BY RANDOM()
 //         LIMIT 5
 //       `, [course_id, module.module_id]);
@@ -2832,44 +2790,45 @@ exports.getAssignmentById = async (req, res) => {
 
 const createFinalAssignment = async (client, student_id, course_id) => {
   try {
-
     // 1️⃣ Create final assignment (simple)
-    const finalAssignmentResult = await client.query(`
+    const finalAssignmentResult = await client.query(
+      `
       INSERT INTO tbl_student_final_assignment
         (student_id, course_id, assignment_title, created_at, is_unlocked, status)
       VALUES
         ($1, $2, 'Final Assignment', NOW(), false, 'Pending')
       RETURNING final_assignment_id
-    `, [student_id, course_id]);
+    `,
+      [student_id, course_id],
+    );
 
-    const final_assignment_id = finalAssignmentResult.rows[0].final_assignment_id;
+    const final_assignment_id =
+      finalAssignmentResult.rows[0].final_assignment_id;
 
     // 2️⃣ Get 60 random questions
-    const questions = await client.query(`
+    const questions = await client.query(
+      `
       SELECT tq.question, tq.a, tq.b, tq.c, tq.d, tq.answer
       FROM tbl_assignment ta
       JOIN tbl_questions tq ON ta.assignment_id = tq.assignment_id
       WHERE ta.course_id = $1
       ORDER BY RANDOM()
       LIMIT 60
-    `, [course_id]);
+    `,
+      [course_id],
+    );
 
     // 3️⃣ Insert questions (same logic)
     for (const q of questions.rows) {
-      await client.query(`
+      await client.query(
+        `
         INSERT INTO tbl_student_final_assignment_questions
           (final_assignment_id, question, a, b, c, d, answer)
         VALUES
           ($1, $2, $3, $4, $5, $6, $7)
-      `, [
-        final_assignment_id,
-        q.question,
-        q.a,
-        q.b,
-        q.c,
-        q.d,
-        q.answer
-      ]);
+      `,
+        [final_assignment_id, q.question, q.a, q.b, q.c, q.d, q.answer],
+      );
     }
 
     // 4️⃣ Timer logic
@@ -2877,20 +2836,18 @@ const createFinalAssignment = async (client, student_id, course_id) => {
     const timerMinutes = totalQuestions;
 
     // 5️⃣ Update assignment
-    await client.query(`
+    await client.query(
+      `
       UPDATE tbl_student_final_assignment
       SET total_questions = $1,
           total_marks = $1,
           timmer = $2
       WHERE final_assignment_id = $3
-    `, [
-      totalQuestions,
-      timerMinutes + ' minutes',
-      final_assignment_id
-    ]);
+    `,
+      [totalQuestions, timerMinutes + " minutes", final_assignment_id],
+    );
 
     return final_assignment_id;
-
   } catch (error) {
     throw error;
   }
@@ -2902,42 +2859,48 @@ exports.getfinalquestions = async (req, res) => {
   if (!final_assignment_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: 'Missing Required Field'
+      message: "Missing Required Field",
     });
   }
 
   try {
-
     // 1. Check assignment lock status
-    const checklock = await pool.query(`
+    const checklock = await pool.query(
+      `
       SELECT is_unlocked,status
       FROM tbl_student_final_assignment
       WHERE final_assignment_id = $1
-    `, [final_assignment_id]);
+    `,
+      [final_assignment_id],
+    );
 
     if (checklock.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Final assignment not found'
+        message: "Final assignment not found",
       });
     }
 
     if (checklock.rows[0].is_unlocked === false) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Exam is locked'
+        message: "Exam is locked",
       });
     }
     if (checklock.rows[0].status === "Completed") {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Exam is Completed'
+        message: "Exam is Completed",
       });
     }
-    const assigment = await pool.query(`SELECT is_unlocked ,status,timmer,remaining_time  FROM tbl_student_final_assignment WHERE final_assignment_id=$1`, [final_assignment_id])
+    const assigment = await pool.query(
+      `SELECT is_unlocked ,status,timmer,remaining_time  FROM tbl_student_final_assignment WHERE final_assignment_id=$1`,
+      [final_assignment_id],
+    );
 
-    // 2. Get Questions 
-    const questions = await pool.query(`
+    // 2. Get Questions
+    const questions = await pool.query(
+      `
       SELECT 
         final_assignment_question_id,
         question,
@@ -2949,24 +2912,23 @@ exports.getfinalquestions = async (req, res) => {
       FROM tbl_student_final_assignment_questions
       WHERE final_assignment_id = $1
       ORDER BY final_assignment_question_id
-    `, [final_assignment_id]);
+    `,
+      [final_assignment_id],
+    );
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Questions fetched successfully',
+      message: "Questions fetched successfully",
       assignment: assigment.rows,
-      data: questions.rows
+      data: questions.rows,
     });
-
   } catch (error) {
-
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error'
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.writeFinalExam = async (req, res) => {
   try {
@@ -2986,24 +2948,22 @@ exports.writeFinalExam = async (req, res) => {
       FROM tbl_student_final_assignment
       WHERE final_assignment_id = $1
       `,
-      [final_assignment_id]
+      [final_assignment_id],
     );
 
     if (assignmentRes.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Final assignment not found"
+        message: "Final assignment not found",
       });
     }
 
     const assignment = assignmentRes.rows[0];
 
- 
-
     if (assignment.status === "Completed") {
       return res.status(404).json({
         statusCode: 404,
-        message: "Exam already submitted"
+        message: "Exam already submitted",
       });
     }
 
@@ -3012,7 +2972,6 @@ exports.writeFinalExam = async (req, res) => {
 
     // 2️⃣ Loop answers
     for (let ans of answers) {
-
       const { final_assignment_question_id, selected_answer } = ans;
 
       const questionRes = await pool.query(
@@ -3022,7 +2981,7 @@ exports.writeFinalExam = async (req, res) => {
         WHERE final_assignment_question_id = $1
           AND final_assignment_id = $2
         `,
-        [final_assignment_question_id, final_assignment_id]
+        [final_assignment_question_id, final_assignment_id],
       );
 
       if (questionRes.rows.length === 0) continue;
@@ -3043,7 +3002,7 @@ exports.writeFinalExam = async (req, res) => {
             is_correct = $2
         WHERE final_assignment_question_id = $3
         `,
-        [selected_answer, isCorrect, final_assignment_question_id]
+        [selected_answer, isCorrect, final_assignment_question_id],
       );
     }
 
@@ -3051,10 +3010,10 @@ exports.writeFinalExam = async (req, res) => {
     const totalMarks = correctCount; // 1 mark per question
 
     // 3️⃣ Calculate Grade (Optional Logic)
-        const percentage = (correctCount / totalQuestions) * 100;
+    const percentage = (correctCount / totalQuestions) * 100;
 
     let grade = "D";
- 
+
     if (percentage >= 80 && percentage <= 100) {
       grade = "A";
     } else if (percentage >= 60 && percentage < 80) {
@@ -3083,17 +3042,17 @@ exports.writeFinalExam = async (req, res) => {
         wrongCount,
         totalMarks.toString(),
         grade,
-        final_assignment_id
-      ]
+        final_assignment_id,
+      ],
     );
-// 5️⃣ Get tutor_id
+    // 5️⃣ Get tutor_id
     const tutorRes = await pool.query(
       `
       SELECT tutor_id 
       FROM tbl_course 
       WHERE course_id = $1
       `,
-      [assignment.course_id]
+      [assignment.course_id],
     );
 
     if (tutorRes.rows.length > 0) {
@@ -3101,11 +3060,11 @@ exports.writeFinalExam = async (req, res) => {
 
       // 6️⃣ Send Notification
       await sendNotification({
-        sender_id: assignment.student_id,   // student
-        receiver_id: tutor_id,              // tutor
+        sender_id: assignment.student_id, // student
+        receiver_id: tutor_id, // tutor
         type: "Final Assignment Submited",
         message: `Student has submitted the final exam.`,
-        type_id: final_assignment_id
+        type_id: final_assignment_id,
       });
     }
     return res.status(200).json({
@@ -3116,18 +3075,15 @@ exports.writeFinalExam = async (req, res) => {
         correct_answers: correctCount,
         wrong_answers: wrongCount,
         total_marks: totalMarks,
-        grade: grade
-      }
+        grade: grade,
+      },
     });
-
   } catch (error) {
-
     return res.status(500).json({
-      message: "Something went wrong"
+      message: "Something went wrong",
     });
   }
 };
-
 
 exports.getfinalexamresult = async (req, res) => {
   const { final_assignment_id } = req.body;
@@ -3135,36 +3091,37 @@ exports.getfinalexamresult = async (req, res) => {
   if (!final_assignment_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: 'Missing Required Field'
+      message: "Missing Required Field",
     });
   }
 
   try {
-
     // 1. Check assignment lock status
-    const checklock = await pool.query(`
+    const checklock = await pool.query(
+      `
       SELECT is_unlocked,status,feedback
       FROM tbl_student_final_assignment
       WHERE final_assignment_id = $1
-    `, [final_assignment_id]);
+    `,
+      [final_assignment_id],
+    );
 
     if (checklock.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Final assignment not found'
+        message: "Final assignment not found",
       });
     }
-
 
     if (checklock.rows[0].is_unlocked === false) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Exam is locked'
+        message: "Exam is locked",
       });
     }
 
-
-    const questions = await pool.query(`
+    const questions = await pool.query(
+      `
       SELECT 
         final_assignment_question_id,
         question,
@@ -3179,26 +3136,23 @@ exports.getfinalexamresult = async (req, res) => {
       FROM tbl_student_final_assignment_questions
       WHERE final_assignment_id = $1
       ORDER BY final_assignment_question_id
-    `, [final_assignment_id]);
+    `,
+      [final_assignment_id],
+    );
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Questions fetched successfully',
+      message: "Questions fetched successfully",
       feedback: checklock.rows[0].feedback,
-      data: questions.rows
+      data: questions.rows,
     });
-
   } catch (error) {
-
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error'
+      message: "Internal Server Error",
     });
   }
 };
-
-
-
 
 exports.updatedtime = async (req, res) => {
   const { final_assignment_id, remaining_time } = req.body;
@@ -3206,7 +3160,7 @@ exports.updatedtime = async (req, res) => {
   if (!final_assignment_id || !remaining_time) {
     return res.status(400).json({
       statusCode: 400,
-      message: "final_assignment_id and remaining_time are required"
+      message: "final_assignment_id and remaining_time are required",
     });
   }
 
@@ -3225,24 +3179,22 @@ exports.updatedtime = async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Final assignment not found"
+        message: "Final assignment not found",
       });
     }
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Updated time successfully"
+      message: "Updated time successfully",
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.getstudentassignmentresult = async (req, res) => {
   const { assignment_id, student_id } = req.body;
@@ -3250,12 +3202,13 @@ exports.getstudentassignmentresult = async (req, res) => {
   if (!assignment_id || !student_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "assignment_id and student_id are required"
+      message: "assignment_id and student_id are required",
     });
   }
 
   try {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       SELECT
         ta.assignment_id,
         ta.assignment_title,
@@ -3283,12 +3236,14 @@ exports.getstudentassignmentresult = async (req, res) => {
       WHERE ta.assignment_id = $1
       AND tsa_main.student_id = $2
       ORDER BY tq.question_id ASC
-    `, [assignment_id, student_id]);
+    `,
+      [assignment_id, student_id],
+    );
 
     if (result.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'No assignment found'
+        message: "No assignment found",
       });
     }
 
@@ -3296,7 +3251,7 @@ exports.getstudentassignmentresult = async (req, res) => {
     const assignment = {
       assignment_id: result.rows[0].assignment_id,
       assignment_title: result.rows[0].assignment_title,
-      questions: result.rows.map(q => ({
+      questions: result.rows.map((q) => ({
         question_id: q.question_id,
         question: q.question,
         a: q.a,
@@ -3306,25 +3261,22 @@ exports.getstudentassignmentresult = async (req, res) => {
         selected_answer: q.selected_answer,
         correct_answer: q.correct_answer,
         is_correct: q.is_correct,
-        result_status: q.result_status
-      }))
+        result_status: q.result_status,
+      })),
     };
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Result Fetched Sucessfully',
-      data: assignment
+      message: "Result Fetched Sucessfully",
+      data: assignment,
     });
-
   } catch (error) {
-
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error'
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.unlockfinalassignment = async (req, res) => {
   const { final_assignment_id, is_unlocked } = req.body;
@@ -3332,50 +3284,49 @@ exports.unlockfinalassignment = async (req, res) => {
   if (!final_assignment_id || !is_unlocked) {
     return res.status(400).json({
       statusCode: 400,
-      message: "final_assignment_id and unlocked are required"
+      message: "final_assignment_id and unlocked are required",
     });
   }
 
   try {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       UPDATE tbl_student_final_assignment
       SET is_unlocked = $2
       WHERE final_assignment_id = $1
       RETURNING final_assignment_id, student_id, assignment_title, is_unlocked;
-    `, [final_assignment_id, is_unlocked]);
+    `,
+      [final_assignment_id, is_unlocked],
+    );
 
     if (result.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Assignment not found"
+        message: "Assignment not found",
       });
     }
 
     return res.status(200).json({
       statusCode: 200,
       message: "Assignment  unlocked successfully",
-      data: result.rows[0]
+      data: result.rows[0],
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
-
-
 
 exports.getCourseenroleDetails = async (req, res) => {
   const { course_id, student_id } = req.body;
 
   try {
-
     // 1️⃣ COURSE + SUMMARY
-    const courseResult = await pool.query(`
+    const courseResult = await pool.query(
+      `
       SELECT 
         c.course_id,
         c.course_title,
@@ -3400,24 +3351,24 @@ exports.getCourseenroleDetails = async (req, res) => {
         c.level,
         c.price,
         c.tutor_id
-    `, [course_id]);
+    `,
+      [course_id],
+    );
 
     if (courseResult.rows.length === 0) {
       return res.status(404).json({
-        statusCode: 404
-
+        statusCode: 404,
       });
     }
 
     const course = courseResult.rows[0];
 
     // Format duration (seconds → HH:MM:SS)
-    const formattedDuration = formatDurationHMS(
-      Number(course.total_duration)
-    );
+    const formattedDuration = formatDurationHMS(Number(course.total_duration));
 
     // 2️⃣ MODULES + VIDEOS
-    const moduleResult = await pool.query(`
+    const moduleResult = await pool.query(
+      `
       SELECT 
         m.module_title,
         v.video_title,
@@ -3427,11 +3378,13 @@ exports.getCourseenroleDetails = async (req, res) => {
         ON m.module_id = v.module_id
       WHERE m.course_id = $1
       ORDER BY m.module_id, v.module_video_id
-    `, [course_id]);
+    `,
+      [course_id],
+    );
 
     const modulesMap = {};
 
-    moduleResult.rows.forEach(row => {
+    moduleResult.rows.forEach((row) => {
       if (!modulesMap[row.module_title]) {
         modulesMap[row.module_title] = [];
       }
@@ -3439,18 +3392,19 @@ exports.getCourseenroleDetails = async (req, res) => {
       if (row.video_title) {
         modulesMap[row.module_title].push({
           video_title: row.video_title,
-          duration: row.video_duration
+          duration: row.video_duration,
         });
       }
     });
 
-    const modules = Object.keys(modulesMap).map(title => ({
+    const modules = Object.keys(modulesMap).map((title) => ({
       module_title: title,
-      lessons: modulesMap[title]
+      lessons: modulesMap[title],
     }));
 
     // 3️⃣ TUTOR DETAILS
-    const tutorResult = await pool.query(`
+    const tutorResult = await pool.query(
+      `
       SELECT 
         u.full_name,
         u.role,
@@ -3463,7 +3417,9 @@ exports.getCourseenroleDetails = async (req, res) => {
         ON c.course_id = sc.course_id
       WHERE u.user_id = $1
       GROUP BY u.user_id
-    `, [course.tutor_id]);
+    `,
+      [course.tutor_id],
+    );
 
     const tutor = tutorResult.rows[0];
 
@@ -3471,15 +3427,19 @@ exports.getCourseenroleDetails = async (req, res) => {
     let studentCourseId = null;
 
     if (student_id) {
-      const enrollmentResult = await pool.query(`
+      const enrollmentResult = await pool.query(
+        `
         SELECT student_course_id
         FROM tbl_student_course
         WHERE course_id = $1 AND student_id = $2 AND status='SUCCESS'
-      `, [course_id, student_id]);
+      `,
+        [course_id, student_id],
+      );
 
-      studentCourseId = enrollmentResult.rows.length > 0
-        ? enrollmentResult.rows[0].student_course_id
-        : null;
+      studentCourseId =
+        enrollmentResult.rows.length > 0
+          ? enrollmentResult.rows[0].student_course_id
+          : null;
     }
 
     // 5️⃣ FINAL RESPONSE
@@ -3496,26 +3456,23 @@ exports.getCourseenroleDetails = async (req, res) => {
         price: course.price,
         total_lessons: course.total_lessons,
         total_duration: formattedDuration,
-        modules: modules
+        modules: modules,
       },
       tutor_details: {
         full_name: tutor.full_name,
         role: tutor.role,
         total_courses: tutor.total_courses,
-        total_mentees: tutor.total_mentees
-      }
+        total_mentees: tutor.total_mentees,
+      },
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
-
 
 // exports.getstudentoverview = async (req, res) => {
 
@@ -3540,7 +3497,7 @@ exports.getCourseenroleDetails = async (req, res) => {
 
 //     // 1️⃣ Courses with progress
 //     const courseQuery = `
-//       SELECT 
+//       SELECT
 //         tc.course_id,
 //         tc.course_title,
 //         tcat.category_name,
@@ -3552,7 +3509,7 @@ exports.getCourseenroleDetails = async (req, res) => {
 //         FILTER (WHERE svp.is_completed = true) AS watched_videos
 
 //       FROM tbl_student_course sc
-      
+
 //       JOIN tbl_course tc
 //         ON sc.course_id = tc.course_id
 
@@ -3579,7 +3536,7 @@ exports.getCourseenroleDetails = async (req, res) => {
 //     `;
 
 //     const coursesection = `
-//       SELECT 
+//       SELECT
 //         tc.course_id,
 //         tc.course_title,
 //         tcat.category_name,
@@ -3590,7 +3547,7 @@ exports.getCourseenroleDetails = async (req, res) => {
 //         FILTER (WHERE svp.is_completed = true) AS watched_videos
 
 //       FROM tbl_student_course sc
-      
+
 //       JOIN tbl_course tc
 //         ON sc.course_id = tc.course_id
 
@@ -3615,7 +3572,7 @@ exports.getCourseenroleDetails = async (req, res) => {
 
 //     // 2️⃣ Last watched video
 //     const lastVideoQuery = `
-//       SELECT 
+//       SELECT
 //         tc.course_id,
 //         tc.course_title,
 //         tcat.category_name,
@@ -3631,7 +3588,7 @@ exports.getCourseenroleDetails = async (req, res) => {
 
 //       JOIN tbl_course tc
 //         ON tm.course_id = tc.course_id
-        
+
 //         JOIN tbl_category tcat
 //       ON tc.category_id = tcat.category_id
 
@@ -3644,11 +3601,11 @@ exports.getCourseenroleDetails = async (req, res) => {
 
 //     // 3️⃣ Latest assignments
 //     const assignmentQuery = `
-//       SELECT 
+//       SELECT
 //         ta.assignment_title,
 //         ta.total_questions,
 
-//         CASE 
+//         CASE
 //           WHEN scp.is_completed = true THEN 'Completed'
 //           ELSE 'Pending'
 //         END AS status
@@ -3691,13 +3648,13 @@ exports.getCourseenroleDetails = async (req, res) => {
 
 //     // 5️⃣ Learning Time
 //  const learningTimeQuery = `
-// SELECT 
+// SELECT
 //   c.duration,
 //   c.no_of_modules,
 //   v.total_learning_time
 // FROM
 // (
-//   SELECT 
+//   SELECT
 //     SUM(REGEXP_REPLACE(tc.duration, '[^0-9]', '', 'g')::int) AS duration,
 //     SUM(tc.no_of_modules) AS no_of_modules
 //   FROM tbl_student_course sc
@@ -3707,7 +3664,7 @@ exports.getCourseenroleDetails = async (req, res) => {
 // ) c
 // CROSS JOIN
 // (
-//   SELECT 
+//   SELECT
 //     COALESCE(
 //       CONCAT(
 //         EXTRACT(HOUR FROM SUM(tmv.video_duration::interval)), 'h',
@@ -3725,7 +3682,7 @@ exports.getCourseenroleDetails = async (req, res) => {
 // `;
 
 //     const availableCoursesQuery = `
-//       SELECT 
+//       SELECT
 //         tc.course_id,
 //         tc.course_title,
 //         tcat.category_name,
@@ -3747,26 +3704,26 @@ exports.getCourseenroleDetails = async (req, res) => {
 //     `;
 
 //     const studentProgressGraphQuery = `
-//   SELECT 
+//   SELECT
 //     sc.student_id,
 //     sc.course_id,
 //     c.course_title,
 
 //     COUNT(scp.module_video_id) AS total_videos,
 
-//     COUNT(scp.module_video_id) 
+//     COUNT(scp.module_video_id)
 //       FILTER (WHERE scp.is_completed = true) AS watched_videos,
 
 //     COALESCE(
 //       ROUND(
-//         (COUNT(scp.module_video_id) FILTER (WHERE scp.is_completed = true) * 100.0) 
+//         (COUNT(scp.module_video_id) FILTER (WHERE scp.is_completed = true) * 100.0)
 //         / NULLIF(COUNT(scp.module_video_id), 0),
 //       2),
 //     0) AS progress_percentage
 
 //   FROM tbl_student_course sc
 
-//   JOIN tbl_course c 
+//   JOIN tbl_course c
 //     ON c.course_id = sc.course_id
 
 //   LEFT JOIN tbl_student_course_progress scp
@@ -3855,7 +3812,7 @@ exports.getCourseenroleDetails = async (req, res) => {
 //         last_video: lastVideo.rows[0] || null,
 //         assignments: assignments.rows,
 //         mentors: mentors.rows,
-//         student_progress_graph: studentProgressGraph.rows  
+//         student_progress_graph: studentProgressGraph.rows
 //       }
 //     });
 
@@ -3872,20 +3829,19 @@ exports.getCourseenroleDetails = async (req, res) => {
 // };
 
 exports.getstudentoverview = async (req, res) => {
-
   const { student_id } = req.body;
 
   if (!student_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "student_id is required"
+      message: "student_id is required",
     });
   }
 
   try {
     const studentname = await pool.query(
       `SELECT full_name FROM tbl_user WHERE user_id=$1`,
-      [student_id]
+      [student_id],
     );
 
     const studentName = studentname.rows.length
@@ -3931,7 +3887,7 @@ exports.getstudentoverview = async (req, res) => {
       GROUP BY tc.course_id, tc.course_title, tcat.category_name, tu.full_name
       ORDER BY tc.course_id DESC
     `;
-      const pieChartQuery = `
+    const pieChartQuery = `
       SELECT 
         tc.course_id,
         tc.course_title,
@@ -4056,7 +4012,7 @@ exports.getstudentoverview = async (req, res) => {
     `;
 
     // 4️⃣ Mentors
-const mentorQuery = `
+    const mentorQuery = `
   SELECT 
     tc.course_id,
     tc.course_title,
@@ -4078,7 +4034,7 @@ const mentorQuery = `
 `;
 
     // 5️⃣ Learning Time
- const learningTimeQuery = `
+    const learningTimeQuery = `
 SELECT 
   c.duration,
   c.no_of_modules,
@@ -4166,10 +4122,20 @@ CROSS JOIN
   GROUP BY sc.student_id, sc.course_id, c.course_title
   ORDER BY sc.course_id
 `;
-  
-    const [courses, lastVideo, assignments, mentors, learningTime, coursection, availableCourses,studentProgressGraph,pieChart] = await Promise.all([
+
+    const [
+      courses,
+      lastVideo,
+      assignments,
+      mentors,
+      learningTime,
+      coursection,
+      availableCourses,
+      studentProgressGraph,
+      pieChart,
+    ] = await Promise.all([
       pool.query(courseQuery, [student_id]),
-     pool.query(lastVideoQuery, [student_id]),
+      pool.query(lastVideoQuery, [student_id]),
       pool.query(assignmentQuery, [student_id]),
       pool.query(mentorQuery, [student_id]),
       pool.query(learningTimeQuery, [student_id]),
@@ -4182,57 +4148,52 @@ CROSS JOIN
     // Learning time data
     const learningData = learningTime.rows[0]
       ? {
-        duration: learningTime.rows[0].duration,
-        no_of_modules: Number(learningTime.rows[0].no_of_modules),
-        total_learning_time: learningTime.rows[0].total_learning_time
-      }
+          duration: learningTime.rows[0].duration,
+          no_of_modules: Number(learningTime.rows[0].no_of_modules),
+          total_learning_time: learningTime.rows[0].total_learning_time,
+        }
       : {
-        duration: "0 Days",
-        no_of_modules: 0,
-        total_learning_time: "00:00:00"
-      };
+          duration: "0 Days",
+          no_of_modules: 0,
+          total_learning_time: "00:00:00",
+        };
 
     // Course progress
-    const courseData = courses.rows.map(course => {
-
+    const courseData = courses.rows.map((course) => {
       const totalVideos = Number(course.total_videos);
       const watchedVideos = Number(course.watched_videos);
 
       const percentage =
-        totalVideos === 0
-          ? 0
-          : Math.round((watchedVideos / totalVideos) * 100);
+        totalVideos === 0 ? 0 : Math.round((watchedVideos / totalVideos) * 100);
 
       return {
         course_id: course.course_id,
         course_title: course.course_title,
         category_name: course.category_name,
-        percentage
+        percentage,
       };
-
     });
-const pieRow = pieChart.rows[0] || {
-  total_assignments: 0,
-  completed_assignments: 0
-};
+    const pieRow = pieChart.rows[0] || {
+      total_assignments: 0,
+      completed_assignments: 0,
+    };
 
-const total = Number(pieRow.total_assignments);
-const completed = Number(pieRow.completed_assignments);
-const pending = Math.max(total - completed, 0);
+    const total = Number(pieRow.total_assignments);
+    const completed = Number(pieRow.completed_assignments);
+    const pending = Math.max(total - completed, 0);
 
-const pieChartData = pieChart.rows.map(row => ({
-  course_title: row.course_title,
-  total: Number(row.total_assignments),
-  completed: Number(row.completed_assignments)
-}));
+    const pieChartData = pieChart.rows.map((row) => ({
+      course_title: row.course_title,
+      total: Number(row.total_assignments),
+      completed: Number(row.completed_assignments),
+    }));
     // If student did not purchase any course
     if (courseData.length === 0) {
-
-      const availableCourseList = availableCourses.rows.map(course => ({
+      const availableCourseList = availableCourses.rows.map((course) => ({
         course_id: course.course_id,
         course_title: course.course_title,
         category_name: course.category_name,
-        total_videos: Number(course.total_videos)
+        total_videos: Number(course.total_videos),
       }));
 
       return res.status(200).json({
@@ -4241,8 +4202,8 @@ const pieChartData = pieChart.rows.map(row => ({
         data: {
           student_name: studentName,
           course_watching: [],
-          course_section: availableCourseList
-        }
+          course_section: availableCourseList,
+        },
       });
     }
 
@@ -4257,20 +4218,17 @@ const pieChartData = pieChart.rows.map(row => ({
         last_video: lastVideo.rows[0] || null,
         assignments: assignments.rows,
         mentors: mentors.rows,
-        student_progress_graph: studentProgressGraph.rows ,
-         pie_chart: pieChartData
-      }
+        student_progress_graph: studentProgressGraph.rows,
+        pie_chart: pieChartData,
+      },
     });
-
   } catch (error) {
-
     console.error(error);
 
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
-
   }
 };
 // exports.getadminstudentmanagement = async (req, res) => {
@@ -4286,7 +4244,6 @@ const pieChartData = pieChart.rows.map(row => ({
 
 //         -- ✅ Active Students (purchased at least 1 course)
 //         COUNT(DISTINCT tsc.student_id) AS active_students,
- 
 
 //         -- ✅ Avg Progress
 //         COALESCE(
@@ -4302,10 +4259,10 @@ const pieChartData = pieChart.rows.map(row => ({
 
 //       FROM tbl_user tu
 
-//       LEFT JOIN tbl_student_course tsc 
+//       LEFT JOIN tbl_student_course tsc
 //         ON tsc.student_id = tu.user_id
 
-//       LEFT JOIN tbl_student_final_assignment tsfa 
+//       LEFT JOIN tbl_student_final_assignment tsfa
 //         ON tsfa.student_id = tu.user_id
 
 //       LEFT JOIN tbl_certificates tc
@@ -4313,7 +4270,7 @@ const pieChartData = pieChart.rows.map(row => ({
 //     `);
 //     const query = await pool.query(`
 //           SELECT
-//               tu.user_id AS student_id, 
+//               tu.user_id AS student_id,
 //               tu.full_name,
 //               tu.email,
 //               ts.mobile_number,
@@ -4344,16 +4301,15 @@ const pieChartData = pieChart.rows.map(row => ({
 //           FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))) ) / 86400) || ' days ago'
 //     END AS last_active,
 
-
-//               CASE 
-//                   WHEN EXTRACT(DAY FROM MAX(tsfa.created_at)) <= 15 
+//               CASE
+//                   WHEN EXTRACT(DAY FROM MAX(tsfa.created_at)) <= 15
 //                   THEN TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-A'
 //                   ELSE TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-B'
 //               END AS batch
 
 //           FROM tbl_student_course tsc
 
-//           JOIN tbl_user tu 
+//           JOIN tbl_user tu
 //               ON tu.user_id = tsc.student_id
 
 //           LEFT JOIN tbl_student ts
@@ -4361,11 +4317,11 @@ const pieChartData = pieChart.rows.map(row => ({
 
 //           LEFT JOIN tbl_student_final_assignment tsfa
 //               ON tsfa.student_id = tu.user_id
-          
+
 //           LEFT JOIN tbl_student_course_progress scp
 //              ON scp.student_id = tu.user_id
 
-//           GROUP BY 
+//           GROUP BY
 //               tu.user_id,
 //               tu.full_name,
 //               tu.email,
@@ -4377,7 +4333,7 @@ const pieChartData = pieChart.rows.map(row => ({
 //       message: 'fetched sucessfully',
 //       stats: statsQuery.rows[0],
 //       data: query.rows
-      
+
 //     })
 //   } catch (error) {
 //     return res.status(500).json({
@@ -4387,12 +4343,9 @@ const pieChartData = pieChart.rows.map(row => ({
 //   }
 // }
 
-
 exports.getadminstudentmanagement = async (req, res) => {
-
   try {
-
-      const statsQuery = await pool.query(`
+    const statsQuery = await pool.query(`
       SELECT
           COUNT(DISTINCT tu.user_id) FILTER (
               WHERE tu.role = 'student'
@@ -4427,7 +4380,7 @@ exports.getadminstudentmanagement = async (req, res) => {
         LEFT JOIN tbl_certificates tc
             ON tc.student_id = tu.user_id
         `);
-  const query = await pool.query(`
+    const query = await pool.query(`
   SELECT
       tu.user_id AS student_id, 
       tu.full_name,
@@ -4436,7 +4389,10 @@ exports.getadminstudentmanagement = async (req, res) => {
       tu.phone_number,
       ts.gender,
 
-      COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
+      COUNT(DISTINCT tsc.course_id)
+          FILTER (
+            WHERE tsc.status = 'SUCCESS'
+          ) AS enrolled_courses
 
       COUNT(DISTINCT tsfa.course_id) 
         FILTER (WHERE tsfa.status = 'Completed') AS completed_courses, 
@@ -4498,21 +4454,17 @@ exports.getadminstudentmanagement = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'fetched sucessfully',
+      message: "fetched sucessfully",
       stats: statsQuery.rows[0],
-      data: query.rows
-      
-    })
+      data: query.rows,
+    });
   } catch (error) {
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error'
-    })
+      message: "Internal Server Error",
+    });
   }
-}
-
-
-
+};
 
 // exports.getadminstudentmanagementbyid = async (req, res) => {
 
@@ -4539,14 +4491,14 @@ exports.getadminstudentmanagement = async (req, res) => {
 //     }
 //     // Profile + Stats
 //     const profileQuery = `
-//       SELECT 
+//       SELECT
 //           tu.full_name,
 //           tu.email,
 //           tu.phone_number,
 
 //           COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
 
-//          COUNT(DISTINCT tsfa.course_id) 
+//          COUNT(DISTINCT tsfa.course_id)
 //         FILTER (WHERE tsfa.is_unlocked = true) AS completed_courses,
 
 //           COUNT(DISTINCT tcert.certificate_id) AS certificates,
@@ -4573,15 +4525,15 @@ exports.getadminstudentmanagement = async (req, res) => {
 //                 FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) / 86400) || ' days ago'
 //         END AS last_active,
 
-//           CASE 
-//               WHEN EXTRACT(DAY FROM MAX(tsfa.created_at)) <= 15 
+//           CASE
+//               WHEN EXTRACT(DAY FROM MAX(tsfa.created_at)) <= 15
 //               THEN TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-A'
 //               ELSE TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-B'
 //           END AS batch
 
 //       FROM tbl_student_course tsc
 
-//       JOIN tbl_user tu 
+//       JOIN tbl_user tu
 //           ON tu.user_id = tsc.student_id
 
 //       LEFT JOIN tbl_student ts
@@ -4595,7 +4547,7 @@ exports.getadminstudentmanagement = async (req, res) => {
 
 //       WHERE tu.user_id = $1
 
-//       GROUP BY 
+//       GROUP BY
 //           tu.user_id,
 //           tu.full_name,
 //           tu.email,
@@ -4604,7 +4556,7 @@ exports.getadminstudentmanagement = async (req, res) => {
 
 //     // Courses with progress
 //     const courseQuery = `
-//       SELECT 
+//       SELECT
 //         tc.course_id,
 //         tc.course_title,
 //         tcat.category_name,
@@ -4616,7 +4568,7 @@ exports.getadminstudentmanagement = async (req, res) => {
 //         FILTER (WHERE svp.is_completed = true)::decimal
 //         /
 //         NULLIF(COUNT(DISTINCT tmv.module_video_id),0)
-//       ) * 100, 
+//       ) * 100,
 //     2),
 //   0) AS progress_percentage
 
@@ -4645,11 +4597,11 @@ exports.getadminstudentmanagement = async (req, res) => {
 
 //     // Assignments
 //     const assignmentQuery = `
-//       SELECT 
+//       SELECT
 //         ta.assignment_title,
 //         ta.total_questions,
 
-//         CASE 
+//         CASE
 //           WHEN scp.is_completed = true THEN 'Completed'
 //           ELSE 'Pending'
 //         END AS status
@@ -4674,7 +4626,7 @@ exports.getadminstudentmanagement = async (req, res) => {
 
 //     // Recent Activity
 // //     const activityQuery = `
-// //      SELECT 
+// //      SELECT
 // //   tc.course_title,
 // //   tcat.category_name,
 
@@ -4717,9 +4669,8 @@ exports.getadminstudentmanagement = async (req, res) => {
 // // LIMIT 5
 // //     `;
 
-
 //    const activityQuery = `
-//  SELECT 
+//  SELECT
 //   tc.course_title,
 //   tcat.category_name,
 
@@ -4740,7 +4691,7 @@ exports.getadminstudentmanagement = async (req, res) => {
 //   END AS activity_time
 
 // FROM (
-//   SELECT 
+//   SELECT
 //     scp.*,
 //     COALESCE(scp.completed_at, scp.unlocked_at) AS activity_time
 //   FROM tbl_student_course_progress scp
@@ -4767,7 +4718,7 @@ exports.getadminstudentmanagement = async (req, res) => {
 // LIMIT 5
 //     `;
 //     const overallProgressQuery = `
-//       SELECT 
+//       SELECT
 //       COALESCE(
 //         ROUND(
 //           (
@@ -4827,31 +4778,26 @@ exports.getadminstudentmanagement = async (req, res) => {
 
 // };
 
-
-
-
- 
- 
 exports.getadminstudentmanagementbyid = async (req, res) => {
   const { student_id } = req.body;
 
   if (!student_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "student_id is required"
+      message: "student_id is required",
     });
   }
 
   try {
     const studentCheck = await pool.query(
       `SELECT user_id, full_name FROM tbl_user WHERE user_id = $1`,
-      [student_id]
+      [student_id],
     );
 
     if (studentCheck.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Student not found"
+        message: "Student not found",
       });
     }
 
@@ -4862,7 +4808,10 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
           tu.email,
           tu.phone_number,
 
-          COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
+         COUNT(DISTINCT tsc.course_id)
+            FILTER (
+              WHERE tsc.status = 'SUCCESS'
+            ) AS enrolled_courses
 
           COUNT(DISTINCT tsfa.course_id)
           FILTER (WHERE tsfa.status = 'Completed') AS completed_courses,
@@ -4934,7 +4883,7 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
     `;
 
     // Course Query
-  const courseQuery = `
+    const courseQuery = `
       SELECT 
           tc.course_id,
           tc.course_title,
@@ -4986,6 +4935,7 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
           AND svp.course_id = tc.course_id
 
       WHERE sc.student_id = $1
+      AND sc.status = 'SUCCESS'
 
       GROUP BY tc.course_id, tc.course_title, tcat.category_name
       `;
@@ -5010,12 +4960,13 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
         AND scp.student_id = $1
 
       WHERE sc.student_id = $1
+      AND sc.status = 'SUCCESS'
       ORDER BY ta.assignment_date DESC
       LIMIT 3
     `;
 
     // Activity Query
-   
+
     const activityQuery = `
     SELECT 
       tc.course_title,
@@ -5061,11 +5012,9 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
     ORDER BY activity_time ASC
     LIMIT 5
     `;
- 
-
 
     // Overall Progress Query
-     const overallProgressQuery = `
+    const overallProgressQuery = `
         SELECT 
             COALESCE(
                 ROUND(
@@ -5120,18 +5069,19 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
                 AND scp.course_id = tc.course_id
 
             WHERE sc.student_id = $1
-
+            AND sc.status = 'SUCCESS'
             GROUP BY tc.course_id
         ) progress
         `;
 
-    const [profile, overall, courses, assignments, activity] = await Promise.all([
-      pool.query(profileQuery, [student_id]),
-      pool.query(overallProgressQuery, [student_id]),
-      pool.query(courseQuery, [student_id]),
-      pool.query(assignmentQuery, [student_id]),
-      pool.query(activityQuery, [student_id])
-    ]);
+    const [profile, overall, courses, assignments, activity] =
+      await Promise.all([
+        pool.query(profileQuery, [student_id]),
+        pool.query(overallProgressQuery, [student_id]),
+        pool.query(courseQuery, [student_id]),
+        pool.query(assignmentQuery, [student_id]),
+        pool.query(activityQuery, [student_id]),
+      ]);
 
     return res.status(200).json({
       statusCode: 200,
@@ -5141,30 +5091,24 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
         overall_progress: overall.rows[0].overall_progress_percentage,
         courses: courses.rows,
         assignments: assignments.rows,
-        recent_activity: activity.rows
-      }
+        recent_activity: activity.rows,
+      },
     });
-
   } catch (error) {
     console.error(error);
 
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
- 
-
 
 exports.getPurchaseList = async (req, res) => {
-
   try {
-
     const { student_id } = req.body;
 
     const result = await pool.query(
-
       `SELECT
 
           tsc.student_course_id,
@@ -5201,36 +5145,27 @@ exports.getPurchaseList = async (req, res) => {
 
        ORDER BY tsc.created_at DESC`,
 
-      [student_id]
-
+      [student_id],
     );
 
     return res.status(200).json({
-
-     statusCode:200,
-     message:'Fetched Sucessfully',
-     data:result.rows
-
+      statusCode: 200,
+      message: "Fetched Sucessfully",
+      data: result.rows,
     });
-
   } catch (error) {
     return res.status(500).json({
-    statusCode:500,
-    message: 'Internal Server Error'
-
+      statusCode: 500,
+      message: "Internal Server Error",
     });
-
   }
 };
 
 exports.getPurchaseInvoice = async (req, res) => {
-
   try {
-
     const { student_course_id } = req.body;
 
     const result = await pool.query(
-
       `SELECT
 
           tsc.student_course_id,
@@ -5278,45 +5213,32 @@ exports.getPurchaseInvoice = async (req, res) => {
 
        LIMIT 1`,
 
-      [student_course_id]
-
+      [student_course_id],
     );
 
     if (result.rows.length === 0) {
-     return res.status(404).json({
-        statusCode:404,
-       message: "Invoice not found"
-
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Invoice not found",
       });
-
     }
 
     return res.status(200).json({
-      statusCode:200,
-      message:'Fetched Sucessfully',
-      data: result.rows[0]
-
+      statusCode: 200,
+      message: "Fetched Sucessfully",
+      data: result.rows[0],
     });
-
   } catch (error) {
     return res.status(500).json({
-      statusCode:500,
-      message: 'Internal Server Error'
-
+      statusCode: 500,
+      message: "Internal Server Error",
     });
-
   }
 };
 
-
 exports.getadminPurchaseList = async (req, res) => {
-
   try {
-
- 
-
     const result = await pool.query(
-
       `SELECT
 
           tsc.student_course_id,
@@ -5353,17 +5275,14 @@ exports.getadminPurchaseList = async (req, res) => {
     );
 
     return res.status(200).json({
-    statusCode:200,
-     message:'Fetched Sucessfully',
-     data:result.rows
-
+      statusCode: 200,
+      message: "Fetched Sucessfully",
+      data: result.rows,
     });
-
   } catch (error) {
-     return res.status(500).json({
-        statusCode:500,
-        message: error.message
-       });
-
+    return res.status(500).json({
+      statusCode: 500,
+      message: error.message,
+    });
   }
 };

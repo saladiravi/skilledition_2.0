@@ -1,8 +1,10 @@
 const pool = require("../config/db");
-const { uploadToS3, getSignedVideoUrl, deletefroms3 } = require('../utils/s3upload');
-const { sendNotification } = require('../utils/notification');
-
-
+const {
+  uploadToS3,
+  getSignedVideoUrl,
+  deletefroms3,
+} = require("../utils/s3upload");
+const { sendNotification } = require("../utils/notification");
 
 exports.sendMessage = async (req, res) => {
   const { user_id, course_id, message, student_id } = req.body;
@@ -10,7 +12,7 @@ exports.sendMessage = async (req, res) => {
   if (!user_id || !course_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "user_id and course_id are required"
+      message: "user_id and course_id are required",
     });
   }
 
@@ -18,13 +20,13 @@ exports.sendMessage = async (req, res) => {
     // 1️⃣ Get User Role
     const userResult = await pool.query(
       `SELECT role FROM tbl_user WHERE user_id = $1`,
-      [user_id]
+      [user_id],
     );
 
     if (userResult.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "User not found"
+        message: "User not found",
       });
     }
 
@@ -35,12 +37,11 @@ exports.sendMessage = async (req, res) => {
     // 🟢 STUDENT LOGIC
     // =====================================================
     if (role === "student") {
-
       const existingRoom = await pool.query(
         `SELECT chat_room_id 
          FROM tbl_chat_room 
          WHERE course_id = $1 AND student_id = $2`,
-        [course_id, user_id]
+        [course_id, user_id],
       );
 
       if (existingRoom.rows.length > 0) {
@@ -50,37 +51,36 @@ exports.sendMessage = async (req, res) => {
           `INSERT INTO tbl_chat_room (course_id, student_id, status)
            VALUES ($1, $2, 'active')
            RETURNING chat_room_id`,
-          [course_id, user_id]
+          [course_id, user_id],
         );
 
         chatRoomId = newRoom.rows[0].chat_room_id;
       }
-          const existingActiveQuery = await pool.query(
-              `SELECT query_id 
+      const existingActiveQuery = await pool.query(
+        `SELECT query_id 
               FROM tbl_queries
               WHERE chat_room_id = $1
               AND is_closed = false`,
-              [chatRoomId]
-            );
- 
-        if (existingActiveQuery.rows.length === 0) {
-          await pool.query(
-            `INSERT INTO tbl_queries (chat_room_id, query_status, is_closed, created_at)
+        [chatRoomId],
+      );
+
+      if (existingActiveQuery.rows.length === 0) {
+        await pool.query(
+          `INSERT INTO tbl_queries (chat_room_id, query_status, is_closed, created_at)
             VALUES ($1, 'unresolved', false, NOW())`,
-            [chatRoomId]
-          );
-        }
+          [chatRoomId],
+        );
+      }
     }
 
     // =====================================================
     // 🔵 TUTOR / ADMIN LOGIC
     // =====================================================
     else {
-
       if (!student_id) {
         return res.status(400).json({
           statusCode: 400,
-          message: "student_id is required for tutor/admin message"
+          message: "student_id is required for tutor/admin message",
         });
       }
 
@@ -88,13 +88,13 @@ exports.sendMessage = async (req, res) => {
         `SELECT chat_room_id 
          FROM tbl_chat_room 
          WHERE course_id = $1 AND student_id = $2`,
-        [course_id, student_id]
+        [course_id, student_id],
       );
 
       if (room.rows.length === 0) {
         return res.status(404).json({
           statusCode: 404,
-          message: "Chat room not found for this student"
+          message: "Chat room not found for this student",
         });
       }
 
@@ -105,13 +105,13 @@ exports.sendMessage = async (req, res) => {
       `SELECT pause_chat 
        FROM tbl_chat_room
        WHERE chat_room_id=$1`,
-      [chatRoomId]
+      [chatRoomId],
     );
 
     if (pauseCheck.rows[0].pause_chat === true) {
       return res.status(403).json({
         statusCode: 403,
-        message: "Chat is paused. You cannot send messages."
+        message: "Chat is paused. You cannot send messages.",
       });
     }
 
@@ -122,11 +122,7 @@ exports.sendMessage = async (req, res) => {
     let fileType = "text";
 
     if (req.files?.file_url?.length > 0) {
-
-      const uploadedKey = await uploadToS3(
-        req.files.file_url[0],
-        "chat/files"
-      );
+      const uploadedKey = await uploadToS3(req.files.file_url[0], "chat/files");
 
       fileUrl = uploadedKey;
 
@@ -146,64 +142,56 @@ exports.sendMessage = async (req, res) => {
       `INSERT INTO tbl_chat_messages
        (chat_room_id, sender_id, message, file_url, message_type, status)
        VALUES ($1, $2, $3, $4, $5, 'sent')`,
-      [chatRoomId, user_id, message || null, fileUrl, fileType]
+      [chatRoomId, user_id, message || null, fileUrl, fileType],
     );
-
 
     // 6️⃣ Get receiver id
     let receiverId;
 
     if (role === "student") {
-
       // get tutor of the course
       const tutor = await pool.query(
         `SELECT tutor_id 
      FROM tbl_course
      WHERE course_id=$1`,
-        [course_id]
+        [course_id],
       );
 
       receiverId = tutor.rows[0].tutor_id;
-
     } else {
-
       // tutor/admin sending → notify student
       const student = await pool.query(
         `SELECT student_id
      FROM tbl_chat_room
      WHERE chat_room_id=$1`,
-        [chatRoomId]
+        [chatRoomId],
       );
 
       receiverId = student.rows[0].student_id;
     }
 
-
     // 7️⃣ Insert notification
     await sendNotification({
       sender_id: user_id,
       receiver_id: receiverId,
-      type: 'chat',
-      message: message || 'New message received',
-      type_id: chatRoomId
+      type: "chat",
+      message: message || "New message received",
+      type_id: chatRoomId,
     });
 
     return res.status(200).json({
       statusCode: 200,
       message: "Message sent successfully",
-      chat_room_id: chatRoomId
+      chat_room_id: chatRoomId,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
-
 
 exports.getMessages = async (req, res) => {
   const { chat_room_id, user_id } = req.body;
@@ -215,20 +203,20 @@ exports.getMessages = async (req, res) => {
        WHERE chat_room_id = $1
        AND sender_id <> $2
        AND message_seen = false`,
-      [chat_room_id, user_id]
+      [chat_room_id, user_id],
     );
 
     const chatRoomResult = await pool.query(
       `SELECT pause_chat
        FROM tbl_chat_room
        WHERE chat_room_id = $1`,
-      [chat_room_id]
+      [chat_room_id],
     );
 
     const pauseChat = chatRoomResult.rows[0]?.pause_chat || false;
 
     const queryResult = await pool.query(
-          `SELECT query_id,
+      `SELECT query_id,
                   query_status,
                   is_closed,
                   created_at
@@ -236,8 +224,8 @@ exports.getMessages = async (req, res) => {
           WHERE chat_room_id = $1
           ORDER BY created_at DESC
           LIMIT 1`,
-          [chat_room_id]
-        );
+      [chat_room_id],
+    );
 
     const queryDetails = queryResult.rows[0] || null;
 
@@ -263,16 +251,14 @@ exports.getMessages = async (req, res) => {
           
        WHERE m.chat_room_id = $1
        ORDER BY m.created_at ASC`,
-      [chat_room_id]
+      [chat_room_id],
     );
 
     const messages = messagesResult.rows;
 
     // 🔥 Add signed URL for files/images
     for (let msg of messages) {
-
       if (msg.file_url && msg.message_type !== "text") {
-
         const signedUrl = await getSignedVideoUrl(msg.file_url);
 
         msg.file_url = signedUrl; // replace S3 key with signed URL
@@ -283,15 +269,13 @@ exports.getMessages = async (req, res) => {
       statusCode: 200,
       pause_chat: pauseChat,
       query: queryDetails,
-      messages
+      messages,
     });
-
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
 
 // exports.getChatList = async (req, res) => {
 //   const { user_id } = req.body;
@@ -321,7 +305,7 @@ exports.getMessages = async (req, res) => {
 //     if (role === "student") {
 
 //       result = await pool.query(
-//         `SELECT 
+//         `SELECT
 //             sc.course_id,
 //             c.course_title,
 //             c.tutor_id,
@@ -336,10 +320,10 @@ exports.getMessages = async (req, res) => {
 
 //          FROM tbl_student_course sc
 
-//          JOIN tbl_course c 
+//          JOIN tbl_course c
 //            ON sc.course_id = c.course_id
 
-//          JOIN tbl_user u 
+//          JOIN tbl_user u
 //            ON c.tutor_id = u.user_id
 
 //          LEFT JOIN tbl_chat_room cr
@@ -351,7 +335,7 @@ exports.getMessages = async (req, res) => {
 
 //          WHERE sc.student_id = $1
 
-//          GROUP BY 
+//          GROUP BY
 //            sc.course_id,
 //            c.course_title,
 //            c.tutor_id,
@@ -369,7 +353,7 @@ exports.getMessages = async (req, res) => {
 //     else if (role === "tutor") {
 
 //       result = await pool.query(
-//         `SELECT 
+//         `SELECT
 //             sc.course_id,
 //             c.course_title,
 //             sc.student_id,
@@ -383,10 +367,10 @@ exports.getMessages = async (req, res) => {
 //         MAX(tcm.created_at) AS last_message_time
 //          FROM tbl_student_course sc
 
-//          JOIN tbl_course c 
+//          JOIN tbl_course c
 //            ON sc.course_id = c.course_id
 
-//          JOIN tbl_user u 
+//          JOIN tbl_user u
 //            ON sc.student_id = u.user_id
 
 //          LEFT JOIN tbl_chat_room cr
@@ -416,7 +400,7 @@ exports.getMessages = async (req, res) => {
 //     else if (role === "admin") {
 
 //       result = await pool.query(
-//         `SELECT 
+//         `SELECT
 //             sc.course_id,
 //             c.course_title,
 
@@ -435,13 +419,13 @@ exports.getMessages = async (req, res) => {
 //         MAX(tcm.created_at) AS last_message_time
 //          FROM tbl_student_course sc
 
-//          JOIN tbl_course c 
+//          JOIN tbl_course c
 //            ON sc.course_id = c.course_id
 
-//          JOIN tbl_user t 
+//          JOIN tbl_user t
 //            ON c.tutor_id = t.user_id
 
-//          JOIN tbl_user s 
+//          JOIN tbl_user s
 //            ON sc.student_id = s.user_id
 
 //          LEFT JOIN tbl_chat_room cr
@@ -472,8 +456,6 @@ exports.getMessages = async (req, res) => {
 //       });
 //     }
 
-
-
 //     res.status(200).json({
 //       statusCode: 200,
 //       message: "Chat list fetched successfully",
@@ -492,7 +474,6 @@ exports.getMessages = async (req, res) => {
 //   }
 // };
 
-
 exports.getChatList = async (req, res) => {
   const { user_id } = req.body;
 
@@ -500,13 +481,13 @@ exports.getChatList = async (req, res) => {
     // 1️⃣ Get user role
     const userResult = await pool.query(
       `SELECT role FROM tbl_user WHERE user_id = $1`,
-      [user_id]
+      [user_id],
     );
 
     if (userResult.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "User not found"
+        message: "User not found",
       });
     }
 
@@ -711,12 +692,10 @@ exports.getChatList = async (req, res) => {
 
         ORDER BY last_msg.created_at DESC NULLS LAST
       `;
-    }
-
-    else {
+    } else {
       return res.status(403).json({
         statusCode: 403,
-        message: "Invalid role"
+        message: "Invalid role",
       });
     }
 
@@ -726,44 +705,34 @@ exports.getChatList = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Chat list fetched successfully",
-      chatList: result.rows
+      chatList: result.rows,
     });
-
   } catch (error) {
     console.error(error);
 
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
-
 
 exports.updateMessage = async (req, res) => {
   const { chat_id, message } = req.body;
 
   try {
-
     let fileUrl = null;
     let messageType = "text";
 
     // ✅ If file uploaded
     if (req.files?.file_url?.length > 0) {
-
-      const uploadedKey = await uploadToS3(
-        req.files.file_url[0],
-        "chat/files"
-      );
+      const uploadedKey = await uploadToS3(req.files.file_url[0], "chat/files");
 
       fileUrl = uploadedKey;
 
       const mimeType = req.files.file_url[0].mimetype;
 
-      messageType = mimeType.startsWith("image/")
-        ? "image"
-        : "file";
+      messageType = mimeType.startsWith("image/") ? "image" : "file";
 
       const result = await pool.query(
         `UPDATE tbl_chat_messages
@@ -773,7 +742,7 @@ exports.updateMessage = async (req, res) => {
              edited = true
          WHERE chat_id = $3
          RETURNING *`,
-        [fileUrl, messageType, chat_id]
+        [fileUrl, messageType, chat_id],
       );
 
       if (result.rowCount === 0) {
@@ -782,14 +751,12 @@ exports.updateMessage = async (req, res) => {
 
       return res.status(200).json({
         statusCode: 200,
-        message: "File updated successfully"
-
+        message: "File updated successfully",
       });
     }
 
     // ✅ If only message update
     if (message) {
-
       const result = await pool.query(
         `UPDATE tbl_chat_messages
          SET message = $1,
@@ -798,79 +765,68 @@ exports.updateMessage = async (req, res) => {
              edited = true
          WHERE chat_id = $2
          RETURNING *`,
-        [message, chat_id]
+        [message, chat_id],
       );
 
       if (result.rowCount === 0) {
         return res.status(404).json({
           statusCode: 404,
-          message: "Message not found"
+          message: "Message not found",
         });
       }
 
       return res.status(200).json({
         statusCode: 200,
-        message: "Message updated successfully"
-
+        message: "Message updated successfully",
       });
     }
 
     return res.status(400).json({
       statusCode: 400,
-      message: "Nothing to update"
+      message: "Nothing to update",
     });
-
   } catch (error) {
-
     res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
-
 
 exports.updatepausechat = async (req, res) => {
   const { chat_room_id, pause_chat } = req.body;
 
   try {
-
     const result = await pool.query(
       `UPDATE tbl_chat_room
          SET pause_chat = $1
            WHERE chat_room_id = $2
          RETURNING *`,
-      [pause_chat, chat_room_id]
+      [pause_chat, chat_room_id],
     );
 
     if (result.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Message not found"
+        message: "Message not found",
       });
     }
 
     return res.status(200).json({
       statusCode: 200,
-      message: "pause chat successfully"
-
+      message: "pause chat successfully",
     });
-  }
-  catch (error) {
+  } catch (error) {
     console.log(error);
     res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
-}
-
-
+};
 
 exports.getpauseChatList = async (req, res) => {
   try {
-
     const result = await pool.query(`
       SELECT 
         tcr.chat_room_id,
@@ -887,32 +843,29 @@ exports.getpauseChatList = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      chatList: result.rows
+      chatList: result.rows,
     });
-
   } catch (error) {
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.chatstats = async (req, res) => {
   const { tutor_id } = req.body;
 
   try {
-
     const checktutor = await pool.query(
       `SELECT role FROM tbl_user WHERE user_id=$1`,
-      [tutor_id]
+      [tutor_id],
     );
 
     if (checktutor.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Tutor Not Found'
+        message: "Tutor Not Found",
       });
     }
 
@@ -959,26 +912,23 @@ exports.chatstats = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Fetched Successfully',
+      message: "Fetched Successfully",
       stats: {
         total_students: Number(stats.total_students),
         total_queries: Number(stats.total_queries),
         unresolved: Number(stats.unresolved),
         resolved: Number(stats.resolved),
-        response_rate: Number(stats.response_rate)
-      }
+        response_rate: Number(stats.response_rate),
+      },
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error'
+      message: "Internal Server Error",
     });
   }
 };
-
-
 
 exports.closeQuery = async (req, res) => {
   const { query_id } = req.body;
@@ -988,19 +938,18 @@ exports.closeQuery = async (req, res) => {
       `UPDATE tbl_queries
        SET is_closed = true, query_status = 'resolved'
        WHERE query_id = $1`,
-      [query_id]
+      [query_id],
     );
 
     res.json({
       statusCode: 200,
-      message: "Query closed successfully"
+      message: "Query closed successfully",
     });
-
   } catch (err) {
-    console.log(err)
+    console.log(err);
     res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };

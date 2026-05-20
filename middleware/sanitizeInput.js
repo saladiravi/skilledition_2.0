@@ -16,8 +16,6 @@
 
 // module.exports = sanitizeInput;
 
-
-
 const sanitizeInput = (req, res, next) => {
   const sanitize = (obj) => {
     if (!obj) return;

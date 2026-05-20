@@ -1,5 +1,9 @@
-const pool = require('../config/db');
-const { uploadToS3, getSignedVideoUrl, deletefroms3 } = require('../utils/s3upload');
+const pool = require("../config/db");
+const {
+  uploadToS3,
+  getSignedVideoUrl,
+  deletefroms3,
+} = require("../utils/s3upload");
 const ffmpeg = require("fluent-ffmpeg");
 const ffprobe = require("ffprobe-static");
 
@@ -13,7 +17,6 @@ function getVideoDuration(filePath) {
   });
 }
 
-
 function formatDurationHMS(seconds) {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
@@ -26,8 +29,6 @@ function formatDurationHMS(seconds) {
   return `${h}:${m}:${s}`;
 }
 
-
-
 exports.addcourse = async (req, res) => {
   const {
     category_id,
@@ -36,13 +37,13 @@ exports.addcourse = async (req, res) => {
     course_description,
     duration,
     no_of_modules,
-    level
+    level,
   } = req.body;
 
   if (!category_id || !tutor_id || !course_title) {
     return res.status(400).json({
       statusCode: 400,
-      message: "Missing required fields"
+      message: "Missing required fields",
     });
   }
 
@@ -50,26 +51,26 @@ exports.addcourse = async (req, res) => {
     // 1. Check category exists
     const checkCategory = await pool.query(
       `SELECT category_id FROM tbl_category WHERE category_id=$1`,
-      [category_id]
+      [category_id],
     );
 
     if (checkCategory.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Category not found"
+        message: "Category not found",
       });
     }
 
     // 2. Check tutor exists in tbl_user with role tutor
     const checkTutor = await pool.query(
       `SELECT user_id FROM tbl_user WHERE user_id=$1 AND role='tutor'`,
-      [tutor_id]
+      [tutor_id],
     );
 
     if (checkTutor.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Tutor not found or role not tutor"
+        message: "Tutor not found or role not tutor",
       });
     }
 
@@ -87,25 +88,22 @@ exports.addcourse = async (req, res) => {
         duration,
         no_of_modules,
         level,
-        '15000'
-      ]
+        "15000",
+      ],
     );
 
     return res.status(200).json({
       statusCode: 200,
       message: "Course added successfully",
-      course_id: insertCourse.rows[0]
+      course_id: insertCourse.rows[0],
     });
-
   } catch (error) {
-
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.updatecourse = async (req, res) => {
   try {
@@ -114,7 +112,7 @@ exports.updatecourse = async (req, res) => {
     if (!course_id) {
       return res.status(400).json({
         statusCode: 400,
-        message: "course_id is required"
+        message: "course_id is required",
       });
     }
 
@@ -130,11 +128,11 @@ exports.updatecourse = async (req, res) => {
       "course_description",
       "duration",
       "no_of_modules",
-      "level"
+      "level",
     ];
 
     // Add text fields if provided
-    allowedFields.forEach(field => {
+    allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {
         fields.push(`${field} = $${idx}`);
         values.push(req.body[field]);
@@ -146,7 +144,7 @@ exports.updatecourse = async (req, res) => {
     if (req.files?.course_image?.length > 0) {
       const uploadedImageKey = await uploadToS3(
         req.files.course_image[0],
-        "courses/images"
+        "courses/images",
       );
 
       fields.push(`course_image = $${idx}`);
@@ -158,7 +156,7 @@ exports.updatecourse = async (req, res) => {
     if (fields.length === 0) {
       return res.status(400).json({
         statusCode: 400,
-        message: "No fields to update"
+        message: "No fields to update",
       });
     }
 
@@ -177,19 +175,16 @@ exports.updatecourse = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Course updated successfully",
-      data: result.rows[0]
+      data: result.rows[0],
     });
-
   } catch (error) {
     console.error("Update Error:", error);
     res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
-
 
 exports.getcourseBytutor = async (req, res) => {
   const { tutor_id } = req.body;
@@ -197,48 +192,48 @@ exports.getcourseBytutor = async (req, res) => {
   try {
     const checkTutor = await pool.query(
       `SELECT user_id FROM tbl_user WHERE user_id=$1 AND role='tutor'`,
-      [tutor_id]
+      [tutor_id],
     );
 
     if (checkTutor.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Tutor not found or role not tutor"
+        message: "Tutor not found or role not tutor",
       });
     }
 
     const result = await pool.query(
       `SELECT * FROM tbl_course WHERE tutor_id=$1`,
-      [tutor_id]
+      [tutor_id],
     );
 
     // 🔥 Generate signed URL for each course image
     const coursesWithSignedUrl = await Promise.all(
       result.rows.map(async (course) => {
         if (course.course_image) {
-          course.course_image_url = await getSignedVideoUrl(course.course_image);
+          course.course_image_url = await getSignedVideoUrl(
+            course.course_image,
+          );
         } else {
           course.course_image_url = null;
         }
         return course;
-      })
+      }),
     );
 
     return res.status(200).json({
       statusCode: 200,
       message: "Fetched Successfully",
-      course: coursesWithSignedUrl
+      course: coursesWithSignedUrl,
     });
-
   } catch (error) {
     console.log("Error:", error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.addModulesWithVideos = async (req, res) => {
   const { course_id, modules } = req.body;
@@ -246,7 +241,7 @@ exports.addModulesWithVideos = async (req, res) => {
   if (!course_id || !modules) {
     return res.status(400).json({
       statusCode: 400,
-      message: "course_id and modules are required"
+      message: "course_id and modules are required",
     });
   }
 
@@ -259,7 +254,7 @@ exports.addModulesWithVideos = async (req, res) => {
     // 1️⃣ Check course
     const course = await client.query(
       `SELECT course_id FROM tbl_course WHERE course_id=$1`,
-      [course_id]
+      [course_id],
     );
 
     if (course.rowCount === 0) {
@@ -274,7 +269,7 @@ exports.addModulesWithVideos = async (req, res) => {
 
       // 2️⃣ Upload sheet (one per module)
       const sheet = req.files.find(
-        file => file.fieldname === `sheet_files[${i}]`
+        (file) => file.fieldname === `sheet_files[${i}]`,
       );
 
       let sheetFile = null;
@@ -282,14 +277,13 @@ exports.addModulesWithVideos = async (req, res) => {
         sheetFile = await uploadToS3(sheet, "modules/sheets");
       }
 
-
       // 3️⃣ Insert module
       const moduleInsert = await client.query(
         `INSERT INTO tbl_module
          (course_id, module_title, module_description, sheet_file)
          VALUES ($1, $2, $3, $4)
          RETURNING module_id`,
-        [course_id, module.module_title, module.module_description, sheetFile]
+        [course_id, module.module_title, module.module_description, sheetFile],
       );
 
       const module_id = moduleInsert.rows[0].module_id;
@@ -297,10 +291,9 @@ exports.addModulesWithVideos = async (req, res) => {
 
       // 4️⃣ Insert videos for this module
       // Videos for module i
-      const videos = req.files.filter(file =>
-        file.fieldname.startsWith(`video_files[${i}]`)
+      const videos = req.files.filter((file) =>
+        file.fieldname.startsWith(`video_files[${i}]`),
       );
-
 
       await Promise.all(
         videos.map(async (file) => {
@@ -314,14 +307,14 @@ exports.addModulesWithVideos = async (req, res) => {
             `INSERT INTO tbl_module_videos
             (module_id, video, video_title, video_duration, status)
             VALUES ($1, $2, $3, $4, 'Pending')`,
-            [module_id, videoUrl, videoTitle, formattedDuration]
+            [module_id, videoUrl, videoTitle, formattedDuration],
           );
-        })
+        }),
       );
 
       moduleResults.push({
         module_id,
-        videos_uploaded: videoCount
+        videos_uploaded: videoCount,
       });
     }
     // ✅ Update module count in tbl_course
@@ -333,31 +326,27 @@ exports.addModulesWithVideos = async (req, res) => {
         WHERE course_id = $1
       )
       WHERE course_id = $1`,
-      [course_id]
+      [course_id],
     );
-
 
     await client.query("COMMIT");
 
     return res.status(200).json({
       statusCode: 200,
       message: "Modules and videos added successfully",
-      modules: moduleResults
+      modules: moduleResults,
     });
-
   } catch (error) {
     await client.query("ROLLBACK");
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   } finally {
     client.release();
   }
 };
-
-
 
 exports.getcoursewithmoduledetails = async (req, res) => {
   try {
@@ -412,13 +401,13 @@ exports.getcoursewithmoduledetails = async (req, res) => {
         module_video_id: row.module_video_id,
         video_title: row.video_title,
         video_url: signedUrl,
-        video_duration: row.video_duration
+        video_duration: row.video_duration,
       });
     }
 
-    const response = Array.from(coursesMap.values()).map(course => ({
+    const response = Array.from(coursesMap.values()).map((course) => ({
       ...course,
-      modules: Array.from(course.modules.values())
+      modules: Array.from(course.modules.values()),
     }));
 
     return res.status(200).json({
@@ -426,7 +415,6 @@ exports.getcoursewithmoduledetails = async (req, res) => {
       message: "course details fetched successfully",
       course: response,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -436,21 +424,20 @@ exports.getcoursewithmoduledetails = async (req, res) => {
   }
 };
 
-
 exports.getcoursemoduleById = async (req, res) => {
   const { course_id } = req.body;
 
   try {
     // Check if course exists
     const exitcourseid = await pool.query(
-      'SELECT course_id FROM tbl_course WHERE course_id=$1',
-      [course_id]
+      "SELECT course_id FROM tbl_course WHERE course_id=$1",
+      [course_id],
     );
 
     if (exitcourseid.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Course Not Found',
+        message: "Course Not Found",
       });
     }
 
@@ -473,7 +460,7 @@ exports.getcoursemoduleById = async (req, res) => {
       JOIN tbl_module_videos AS tmv ON tm.module_id = tmv.module_id
       WHERE tc.course_id = $1
       `,
-      [course_id]
+      [course_id],
     );
 
     let coursemap = {};
@@ -521,95 +508,80 @@ exports.getcoursemoduleById = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Course details fetched successfully',
+      message: "Course details fetched successfully",
       course: finalcourse,
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error',
+      message: "Internal Server Error",
     });
   }
 };
 
-
-
 exports.updatestatus = async (req, res) => {
-
   const { module_video_id, status, reason } = req.body;
 
   if (!module_video_id || !status) {
     return res.status(400).json({
       statusCode: 400,
-      message: "module_video_id and status are required"
+      message: "module_video_id and status are required",
     });
   }
 
   try {
-
     // ✅ Update video and get module_id
     const updateResult = await pool.query(
       `UPDATE tbl_module_videos
        SET status = $1, reason = $2
        WHERE module_video_id = $3
        RETURNING module_id`,
-      [status, reason, module_video_id]
+      [status, reason, module_video_id],
     );
-
 
     if (updateResult.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Module video not found"
+        message: "Module video not found",
       });
     }
 
-
     const module_id = updateResult.rows[0].module_id;
-
 
     // ✅ Get course_id from module
     const courseResult = await pool.query(
       `SELECT course_id
        FROM tbl_module
        WHERE module_id = $1`,
-      [module_id]
+      [module_id],
     );
-
 
     if (courseResult.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Course not found"
+        message: "Course not found",
       });
     }
 
-
     const course_id = courseResult.rows[0].course_id;
-
 
     // ✅ Auto check & update course status
     await updateCourseStatusIfReady(course_id);
 
-
     return res.status(200).json({
       statusCode: 200,
-      message: "Video status updated successfully"
+      message: "Video status updated successfully",
     });
-
-
   } catch (error) {
-
     console.log("updatestatus Error:", error);
 
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.gettotalcourse = async (req, res) => {
   const { tutor_id } = req.body;
@@ -617,12 +589,13 @@ exports.gettotalcourse = async (req, res) => {
   if (!tutor_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "tutor_id is required"
+      message: "tutor_id is required",
     });
   }
 
   try {
-    const { rows } = await pool.query(`
+    const { rows } = await pool.query(
+      `
       SELECT
         tc.course_id,
         tc.course_title,
@@ -690,13 +663,14 @@ exports.gettotalcourse = async (req, res) => {
         tm.module_id,
         tmv.module_video_id,
         tu.user_id;
-    `, [tutor_id]);
+    `,
+      [tutor_id],
+    );
 
     const coursesMap = {};
 
     // ------------------ GROUP DATA ------------------
     for (const row of rows) {
-
       // ---------- COURSE ----------
       if (!coursesMap[row.course_id]) {
         coursesMap[row.course_id] = {
@@ -711,20 +685,18 @@ exports.gettotalcourse = async (req, res) => {
           avg_rating: Number(row.avg_rating),
           category: {
             category_id: row.category_id,
-            category_name: row.category_name
+            category_name: row.category_name,
           },
           enrolled_count: Number(row.enrolled_count),
           modules: [],
-          students: []
+          students: [],
         };
       }
 
       const course = coursesMap[row.course_id];
 
       // ---------- MODULE ----------
-      let module = course.modules.find(
-        m => m.module_id === row.module_id
-      );
+      let module = course.modules.find((m) => m.module_id === row.module_id);
 
       if (!module && row.module_id) {
         const signedSheetUrl = row.sheet_file
@@ -738,17 +710,14 @@ exports.gettotalcourse = async (req, res) => {
           sheet_file: row.sheet_file,
           sheet_file_url: signedSheetUrl,
           total_duration: row.total_duration,
-          videos: []
+          videos: [],
         };
         course.modules.push(module);
       }
 
- 
-
       if (row.module_video_id && module) {
-
         const videoExists = module.videos.find(
-          v => v.module_video_id === row.module_video_id
+          (v) => v.module_video_id === row.module_video_id,
         );
 
         if (!videoExists) {
@@ -761,44 +730,38 @@ exports.gettotalcourse = async (req, res) => {
             video_title: row.video_title,
             status: row.video_status,
             reason: row.reason,
-            video_duration: row.video_duration
+            video_duration: row.video_duration,
           });
         }
       }
       // ---------- STUDENT ----------
       if (row.student_id) {
         const exists = course.students.find(
-          s => s.student_id === row.student_id
+          (s) => s.student_id === row.student_id,
         );
 
         if (!exists) {
           course.students.push({
             student_id: row.student_id,
-            student_name: row.student_name
+            student_name: row.student_name,
           });
         }
       }
     }
 
- 
-
-
     // ---------- FILTER VIDEOS BY STATUS PRIORITY ----------
     for (const course of Object.values(coursesMap)) {
       for (const module of course.modules) {
-
-        const rejected = module.videos.filter(v => v.status === 'Rejected');
-        const pending = module.videos.filter(v => v.status === 'Pending');
-        const published = module.videos.filter(v => v.status === 'Published');
+        const rejected = module.videos.filter((v) => v.status === "Rejected");
+        const pending = module.videos.filter((v) => v.status === "Pending");
+        const published = module.videos.filter((v) => v.status === "Published");
 
         // Priority: Rejected > Pending > Published
         if (rejected.length > 0) {
           module.videos = rejected;
-        }
-        else if (pending.length > 0) {
+        } else if (pending.length > 0) {
           module.videos = pending;
-        }
-        else {
+        } else {
           module.videos = published;
         }
       }
@@ -812,60 +775,58 @@ exports.gettotalcourse = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Courses fetched successfully",
-      data: Object.values(coursesMap)
+      data: Object.values(coursesMap),
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
 
-
 exports.getvideosbymoduleid = async (req, res) => {
-  const { module_id, status } = req.body
+  const { module_id, status } = req.body;
   try {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
         SELECT tmv.*
         FROM tbl_module AS tm
         JOIN  tbl_module_videos AS tmv ON tm.module_id=tmV.module_id
-        WHERE tm.module_id=$1 AND status=$2`, [module_id, status])
+        WHERE tm.module_id=$1 AND status=$2`,
+      [module_id, status],
+    );
     return res.status(200).json({
       statusCode: 200,
-      message: 'Fetched Sucessfully',
-      videos: result.rows
-    })
+      message: "Fetched Sucessfully",
+      videos: result.rows,
+    });
   } catch (error) {
-    console.log(error)
+    console.log(error);
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error'
-    })
+      message: "Internal Server Error",
+    });
   }
-}
-
+};
 
 exports.updateModuleVideos = async (req, res) => {
-  const {
-    module_id,
-    module_video_id,
-    module_title,
-    module_description
-  } = req.body;
+  const { module_id, module_video_id, module_title, module_description } =
+    req.body;
 
   if (!module_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "module_id is required"
+      message: "module_id is required",
     });
   }
 
   // Ensure module_video_id is array
   const videoIds = module_video_id
-    ? (Array.isArray(module_video_id) ? module_video_id : [module_video_id])
+    ? Array.isArray(module_video_id)
+      ? module_video_id
+      : [module_video_id]
     : [];
 
   const videoFiles = req.files?.video_files || [];
@@ -874,7 +835,7 @@ exports.updateModuleVideos = async (req, res) => {
   if (videoIds.length > 0 && videoIds.length !== videoFiles.length) {
     return res.status(400).json({
       statusCode: 400,
-      message: "module_video_id count must match uploaded videos count"
+      message: "module_video_id count must match uploaded videos count",
     });
   }
 
@@ -886,14 +847,14 @@ exports.updateModuleVideos = async (req, res) => {
     // 1️⃣ Check module exists
     const moduleCheck = await client.query(
       `SELECT module_id,course_id FROM tbl_module WHERE module_id = $1`,
-      [module_id]
+      [module_id],
     );
 
     if (moduleCheck.rowCount === 0) {
       await client.query("ROLLBACK");
       return res.status(404).json({
         statusCode: 404,
-        message: "Module not found"
+        message: "Module not found",
       });
     }
 
@@ -914,12 +875,7 @@ exports.updateModuleVideos = async (req, res) => {
           sheet_file = COALESCE($3, sheet_file)
         WHERE module_id = $4
         `,
-        [
-          module_title || null,
-          module_description || null,
-          sheetUrl,
-          module_id
-        ]
+        [module_title || null, module_description || null, sheetUrl, module_id],
       );
     }
 
@@ -938,7 +894,7 @@ exports.updateModuleVideos = async (req, res) => {
           AND module_id = $2
           AND status IN ('Rejected', 'Pending')
         `,
-        [mvId, module_id]
+        [mvId, module_id],
       );
 
       if (checkVideo.rowCount === 0) continue;
@@ -961,7 +917,7 @@ exports.updateModuleVideos = async (req, res) => {
           module_video_created_at = NOW()
         WHERE module_video_id = $4
         `,
-        [videoUrl, videoTitle, formattedDuration, mvId]
+        [videoUrl, videoTitle, formattedDuration, mvId],
       );
 
       updatedCount++;
@@ -976,7 +932,7 @@ exports.updateModuleVideos = async (req, res) => {
      WHERE course_id = $1
    )
    WHERE course_id = $1`,
-      [course_id]
+      [course_id],
     );
 
     await client.query("COMMIT");
@@ -984,22 +940,19 @@ exports.updateModuleVideos = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Module updated successfully",
-      updated_videos: updatedCount
+      updated_videos: updatedCount,
     });
-
   } catch (error) {
     await client.query("ROLLBACK");
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   } finally {
     client.release();
   }
 };
-
-
 
 exports.getvideos = async (req, res) => {
   const { module_id, module_video_id } = req.body;
@@ -1007,7 +960,7 @@ exports.getvideos = async (req, res) => {
   if (!module_id || !module_video_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "module_id and module_video_id are required"
+      message: "module_id and module_video_id are required",
     });
   }
 
@@ -1034,13 +987,13 @@ exports.getvideos = async (req, res) => {
         AND module_video_id = ANY($2::int[])
       ORDER BY module_video_id
       `,
-      [module_id, videoIds]
+      [module_id, videoIds],
     );
 
     if (result.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "No videos found"
+        message: "No videos found",
       });
     }
 
@@ -1052,33 +1005,31 @@ exports.getvideos = async (req, res) => {
         return {
           module_video_id: row.module_video_id,
           module_id: row.module_id,
-          video_url: signedUrl,        // ✅ signed URL
+          video_url: signedUrl, // ✅ signed URL
           video_title: row.video_title,
           video_duration: row.video_duration,
           status: row.status,
-          reason: row.reason
+          reason: row.reason,
         };
-      })
+      }),
     );
 
     return res.status(200).json({
       statusCode: 200,
       message: "Videos fetched successfully",
       count: videosWithSignedUrl.length,
-      data: videosWithSignedUrl
+      data: videosWithSignedUrl,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   } finally {
     client.release();
   }
 };
-
 
 exports.deleteModule = async (req, res) => {
   const { module_id } = req.body;
@@ -1086,14 +1037,14 @@ exports.deleteModule = async (req, res) => {
   if (!module_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "module_id is required"
+      message: "module_id is required",
     });
   }
 
   const client = await pool.connect();
 
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     // 1️⃣ Get module sheet file
     const moduleRes = await client.query(
@@ -1102,14 +1053,14 @@ exports.deleteModule = async (req, res) => {
       FROM tbl_module
       WHERE module_id = $1
       `,
-      [module_id]
+      [module_id],
     );
 
     if (moduleRes.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Module Not Found'
-      })
+        message: "Module Not Found",
+      });
     }
 
     const sheetFileKey = moduleRes.rows[0].sheet_file;
@@ -1121,7 +1072,7 @@ exports.deleteModule = async (req, res) => {
       FROM tbl_module_videos
       WHERE module_id = $1
       `,
-      [module_id]
+      [module_id],
     );
 
     // 3️⃣ Delete sheet file from S3
@@ -1142,7 +1093,7 @@ exports.deleteModule = async (req, res) => {
       DELETE FROM tbl_module_videos
       WHERE module_id = $1
       `,
-      [module_id]
+      [module_id],
     );
 
     // 6️⃣ Delete module
@@ -1151,28 +1102,25 @@ exports.deleteModule = async (req, res) => {
       DELETE FROM tbl_module
       WHERE module_id = $1
       `,
-      [module_id]
+      [module_id],
     );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Module, sheet file, and videos deleted successfully"
+      message: "Module, sheet file, and videos deleted successfully",
     });
-
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     return res.status(500).json({
       statusCode: 500,
-      message: error.message || "Internal Server Error"
+      message: error.message || "Internal Server Error",
     });
-
   } finally {
     client.release();
   }
 };
-
 
 exports.deleteCourse = async (req, res) => {
   const { course_id } = req.body;
@@ -1180,7 +1128,7 @@ exports.deleteCourse = async (req, res) => {
   if (!course_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "course_id is required"
+      message: "course_id is required",
     });
   }
 
@@ -1192,14 +1140,14 @@ exports.deleteCourse = async (req, res) => {
     // 1️⃣ Check course exists
     const courseCheck = await client.query(
       `SELECT course_id FROM tbl_course WHERE course_id = $1`,
-      [course_id]
+      [course_id],
     );
 
     if (courseCheck.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Course Not Found'
-      })
+        message: "Course Not Found",
+      });
     }
 
     // 2️⃣ Get all module sheet files
@@ -1209,7 +1157,7 @@ exports.deleteCourse = async (req, res) => {
       FROM tbl_module
       WHERE course_id = $1
       `,
-      [course_id]
+      [course_id],
     );
 
     // 3️⃣ Get all module video files
@@ -1220,7 +1168,7 @@ exports.deleteCourse = async (req, res) => {
       JOIN tbl_module m ON m.module_id = mv.module_id
       WHERE m.course_id = $1
       `,
-      [course_id]
+      [course_id],
     );
 
     // 4️⃣ Delete sheet files from S3
@@ -1245,7 +1193,7 @@ exports.deleteCourse = async (req, res) => {
         SELECT module_id FROM tbl_module WHERE course_id = $1
       )
       `,
-      [course_id]
+      [course_id],
     );
 
     // 7️⃣ Delete modules
@@ -1254,7 +1202,7 @@ exports.deleteCourse = async (req, res) => {
       DELETE FROM tbl_module
       WHERE course_id = $1
       `,
-      [course_id]
+      [course_id],
     );
 
     // 8️⃣ Delete course
@@ -1263,25 +1211,23 @@ exports.deleteCourse = async (req, res) => {
       DELETE FROM tbl_course
       WHERE course_id = $1
       `,
-      [course_id]
+      [course_id],
     );
 
     await client.query("COMMIT");
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Course, modules, videos, and S3 files deleted successfully"
+      message: "Course, modules, videos, and S3 files deleted successfully",
     });
-
   } catch (error) {
     await client.query("ROLLBACK");
     console.error(error);
 
     return res.status(500).json({
       statusCode: 500,
-      message: error.message || "Internal Server Error"
+      message: error.message || "Internal Server Error",
     });
-
   } finally {
     client.release();
   }
@@ -1315,12 +1261,11 @@ exports.getTutorCoursesWithModules = async (req, res) => {
         ORDER BY c.course_id, m.module_id
       `;
 
-
     const result = await pool.query(getCoursesWithModulesByTutor, [tutorid]);
 
     const coursesMap = {};
 
-    result.rows.forEach(row => {
+    result.rows.forEach((row) => {
       // If course not yet added
       if (!coursesMap[row.course_id]) {
         coursesMap[row.course_id] = {
@@ -1333,7 +1278,7 @@ exports.getTutorCoursesWithModules = async (req, res) => {
           course_image: row.course_image,
           status: row.status,
           course_created_at: row.course_created_at,
-          modules: []
+          modules: [],
         };
       }
 
@@ -1344,35 +1289,29 @@ exports.getTutorCoursesWithModules = async (req, res) => {
           module_title: row.module_title,
           module_description: row.module_description,
           sheet_file: row.sheet_file,
-          total_duration: row.total_duration
+          total_duration: row.total_duration,
         });
       }
     });
 
     res.status(200).json({
       statusCode: 200,
-      message: 'Fetched Sucessfully',
-      data: Object.values(coursesMap)
+      message: "Fetched Sucessfully",
+      data: Object.values(coursesMap),
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({
       status: false,
-      message: "Server error"
+      message: "Server error",
     });
   }
 };
 
-
-
-
 // admin API's
-
 
 exports.getAdminCourseList = async (req, res) => {
   try {
-
     const query = `
       SELECT
         tc.course_id,
@@ -1426,34 +1365,29 @@ exports.getAdminCourseList = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Course list fetched successfully",
-      data: rows
+      data: rows,
     });
-
   } catch (error) {
-
     console.error("getAdminCourseList Error:", error);
 
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 };
 
-
 exports.getadmintotalcourse = async (req, res) => {
-
   const { status } = req.body;
 
   if (!status) {
     return res.status(400).json({
       statusCode: 400,
-      message: 'Missing Required Field'
-    })
+      message: "Missing Required Field",
+    });
   }
 
   try {
-
     const query = `
 
       SELECT
@@ -1583,20 +1517,15 @@ exports.getadmintotalcourse = async (req, res) => {
         mc.total_modules
     `;
 
-
     const { rows } = await pool.query(query, [status]);
 
     const courses = {};
 
-
     // ---------- FORMAT RESPONSE ----------
     for (const row of rows) {
-
       /* ---------- COURSE ---------- */
       if (!courses[row.course_id]) {
-
         courses[row.course_id] = {
-
           course_id: row.course_id,
           course_title: row.course_title,
           status: row.course_status,
@@ -1608,60 +1537,48 @@ exports.getadmintotalcourse = async (req, res) => {
           total_modules: Number(row.total_modules),
           enrolled_students: Number(row.enrolled_count),
 
-          modules: []
+          modules: [],
         };
       }
 
-
       const course = courses[row.course_id];
 
-
       /* ---------- MODULE ---------- */
-      let module = course.modules.find(
-        m => m.module_id === row.module_id
-      );
-
+      let module = course.modules.find((m) => m.module_id === row.module_id);
 
       if (
         !module &&
         row.module_id &&
         (row.module_video_id || row.assignment_id)
       ) {
-
         module = {
-
           module_id: row.module_id,
           module_title: row.module_title,
           status: row.video_status,
 
           videos: [],
-          assignments: []
+          assignments: [],
         };
 
         course.modules.push(module);
       }
 
-
       /* ---------- VIDEO ---------- */
       if (row.module_video_id && module) {
-
         module.videos.push({
-
           module_video_id: row.module_video_id,
           video_title: row.video_title,
-          status: row.video_status
+          status: row.video_status,
         });
       }
 
       /* ---------- ASSIGNMENT ---------- */
       if (row.assignment_id && module) {
-
         let assignment = module.assignments.find(
-          a => a.assignment_id === row.assignment_id
+          (a) => a.assignment_id === row.assignment_id,
         );
 
         if (!assignment) {
-
           assignment = {
             assignment_id: row.assignment_id,
 
@@ -1690,92 +1607,78 @@ exports.getadmintotalcourse = async (req, res) => {
     if (result.length === 0) {
       return res.status(200).json({
         statusCode: 200,
-        data: []
+        data: [],
       });
     }
     return res.status(200).json({
       statusCode: 200,
-      data: result
+      data: result,
     });
   } catch (error) {
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
-
+      message: "Internal Server Error",
     });
   }
 };
 
 exports.updateadminassignmentstatus = async (req, res) => {
-
   const { assignment_id, status, reason } = req.body;
 
   if (!assignment_id || !status) {
     return res.status(400).json({
       statusCode: 400,
-      message: "assignment_id and status are required"
+      message: "assignment_id and status are required",
     });
   }
 
   try {
-
     // Update assignment
     const updateResult = await pool.query(
       `UPDATE tbl_assignment
        SET status = $1, reason = $2
        WHERE assignment_id = $3
        RETURNING module_id`,
-      [status, reason, assignment_id]
+      [status, reason, assignment_id],
     );
-
 
     if (updateResult.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Assignment not found"
+        message: "Assignment not found",
       });
     }
 
-
     const module_id = updateResult.rows[0].module_id;
-
 
     // Get course_id
     const courseResult = await pool.query(
       `SELECT course_id FROM tbl_module WHERE module_id = $1`,
-      [module_id]
+      [module_id],
     );
 
     const course_id = courseResult.rows[0].course_id;
 
-
     // ✅ Auto update course
     await updateCourseStatusIfReady(course_id);
 
-
     return res.status(200).json({
       statusCode: 200,
-      message: "Assignment status updated successfully"
+      message: "Assignment status updated successfully",
     });
-
-
   } catch (error) {
-
     console.log(error);
 
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
 
-
-
-
 const updateCourseStatusIfReady = async (course_id) => {
-
-  const result = await pool.query(`
+  const result = await pool.query(
+    `
 
     SELECT
        COUNT(DISTINCT tm.module_id) AS total_modules,
@@ -1803,44 +1706,48 @@ const updateCourseStatusIfReady = async (course_id) => {
 
     WHERE tc.course_id = $1
 
-  `, [course_id]);
+  `,
+    [course_id],
+  );
 
-
-  const { total_modules, modules_with_assignment, pending_videos, pending_assignments } = result.rows[0];
-
+  const {
+    total_modules,
+    modules_with_assignment,
+    pending_videos,
+    pending_assignments,
+  } = result.rows[0];
 
   // ✅ If all approved → Publish course
-  if (pending_videos == 0 && pending_assignments == 0 && total_modules == modules_with_assignment) {
-
+  if (
+    pending_videos == 0 &&
+    pending_assignments == 0 &&
+    total_modules == modules_with_assignment
+  ) {
     await pool.query(
       `UPDATE tbl_course
        SET status = 'Published'
        WHERE course_id = $1`,
-      [course_id]
+      [course_id],
     );
-
   } else {
-
     // Optional: keep Pending if something not approved
     await pool.query(
       `UPDATE tbl_course
        SET status = 'Pending'
        WHERE course_id = $1`,
-      [course_id]
+      [course_id],
     );
   }
 };
 
 exports.getModuleVideoById = async (req, res) => {
-
   const { module_video_id } = req.body;
 
   try {
-
     if (!module_video_id) {
       return res.status(400).json({
         statusCode: 400,
-        message: "module_video_id is required"
+        message: "module_video_id is required",
       });
     }
 
@@ -1863,7 +1770,7 @@ exports.getModuleVideoById = async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Video not found"
+        message: "Video not found",
       });
     }
 
@@ -1877,32 +1784,28 @@ exports.getModuleVideoById = async (req, res) => {
       message: "Video fetched successfully",
       data: {
         ...videoData,
-        video_url: signedUrl
-      }
+        video_url: signedUrl,
+      },
     });
-
   } catch (error) {
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
 
-
 exports.getadmincoursewithstatus = async (req, res) => {
-
   const { status, course_id } = req.body;
 
   if (!status) {
     return res.status(400).json({
       statusCode: 400,
-      message: 'Missing Required Field'
+      message: "Missing Required Field",
     });
   }
 
   try {
-
     let values = [status];
     let condition = `
       WHERE (
@@ -2026,9 +1929,7 @@ exports.getadmincoursewithstatus = async (req, res) => {
 
     // ---------- FORMAT RESPONSE ----------
     for (const row of rows) {
-
       if (!courses[row.course_id]) {
-
         courses[row.course_id] = {
           course_id: row.course_id,
           course_title: row.course_title,
@@ -2040,28 +1941,25 @@ exports.getadmincoursewithstatus = async (req, res) => {
           tutor: row.tutor_name,
           total_modules: Number(row.total_modules),
           enrolled_students: Number(row.enrolled_count),
-          modules: []
+          modules: [],
         };
       }
 
       const course = courses[row.course_id];
 
-      let module = course.modules.find(
-        m => m.module_id === row.module_id
-      );
+      let module = course.modules.find((m) => m.module_id === row.module_id);
 
       if (
         !module &&
         row.module_id &&
         (row.module_video_id || row.assignment_id)
       ) {
-
         module = {
           module_id: row.module_id,
           module_title: row.module_title,
           status: row.video_status,
           videos: [],
-          assignments: []
+          assignments: [],
         };
 
         course.modules.push(module);
@@ -2071,18 +1969,16 @@ exports.getadmincoursewithstatus = async (req, res) => {
         module.videos.push({
           module_video_id: row.module_video_id,
           video_title: row.video_title,
-          status: row.video_status
+          status: row.video_status,
         });
       }
 
       if (row.assignment_id && module) {
-
         let assignment = module.assignments.find(
-          a => a.assignment_id === row.assignment_id
+          (a) => a.assignment_id === row.assignment_id,
         );
 
         if (!assignment) {
-
           assignment = {
             assignment_id: row.assignment_id,
             module_id: row.module_id,
@@ -2104,17 +2000,15 @@ exports.getadmincoursewithstatus = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-       data: Object.values(courses)
+      data: Object.values(courses),
     });
-
   } catch (error) {
-     return res.status(500).json({
+    return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.getstudenttotalcourseprogress = async (req, res) => {
   const { student_id } = req.body;
@@ -2122,24 +2016,23 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
   if (!student_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "student_id is required"
+      message: "student_id is required",
     });
   }
 
   try {
-
     // ---------------- 1️⃣ BASIC INFO ----------------
     const studentResult = await pool.query(
       `SELECT user_id, full_name, email
        FROM tbl_user
        WHERE user_id = $1 AND role = 'student'`,
-      [student_id]
+      [student_id],
     );
 
     if (studentResult.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Student not found"
+        message: "Student not found",
       });
     }
 
@@ -2150,7 +2043,7 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
       `SELECT COUNT(*) AS total
        FROM tbl_student_course
        WHERE student_id = $1`,
-      [student_id]
+      [student_id],
     );
 
     const coursesEnrolled = Number(enrolledResult.rows[0].total);
@@ -2162,7 +2055,7 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
        JOIN tbl_module tm ON tsc.course_id = tm.course_id
        JOIN tbl_module_videos tmv ON tm.module_id = tmv.module_id
        WHERE tsc.student_id = $1`,
-      [student_id]
+      [student_id],
     );
 
     const totalVideos = Number(totalVideosResult.rows[0].total);
@@ -2174,15 +2067,13 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
        WHERE student_id = $1
        AND is_completed = true
        AND module_video_id IS NOT NULL`,
-      [student_id]
+      [student_id],
     );
 
     const completedVideos = Number(completedVideosResult.rows[0].completed);
 
     const overallProgress =
-      totalVideos > 0
-        ? Math.round((completedVideos / totalVideos) * 100)
-        : 0;
+      totalVideos > 0 ? Math.round((completedVideos / totalVideos) * 100) : 0;
 
     // ---------------- 5️⃣ ASSIGNMENTS COMPLETED ----------------
     const assignmentResult = await pool.query(
@@ -2191,7 +2082,7 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
        WHERE student_id = $1
        AND assignment_id IS NOT NULL
        AND is_completed = true`,
-      [student_id]
+      [student_id],
     );
 
     const assignmentsCompleted = Number(assignmentResult.rows[0].total);
@@ -2207,7 +2098,7 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
        AND is_completed = true
        ORDER BY completed_at DESC
        LIMIT 5`,
-      [student_id]
+      [student_id],
     );
 
     return res.status(200).json({
@@ -2221,20 +2112,17 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
         courses_enrolled: coursesEnrolled,
         assignments_completed: assignmentsCompleted,
         average_grade: "N/A",
-        recent_activity: recentActivity.rows
-      }
+        recent_activity: recentActivity.rows,
+      },
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
-
 
 // exports.gettutorstudentdetailsbyid = async (req, res) => {
 
@@ -2262,7 +2150,7 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
 
 //     // Profile + Stats
 //     const profileQuery = `
-//         SELECT 
+//         SELECT
 //             tu.full_name,
 //             tu.email,
 //             tu.phone_number,
@@ -2281,7 +2169,7 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
 
 //         FROM tbl_student_course tsc
 
-//         JOIN tbl_user tu 
+//         JOIN tbl_user tu
 //             ON tu.user_id = tsc.student_id
 
 //         LEFT JOIN tbl_student ts
@@ -2295,16 +2183,15 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
 
 //         WHERE tu.user_id = $1
 
-//         GROUP BY 
+//         GROUP BY
 //             tu.user_id,
 //             tu.full_name,
 //             tu.email,
 //             tu.phone_number
 //         `;
 
-
 //     const overallProgressQuery = `
-//       SELECT 
+//       SELECT
 //       COALESCE(
 //         ROUND(
 //           (
@@ -2332,10 +2219,10 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
 //       `;
 
 //     const activityQuery = `
-//       SELECT 
+//       SELECT
 //         tc.course_title,
 //         tcat.category_name,
-       
+
 //       COALESCE(tmv.video_title, ta.assignment_title) AS video_title,
 //         CASE
 //     WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.completed_at, scp.unlocked_at))) < 60
@@ -2357,7 +2244,7 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
 //         ON scp.module_video_id = tmv.module_video_id
 
 //       LEFT JOIN tbl_assignment ta
-//          ON scp.assignment_id = ta.assignment_id  
+//          ON scp.assignment_id = ta.assignment_id
 
 //       LEFT JOIN tbl_module tm
 //         ON scp.module_id = tm.module_id
@@ -2404,15 +2291,13 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
 
 // };
 
-
-
 exports.gettutorstudentdetailsbyid = async (req, res) => {
   const { student_id, course_id } = req.body;
 
   if (!student_id || !course_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "student_id and course_id are required"
+      message: "student_id and course_id are required",
     });
   }
 
@@ -2421,13 +2306,13 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
       `SELECT user_id, full_name 
        FROM tbl_user 
        WHERE user_id = $1`,
-      [student_id]
+      [student_id],
     );
 
     if (studentCheck.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Student not found"
+        message: "Student not found",
       });
     }
 
@@ -2547,7 +2432,7 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
     const [profile, overall, activity] = await Promise.all([
       pool.query(profileQuery, [student_id, course_id]),
       pool.query(overallProgressQuery, [student_id, course_id]),
-      pool.query(activityQuery, [student_id, course_id])
+      pool.query(activityQuery, [student_id, course_id]),
     ]);
 
     return res.status(200).json({
@@ -2556,16 +2441,15 @@ exports.gettutorstudentdetailsbyid = async (req, res) => {
       data: {
         profile: profile.rows[0] || null,
         overall_progress: overall.rows[0].overall_progress_percentage,
-        recent_activity: activity.rows
-      }
+        recent_activity: activity.rows,
+      },
     });
-
   } catch (error) {
     console.error(error);
 
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };

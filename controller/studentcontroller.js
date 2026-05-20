@@ -1,11 +1,16 @@
-const pool = require('../config/db');
-const { uploadToS3, getSignedVideoUrl, deletefroms3 } = require('../utils/s3upload');
+const pool = require("../config/db");
+const {
+  uploadToS3,
+  getSignedVideoUrl,
+  deletefroms3,
+} = require("../utils/s3upload");
 
 exports.getprofile = async (req, res) => {
   const { user_id } = req.body;
 
   try {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       SELECT 
         tu.user_id AS user_id,
         tu.full_name,
@@ -28,12 +33,14 @@ exports.getprofile = async (req, res) => {
       LEFT JOIN tbl_student ts
         ON tu.user_id::bigint = ts.user_id
       WHERE tu.user_id = $1
-    `, [user_id]);
+    `,
+      [user_id],
+    );
 
     if (!result.rows.length) {
       return res.status(404).json({
         statusCode: 404,
-        message: "User Not Found"
+        message: "User Not Found",
       });
     }
 
@@ -48,18 +55,16 @@ exports.getprofile = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Fetched Successfully",
-      data: userData
+      data: userData,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.updateprofile = async (req, res) => {
   try {
@@ -68,11 +73,10 @@ exports.updateprofile = async (req, res) => {
     if (!user_id) {
       return res.status(400).json({
         statusCode: 400,
-        message: "user_id is required"
+        message: "user_id is required",
       });
     }
 
-   
     const gender = req.body.gender || null;
     const date_of_birth = req.body.date_of_birth || null;
     const college = req.body.college || null;
@@ -83,14 +87,13 @@ exports.updateprofile = async (req, res) => {
 
     let checkStudent = await pool.query(
       `SELECT * FROM tbl_student WHERE user_id=$1`,
-      [user_id]
+      [user_id],
     );
 
     if (checkStudent.rows.length === 0) {
-      await pool.query(
-        `INSERT INTO tbl_student (user_id) VALUES ($1)`,
-        [user_id]
-      );
+      await pool.query(`INSERT INTO tbl_student (user_id) VALUES ($1)`, [
+        user_id,
+      ]);
     }
 
     let profile_pic_key = checkStudent.rows?.[0]?.profile_image || null;
@@ -98,8 +101,6 @@ exports.updateprofile = async (req, res) => {
     if (req.file) {
       profile_pic_key = await uploadToS3(req.file, "users/profile_image");
     }
-
-    
 
     await pool.query(
       `UPDATE tbl_student
@@ -113,7 +114,6 @@ exports.updateprofile = async (req, res) => {
            profile_image=$8
        WHERE user_id=$9`,
       [
-      
         gender,
         date_of_birth,
         college,
@@ -122,24 +122,22 @@ exports.updateprofile = async (req, res) => {
         address,
         pincode,
         profile_pic_key,
-        user_id
-      ]
+        user_id,
+      ],
     );
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Profile updated successfully"
+      message: "Profile updated successfully",
     });
-
   } catch (error) {
     console.log(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.getStudentAccess = async (req, res) => {
   const { student_id } = req.body;
@@ -149,25 +147,26 @@ exports.getStudentAccess = async (req, res) => {
     if (!student_id) {
       return res.status(400).json({
         statusCode: 400,
-        message: "student_id is required"
+        message: "student_id is required",
       });
     }
 
     // ✅ 2. Check student exists
     const studentCheck = await pool.query(
       `SELECT user_id FROM tbl_user WHERE user_id = $1 AND role = 'student'`,
-      [student_id]
+      [student_id],
     );
 
     if (studentCheck.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Student not found"
+        message: "Student not found",
       });
     }
 
     // ✅ 3. Locking Query
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       SELECT
          CASE 
               WHEN sc.student_id IS NOT NULL THEN true
@@ -207,20 +206,21 @@ exports.getStudentAccess = async (req, res) => {
           FROM tbl_certificates
       ) cert
         ON cert.student_id = input.student_id
-    `, [student_id]);
+    `,
+      [student_id],
+    );
 
     // ✅ 4. Success response
     return res.status(200).json({
       statusCode: 200,
       message: "Student access fetched successfully",
-      data: result.rows[0]
+      data: result.rows[0],
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };

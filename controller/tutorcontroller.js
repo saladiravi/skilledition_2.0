@@ -1,34 +1,19 @@
-const express = require('express');
-const pool = require('../config/db');
-const { uploadToS3, getSignedVideoUrl } = require('../utils/s3upload');
-
-
-
-
+const express = require("express");
+const pool = require("../config/db");
+const { uploadToS3, getSignedVideoUrl } = require("../utils/s3upload");
 
 exports.addtutorAbout = async (req, res) => {
-  const {
-    country,
-    subject_to_teach,
-    speak_language,
-    level,
-    user_id
-  } = req.body;
+  const { country, subject_to_teach, speak_language, level, user_id } =
+    req.body;
 
-  if (
-
-    !country || !subject_to_teach || !speak_language ||
-    !user_id
-  ) {
+  if (!country || !subject_to_teach || !speak_language || !user_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: 'Missing required fields'
+      message: "Missing required fields",
     });
   }
 
   try {
-
-
     const query = `
       INSERT INTO tbl_tutor
       (country, subject_to_teach, speak_language,
@@ -37,58 +22,46 @@ exports.addtutorAbout = async (req, res) => {
       RETURNING *;
     `;
 
-    const values = [
-      country,
-      subject_to_teach,
-      speak_language,
-      user_id,
-      level
-    ];
+    const values = [country, subject_to_teach, speak_language, user_id, level];
 
     const result = await pool.query(query, values);
 
     return res.status(200).json({
       statusCode: 200,
       message: "Tutor added successfully",
-      tutor: result.rows[0]
+      tutor: result.rows[0],
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
 
 exports.updateTutorabout = async (req, res) => {
   try {
-    const {
-      tutor_id,
-      country,
-      subject_to_teach,
-      speak_language,
-      level
-    } = req.body;
+    const { tutor_id, country, subject_to_teach, speak_language, level } =
+      req.body;
 
     if (!tutor_id) {
       return res.status(400).json({
         statusCode: 400,
-        message: "tutor_id is required"
+        message: "tutor_id is required",
       });
     }
 
     // 1️⃣ Check tutor exists
     const exists = await pool.query(
       `SELECT tutor_id FROM tbl_tutor WHERE tutor_id = $1`,
-      [tutor_id]
+      [tutor_id],
     );
 
     if (exists.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Tutor not found"
+        message: "Tutor not found",
       });
     }
 
@@ -105,27 +78,20 @@ exports.updateTutorabout = async (req, res) => {
       RETURNING *;
     `;
 
-    const values = [
-      country,
-      subject_to_teach,
-      speak_language,
-      level,
-      tutor_id
-    ];
+    const values = [country, subject_to_teach, speak_language, level, tutor_id];
 
     const result = await pool.query(updateQuery, values);
 
     return res.status(200).json({
       statusCode: 200,
       message: "Tutor updated successfully",
-      tutor: result.rows[0]
+      tutor: result.rows[0],
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
@@ -136,26 +102,26 @@ exports.updateTutorProfessionalDetails = async (req, res) => {
       tutor_id,
       years_of_experience,
       professional_background,
-      achievements
+      achievements,
     } = req.body;
 
     if (!tutor_id) {
       return res.status(400).json({
         statusCode: 400,
-        message: "tutor_id is required"
+        message: "tutor_id is required",
       });
     }
 
     // 1️⃣ Check tutor exists
     const exists = await pool.query(
       `SELECT tutor_id FROM tbl_tutor WHERE tutor_id = $1`,
-      [tutor_id]
+      [tutor_id],
     );
 
     if (exists.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Tutor not found"
+        message: "Tutor not found",
       });
     }
 
@@ -178,7 +144,7 @@ exports.updateTutorProfessionalDetails = async (req, res) => {
       years_of_experience,
       professional_background,
       achievements,
-      tutor_id
+      tutor_id,
     ];
 
     const result = await pool.query(updateQuery, values);
@@ -186,18 +152,16 @@ exports.updateTutorProfessionalDetails = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Professional details updated successfully",
-      tutor: result.rows[0]
+      tutor: result.rows[0],
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.getTutorProfilePic = async (req, res) => {
   const { tutor_id } = req.body;
@@ -205,7 +169,7 @@ exports.getTutorProfilePic = async (req, res) => {
   if (!tutor_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "tutor_id is required"
+      message: "tutor_id is required",
     });
   }
 
@@ -221,29 +185,26 @@ exports.getTutorProfilePic = async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Tutor not found"
+        message: "Tutor not found",
       });
     }
 
     let profilePicUrl = null;
 
     if (result.rows[0].profile_pic) {
-      profilePicUrl = await getSignedVideoUrl(
-        result.rows[0].profile_pic
-      );
+      profilePicUrl = await getSignedVideoUrl(result.rows[0].profile_pic);
     }
 
     return res.status(200).json({
       statusCode: 200,
       message: "Profile picture fetched successfully",
-      profile_pic: profilePicUrl
+      profile_pic: profilePicUrl,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
@@ -254,7 +215,7 @@ exports.updateTutorProfilePic = async (req, res) => {
   if (!tutor_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "tutor_id is required"
+      message: "tutor_id is required",
     });
   }
 
@@ -265,14 +226,14 @@ exports.updateTutorProfilePic = async (req, res) => {
     if (req.files?.profile_pic?.length > 0) {
       profile_pic_key = await uploadToS3(
         req.files.profile_pic[0],
-        "users/profile_pics"
+        "users/profile_pics",
       );
     }
 
     if (!profile_pic_key) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Profile picture not provided"
+        message: "Profile picture not provided",
       });
     }
 
@@ -291,29 +252,23 @@ exports.updateTutorProfilePic = async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Tutor not found"
+        message: "Tutor not found",
       });
     }
 
     return res.status(200).json({
       statusCode: 200,
       message: "Profile picture updated successfully",
-      tutor: result.rows[0]
+      tutor: result.rows[0],
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
-
-
-
-
 
 exports.addCertificates = async (req, res) => {
   try {
@@ -322,7 +277,7 @@ exports.addCertificates = async (req, res) => {
     if (!tutor_id || !certificates) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Missing tutor_id or certificates"
+        message: "Missing tutor_id or certificates",
       });
     }
 
@@ -331,14 +286,14 @@ exports.addCertificates = async (req, res) => {
       certificateList = JSON.parse(certificates);
     } catch (err) {
       return res.status(400).json({
-        message: "Invalid certificates JSON format"
+        message: "Invalid certificates JSON format",
       });
     }
 
     if (!req.files || !req.files.certificate_file) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Certificate files are required"
+        message: "Certificate files are required",
       });
     }
 
@@ -346,7 +301,7 @@ exports.addCertificates = async (req, res) => {
 
     if (files.length !== certificateList.length) {
       return res.status(400).json({
-        message: "Number of files & certificate details mismatch"
+        message: "Number of files & certificate details mismatch",
       });
     }
 
@@ -356,7 +311,7 @@ exports.addCertificates = async (req, res) => {
       const file = files[i];
       const cert = certificateList[i];
 
-      const certificateKey = await uploadToS3(file, 'tutors/certificates');
+      const certificateKey = await uploadToS3(file, "tutors/certificates");
       const query = `
         INSERT INTO tbl_tutor_certificates
         (tutor_id, certificate_name, issued_by, date_of_issue, certificate_file)
@@ -369,7 +324,7 @@ exports.addCertificates = async (req, res) => {
         cert.certificate_name,
         cert.issued_by,
         cert.date_of_issue,
-        certificateKey
+        certificateKey,
       ];
 
       const result = await pool.query(query, values);
@@ -379,14 +334,13 @@ exports.addCertificates = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Certificates added successfully",
-      certificates: insertedRows
+      certificates: insertedRows,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
@@ -402,14 +356,14 @@ exports.updateTutorCertificates = async (req, res) => {
     if (!tutor_id || !certificates) {
       return res.status(400).json({
         statusCode: 400,
-        message: "tutor_id and certificates are required"
+        message: "tutor_id and certificates are required",
       });
     }
 
     const certificateList = JSON.parse(certificates);
     // const files = req.files?.certificate_file || [];
     const filesMap = {};
-    (req.files || []).forEach(file => {
+    (req.files || []).forEach((file) => {
       filesMap[file.fieldname] = file;
     });
     // 1️⃣ Fetch existing IDs from DB
@@ -417,29 +371,27 @@ exports.updateTutorCertificates = async (req, res) => {
       `SELECT tutor_certificate_id
        FROM tbl_tutor_certificates
        WHERE tutor_id = $1`,
-      [tutor_id]
+      [tutor_id],
     );
 
-    const existingIds = existing.rows.map(
-      r => r.tutor_certificate_id.toString()
+    const existingIds = existing.rows.map((r) =>
+      r.tutor_certificate_id.toString(),
     );
 
     // 2️⃣ IDs sent from frontend
     const sentIds = certificateList
-      .filter(c => c.tutor_certificate_id)
-      .map(c => c.tutor_certificate_id.toString());
+      .filter((c) => c.tutor_certificate_id)
+      .map((c) => c.tutor_certificate_id.toString());
 
     // 3️⃣ DELETE missing IDs (DB - Request)
-    const idsToDelete = existingIds.filter(
-      id => !sentIds.includes(id)
-    );
+    const idsToDelete = existingIds.filter((id) => !sentIds.includes(id));
 
     if (idsToDelete.length > 0) {
       await client.query(
         `DELETE FROM tbl_tutor_certificates
          WHERE tutor_id = $1
          AND tutor_certificate_id = ANY($2::int[])`,
-        [tutor_id, idsToDelete]
+        [tutor_id, idsToDelete],
       );
     }
 
@@ -452,7 +404,7 @@ exports.updateTutorCertificates = async (req, res) => {
         tutor_certificate_id,
         certificate_name,
         issued_by,
-        date_of_issue
+        date_of_issue,
       } = cert;
 
       let certificateKey = null;
@@ -468,13 +420,12 @@ exports.updateTutorCertificates = async (req, res) => {
           `SELECT certificate_file
            FROM tbl_tutor_certificates
            WHERE tutor_certificate_id = $1 AND tutor_id = $2`,
-          [tutor_certificate_id, tutor_id]
+          [tutor_certificate_id, tutor_id],
         );
 
         if (old.rowCount === 0) continue;
 
-        const finalFile =
-          certificateKey || old.rows[0].certificate_file;
+        const finalFile = certificateKey || old.rows[0].certificate_file;
 
         const update = await client.query(
           `UPDATE tbl_tutor_certificates
@@ -491,8 +442,8 @@ exports.updateTutorCertificates = async (req, res) => {
             date_of_issue,
             finalFile,
             tutor_certificate_id,
-            tutor_id
-          ]
+            tutor_id,
+          ],
         );
 
         resultData.push(update.rows[0]);
@@ -509,8 +460,8 @@ exports.updateTutorCertificates = async (req, res) => {
             certificate_name,
             issued_by,
             date_of_issue,
-            certificateKey
-          ]
+            certificateKey,
+          ],
         );
 
         resultData.push(insert.rows[0]);
@@ -522,16 +473,15 @@ exports.updateTutorCertificates = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Certificates synced successfully",
-      data: resultData
+      data: resultData,
     });
-
   } catch (error) {
     await client.query("ROLLBACK");
     console.error(error);
 
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   } finally {
     client.release();
@@ -545,7 +495,7 @@ exports.addEducation = async (req, res) => {
     if (!tutor_id || !education) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Missing tutor_id or education array"
+        message: "Missing tutor_id or education array",
       });
     }
 
@@ -556,14 +506,14 @@ exports.addEducation = async (req, res) => {
         educationList = JSON.parse(education);
       } catch (err) {
         return res.status(400).json({
-          message: "Invalid education JSON format"
+          message: "Invalid education JSON format",
         });
       }
     } else if (Array.isArray(education)) {
       educationList = education;
     } else {
       return res.status(400).json({
-        message: "Education must be JSON array"
+        message: "Education must be JSON array",
       });
     }
 
@@ -582,7 +532,7 @@ exports.addEducation = async (req, res) => {
         edu.degree,
         edu.institution,
         edu.specialization,
-        edu.year_of_passout
+        edu.year_of_passout,
       ];
 
       const result = await pool.query(query, values);
@@ -592,18 +542,16 @@ exports.addEducation = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Education details added successfully",
-      education: insertedRows
+      education: insertedRows,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.updateEducation = async (req, res) => {
   const client = await pool.connect();
@@ -616,7 +564,7 @@ exports.updateEducation = async (req, res) => {
     if (!tutor_id || !education) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Missing tutor_id or education array"
+        message: "Missing tutor_id or education array",
       });
     }
 
@@ -628,7 +576,7 @@ exports.updateEducation = async (req, res) => {
       educationList = education;
     } else {
       return res.status(400).json({
-        message: "Education must be an array"
+        message: "Education must be an array",
       });
     }
 
@@ -637,29 +585,27 @@ exports.updateEducation = async (req, res) => {
       `SELECT tutor_education_id
        FROM tbl_tutor_education
        WHERE tutor_id = $1`,
-      [tutor_id]
+      [tutor_id],
     );
 
-    const existingIds = existing.rows.map(r =>
-      r.tutor_education_id.toString()
+    const existingIds = existing.rows.map((r) =>
+      r.tutor_education_id.toString(),
     );
 
     /* 2️⃣ IDs sent from frontend */
     const sentIds = educationList
-      .filter(e => e.tutor_education_id)
-      .map(e => e.tutor_education_id.toString());
+      .filter((e) => e.tutor_education_id)
+      .map((e) => e.tutor_education_id.toString());
 
     /* 3️⃣ DELETE removed education */
-    const idsToDelete = existingIds.filter(
-      id => !sentIds.includes(id)
-    );
+    const idsToDelete = existingIds.filter((id) => !sentIds.includes(id));
 
     if (idsToDelete.length > 0) {
       await client.query(
         `DELETE FROM tbl_tutor_education
          WHERE tutor_id = $1
          AND tutor_education_id = ANY($2::int[])`,
-        [tutor_id, idsToDelete]
+        [tutor_id, idsToDelete],
       );
     }
 
@@ -672,7 +618,7 @@ exports.updateEducation = async (req, res) => {
         degree,
         institution,
         specialization,
-        year_of_passout
+        year_of_passout,
       } = edu;
 
       // UPDATE
@@ -692,8 +638,8 @@ exports.updateEducation = async (req, res) => {
             specialization,
             year_of_passout,
             tutor_education_id,
-            tutor_id
-          ]
+            tutor_id,
+          ],
         );
 
         if (update.rowCount > 0) {
@@ -707,13 +653,7 @@ exports.updateEducation = async (req, res) => {
            (tutor_id, degree, institution, specialization, year_of_passout)
            VALUES ($1, $2, $3, $4, $5)
            RETURNING *`,
-          [
-            tutor_id,
-            degree,
-            institution,
-            specialization,
-            year_of_passout
-          ]
+          [tutor_id, degree, institution, specialization, year_of_passout],
         );
 
         resultData.push(insert.rows[0]);
@@ -725,22 +665,20 @@ exports.updateEducation = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Education details synced successfully",
-      education: resultData
+      education: resultData,
     });
-
   } catch (error) {
     await client.query("ROLLBACK");
     console.error(error);
 
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   } finally {
     client.release();
   }
 };
-
 
 exports.getTutorOnboarding = async (req, res) => {
   const { user_id } = req.body;
@@ -768,14 +706,14 @@ exports.getTutorOnboarding = async (req, res) => {
       LEFT JOIN tbl_tutor t ON t.user_id = u.user_id
       WHERE u.user_id = $1
       `,
-      [user_id]
+      [user_id],
     );
 
     // ❌ No user at all
     if (tutorRes.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "User not found"
+        message: "User not found",
       });
     }
 
@@ -789,13 +727,12 @@ exports.getTutorOnboarding = async (req, res) => {
         fullname: tutor.full_name,
         reject_reason: tutor.reject_reason,
         tutor: {
-
           tutor_details: tutor, // contains full_name, email
           education: [],
           certificates: [],
           demo_video: null,
-          payment_plan: null
-        }
+          payment_plan: null,
+        },
       });
     }
 
@@ -811,7 +748,7 @@ exports.getTutorOnboarding = async (req, res) => {
       `SELECT tutor_education_id, degree, institution, specialization, year_of_passout
        FROM tbl_tutor_education
        WHERE tutor_id = $1`,
-      [tutor_id]
+      [tutor_id],
     );
 
     // 3️⃣ Certificates
@@ -819,16 +756,18 @@ exports.getTutorOnboarding = async (req, res) => {
       `SELECT tutor_certificate_id, certificate_name, issued_by, date_of_issue, certificate_file
        FROM tbl_tutor_certificates
        WHERE tutor_id = $1`,
-      [tutor_id]
+      [tutor_id],
     );
 
     const certificates = await Promise.all(
       certificateRes.rows.map(async (cert) => {
         if (cert.certificate_file) {
-          cert.certificate_file_url = await getSignedVideoUrl(cert.certificate_file);
+          cert.certificate_file_url = await getSignedVideoUrl(
+            cert.certificate_file,
+          );
         }
         return cert;
-      })
+      }),
     );
 
     // 4️⃣ Demo Video
@@ -848,7 +787,7 @@ exports.getTutorOnboarding = async (req, res) => {
       FROM tbl_demo_videos
       WHERE tutor_id = $1
       `,
-      [tutor_id]
+      [tutor_id],
     );
 
     let demo_video = null;
@@ -856,10 +795,10 @@ exports.getTutorOnboarding = async (req, res) => {
     if (demoVideoRes.rows.length > 0) {
       demo_video = demoVideoRes.rows[0];
 
-
-
       if (demo_video.video_file) {
-        demo_video.video_file_url = await getSignedVideoUrl(demo_video.video_file);
+        demo_video.video_file_url = await getSignedVideoUrl(
+          demo_video.video_file,
+        );
       }
     }
 
@@ -879,7 +818,7 @@ exports.getTutorOnboarding = async (req, res) => {
       ORDER BY p.payment_plan_id DESC
       LIMIT 1
       `,
-      [tutor_id]
+      [tutor_id],
     );
 
     const payment_plan =
@@ -896,16 +835,14 @@ exports.getTutorOnboarding = async (req, res) => {
         education: educationRes.rows,
         certificates,
         demo_video,
-        payment_plan
-      }
+        payment_plan,
+      },
     });
-
   } catch (err) {
-
     return res.status(500).json({
       statusCode: 500,
       message: "Server error",
-      error: err.message
+      error: err.message,
     });
   }
 };
@@ -917,20 +854,20 @@ exports.addDemoVideo = async (req, res) => {
     if (!tutor_id || !video_title || !video_description) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Missing required fields"
+        message: "Missing required fields",
       });
     }
 
     if (!req.files?.video_file?.length) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Video file is required"
+        message: "Video file is required",
       });
     }
 
     const video_file_key = await uploadToS3(
       req.files.video_file[0],
-      "tutors/demo_videos"
+      "tutors/demo_videos",
     );
 
     const query = `
@@ -940,46 +877,33 @@ exports.addDemoVideo = async (req, res) => {
       RETURNING demo_video_id
     `;
 
-    const values = [
-      tutor_id,
-      video_title,
-      video_description,
-      video_file_key
-    ];
+    const values = [tutor_id, video_title, video_description, video_file_key];
 
     const result = await pool.query(query, values);
 
     return res.status(200).json({
       statusCode: 200,
       message: "Demo video added successfully",
-      demo_video_id: result.rows[0].demo_video_id
-
+      demo_video_id: result.rows[0].demo_video_id,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
 
-
-
 exports.updateDemoVideo = async (req, res) => {
   try {
-    const {
-      demo_video_id,
-      tutor_id,
-      video_title,
-      video_description
-    } = req.body;
+    const { demo_video_id, tutor_id, video_title, video_description } =
+      req.body;
 
     if (!demo_video_id || !tutor_id) {
       return res.status(400).json({
         statusCode: 400,
-        message: "demo_video_id and tutor_id are required"
+        message: "demo_video_id and tutor_id are required",
       });
     }
 
@@ -988,13 +912,13 @@ exports.updateDemoVideo = async (req, res) => {
       `SELECT video_file
        FROM tbl_demo_videos
        WHERE demo_video_id = $1 AND tutor_id = $2`,
-      [demo_video_id, tutor_id]
+      [demo_video_id, tutor_id],
     );
 
     if (existing.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Demo video not found"
+        message: "Demo video not found",
       });
     }
 
@@ -1004,7 +928,7 @@ exports.updateDemoVideo = async (req, res) => {
     if (req.files?.video_file?.length > 0) {
       videoFileKey = await uploadToS3(
         req.files.video_file[0],
-        "tutors/demo_videos"
+        "tutors/demo_videos",
       );
     }
 
@@ -1026,7 +950,7 @@ exports.updateDemoVideo = async (req, res) => {
       video_description,
       videoFileKey,
       demo_video_id,
-      tutor_id
+      tutor_id,
     ];
 
     const result = await pool.query(updateQuery, values);
@@ -1034,30 +958,25 @@ exports.updateDemoVideo = async (req, res) => {
     return res.status(200).json({
       statusCode: 200,
       message: "Demo video updated successfully",
-      demo_video: result.rows[0]
+      demo_video: result.rows[0],
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
 
 exports.updateDemoVideoProfileDetails = async (req, res) => {
-  const {
-    demo_video_id,
-    short_bio,
-    teaching_style,
-    student_can_expect
-  } = req.body;
+  const { demo_video_id, short_bio, teaching_style, student_can_expect } =
+    req.body;
 
   if (!demo_video_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: "demo_video_id is required"
+      message: "demo_video_id is required",
     });
   }
 
@@ -1077,7 +996,7 @@ exports.updateDemoVideoProfileDetails = async (req, res) => {
       short_bio || null,
       teaching_style || null,
       student_can_expect || null,
-      demo_video_id
+      demo_video_id,
     ];
 
     const result = await pool.query(query, values);
@@ -1085,62 +1004,52 @@ exports.updateDemoVideoProfileDetails = async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Demo video not found"
+        message: "Demo video not found",
       });
     }
 
     return res.status(200).json({
       statusCode: 200,
       message: "Profile details updated successfully",
-
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
 
-
-
 exports.addpaymentplan = async (req, res) => {
-  const {
-    tutor_id,
-    demo_id,
-    plan_type,
-    royalty_percentage,
-    price,
-    upi_id
-  } = req.body;
+  const { tutor_id, demo_id, plan_type, royalty_percentage, price, upi_id } =
+    req.body;
 
   try {
     // 1️⃣ Validation
     if (!tutor_id || !demo_id || !plan_type || !price) {
       return res.status(400).json({
         statusCode: 400,
-        message: 'Missing required fields'
+        message: "Missing required fields",
       });
     }
 
-    if (plan_type === 'ROYALTY' && !royalty_percentage) {
+    if (plan_type === "ROYALTY" && !royalty_percentage) {
       return res.status(400).json({
         statusCode: 400,
-        message: 'Royalty percentage is required for royalty plan'
+        message: "Royalty percentage is required for royalty plan",
       });
     }
 
     const tutorCheck = await pool.query(
       `SELECT tutor_id FROM tbl_tutor WHERE tutor_id = $1`,
-      [tutor_id]
+      [tutor_id],
     );
 
     if (tutorCheck.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Tutor not found'
+        message: "Tutor not found",
       });
     }
     // 2️⃣ Insert payment plan
@@ -1154,9 +1063,9 @@ exports.addpaymentplan = async (req, res) => {
         tutor_id,
         demo_id,
         plan_type,
-        plan_type === 'ROYALTY' ? royalty_percentage : null,
-        price
-      ]
+        plan_type === "ROYALTY" ? royalty_percentage : null,
+        price,
+      ],
     );
 
     // 3️⃣ Update tutor UPI ID
@@ -1167,33 +1076,32 @@ exports.addpaymentplan = async (req, res) => {
         SET upi_id = $1
         WHERE tutor_id = $2
         `,
-        [upi_id, tutor_id]
+        [upi_id, tutor_id],
       );
     }
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Payment plan added successfully'
+      message: "Payment plan added successfully",
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error'
+      message: "Internal Server Error",
     });
   }
 };
 
 exports.updatePaymentPlan = async (req, res) => {
   const {
-    payment_plan_id,   // REQUIRED to update
+    payment_plan_id, // REQUIRED to update
     tutor_id,
     demo_id,
     plan_type,
     royalty_percentage,
     price,
-    upi_id
+    upi_id,
   } = req.body;
 
   try {
@@ -1201,14 +1109,14 @@ exports.updatePaymentPlan = async (req, res) => {
     if (!payment_plan_id || !tutor_id || !demo_id || !plan_type || !price) {
       return res.status(400).json({
         statusCode: 400,
-        message: 'Missing required fields'
+        message: "Missing required fields",
       });
     }
 
-    if (plan_type === 'ROYALTY' && !royalty_percentage) {
+    if (plan_type === "ROYALTY" && !royalty_percentage) {
       return res.status(400).json({
         statusCode: 400,
-        message: 'Royalty percentage is required for royalty plan'
+        message: "Royalty percentage is required for royalty plan",
       });
     }
 
@@ -1219,13 +1127,13 @@ exports.updatePaymentPlan = async (req, res) => {
       FROM tbl_tutor_payment_plan
       WHERE payment_plan_id = $1 AND tutor_id = $2
       `,
-      [payment_plan_id, tutor_id]
+      [payment_plan_id, tutor_id],
     );
 
     if (planCheck.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Payment plan not found'
+        message: "Payment plan not found",
       });
     }
 
@@ -1243,10 +1151,10 @@ exports.updatePaymentPlan = async (req, res) => {
       [
         demo_id,
         plan_type,
-        plan_type === 'ROYALTY' ? royalty_percentage : null,
+        plan_type === "ROYALTY" ? royalty_percentage : null,
         price,
-        payment_plan_id
-      ]
+        payment_plan_id,
+      ],
     );
 
     // 4️⃣ Update tutor UPI (optional)
@@ -1257,24 +1165,22 @@ exports.updatePaymentPlan = async (req, res) => {
         SET upi_id = $1
         WHERE tutor_id = $2
         `,
-        [upi_id, tutor_id]
+        [upi_id, tutor_id],
       );
     }
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Payment plan updated successfully'
+      message: "Payment plan updated successfully",
     });
-
   } catch (error) {
-    console.error('Update payment plan error:', error);
+    console.error("Update payment plan error:", error);
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error'
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.updatestatus = async (req, res) => {
   const { demo_video_id, status, demo_video_reject_reason } = req.body;
@@ -1282,7 +1188,7 @@ exports.updatestatus = async (req, res) => {
   if (!demo_video_id || !status) {
     return res.status(400).json({
       statusCode: 400,
-      message: "Missing Required Fields (demo_video_id, status)"
+      message: "Missing Required Fields (demo_video_id, status)",
     });
   }
 
@@ -1296,14 +1202,14 @@ exports.updatestatus = async (req, res) => {
       `SELECT tutor_id 
        FROM tbl_demo_videos 
        WHERE demo_video_id = $1`,
-      [demo_video_id]
+      [demo_video_id],
     );
 
     if (demoVideo.rowCount === 0) {
       await client.query("ROLLBACK");
       return res.status(404).json({
         statusCode: 404,
-        message: "Demo video not found"
+        message: "Demo video not found",
       });
     }
 
@@ -1314,14 +1220,14 @@ exports.updatestatus = async (req, res) => {
       `SELECT user_id 
        FROM tbl_tutor 
        WHERE tutor_id = $1`,
-      [tutorId]
+      [tutorId],
     );
 
     if (tutor.rowCount === 0) {
       await client.query("ROLLBACK");
       return res.status(404).json({
         statusCode: 404,
-        message: "Tutor not found"
+        message: "Tutor not found",
       });
     }
 
@@ -1338,8 +1244,8 @@ exports.updatestatus = async (req, res) => {
       [
         status,
         status === "rejected" ? demo_video_reject_reason : null,
-        demo_video_id
-      ]
+        demo_video_id,
+      ],
     );
 
     // 4️⃣ ONLY when status = accept → update tbl_user
@@ -1348,7 +1254,7 @@ exports.updatestatus = async (req, res) => {
         `UPDATE tbl_user
          SET status = 'accept'
          WHERE user_id = $1`,
-        [userId]
+        [userId],
       );
     }
 
@@ -1360,17 +1266,16 @@ exports.updatestatus = async (req, res) => {
       data: {
         demo_video_id: result.rows[0].demo_video_id,
         status: result.rows[0].status,
-        demo_video_reject_reason: result.rows[0].demo_video_reject_reason
-      }
+        demo_video_reject_reason: result.rows[0].demo_video_reject_reason,
+      },
     });
-
   } catch (error) {
     await client.query("ROLLBACK");
     console.error(error);
 
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   } finally {
     client.release();
@@ -1383,7 +1288,7 @@ exports.getonboardstatus = async (req, res) => {
   if (!user_id) {
     return res.status(400).json({
       statusCode: 400,
-      message: 'Missing required field: user_id'
+      message: "Missing required field: user_id",
     });
   }
 
@@ -1400,31 +1305,29 @@ exports.getonboardstatus = async (req, res) => {
       WHERE tu.user_id = $1
         AND tu.role = 'tutor';
       `,
-      [user_id]
+      [user_id],
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Tutor not found or user is not a tutor'
+        message: "Tutor not found or user is not a tutor",
       });
     }
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Fetched successfully',
-      data: result.rows[0]
+      message: "Fetched successfully",
+      data: result.rows[0],
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error'
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.onboardnotification = async (req, res) => {
   const { sender_id, type, type_id, message, status } = req.body;
@@ -1434,7 +1337,7 @@ exports.onboardnotification = async (req, res) => {
     if (!sender_id || !type || !type_id || !message || !status) {
       return res.status(400).json({
         statusCode: 400,
-        message: 'Missing required fields'
+        message: "Missing required fields",
       });
     }
 
@@ -1445,7 +1348,7 @@ exports.onboardnotification = async (req, res) => {
       (sender_id, type, receiver_id, type_id, message)
       VALUES ($1, $2, $3, $4, $5)
       `,
-      [sender_id, type, '15', type_id, message]
+      [sender_id, type, "15", type_id, message],
     );
 
     // 3️⃣ Update tutor status
@@ -1455,14 +1358,14 @@ exports.onboardnotification = async (req, res) => {
       SET status = $1
       WHERE tutor_id = $2
       `,
-      [status, type_id]
+      [status, type_id],
     );
 
     // Optional safety check
     if (tutorUpdate.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Tutor not found'
+        message: "Tutor not found",
       });
     }
 
@@ -1473,24 +1376,21 @@ exports.onboardnotification = async (req, res) => {
       SET status = $1
       WHERE user_id = $2
       `,
-      [status, sender_id]
+      [status, sender_id],
     );
 
     return res.status(200).json({
       statusCode: 200,
-      message: 'Notification sent and status updated successfully'
+      message: "Notification sent and status updated successfully",
     });
-
   } catch (error) {
     console.log(error);
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error'
+      message: "Internal Server Error",
     });
   }
 };
-
-
 
 exports.getAllTutors = async (req, res) => {
   try {
@@ -1525,18 +1425,16 @@ exports.getAllTutors = async (req, res) => {
     res.status(200).json({
       statusCode: 200,
       message: "Tutors fetched successfully",
-      data: rows
+      data: rows,
     });
-
   } catch (error) {
     console.error("error:", error);
     res.status(500).json({
       statusCode: 500,
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 };
-
 
 exports.getTutorById = async (req, res) => {
   const { tutor_id } = req.body;
@@ -1574,7 +1472,7 @@ exports.getTutorById = async (req, res) => {
     if (tutorResult.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Tutor not found"
+        message: "Tutor not found",
       });
     }
 
@@ -1588,39 +1486,39 @@ exports.getTutorById = async (req, res) => {
     /* 🔹 EDUCATION */
     const educationResult = await pool.query(
       `SELECT * FROM tbl_tutor_education WHERE tutor_id = $1`,
-      [tutor_id]
+      [tutor_id],
     );
 
     /* 🔹 CERTIFICATES + SIGNED FILE */
     const certificatesResult = await pool.query(
       `SELECT * FROM tbl_tutor_certificates WHERE tutor_id = $1`,
-      [tutor_id]
+      [tutor_id],
     );
 
     const certificates = await Promise.all(
       certificatesResult.rows.map(async (cert) => {
         if (cert.certificate_file) {
-          cert.certificate_file =
-            await getSignedVideoUrl(cert.certificate_file);
+          cert.certificate_file = await getSignedVideoUrl(
+            cert.certificate_file,
+          );
         }
         return cert;
-      })
+      }),
     );
 
     /* 🔹 DEMO VIDEOS + SIGNED VIDEO FILE */
     const demoVideosResult = await pool.query(
       `SELECT * FROM tbl_demo_videos WHERE tutor_id = $1`,
-      [tutor_id]
+      [tutor_id],
     );
 
     const demoVideos = await Promise.all(
       demoVideosResult.rows.map(async (video) => {
         if (video.video_file) {
-          video.video_file =
-            await getSignedVideoUrl(video.video_file);
+          video.video_file = await getSignedVideoUrl(video.video_file);
         }
         return video;
-      })
+      }),
     );
     const paymentPlanResult = await pool.query(
       `SELECT 
@@ -1632,7 +1530,7 @@ exports.getTutorById = async (req, res) => {
             tutor_id
         FROM tbl_tutor_payment_plan
         WHERE tutor_id = $1`,
-      [tutor_id]
+      [tutor_id],
     );
     return res.status(200).json({
       statusCode: 200,
@@ -1642,19 +1540,16 @@ exports.getTutorById = async (req, res) => {
         education: educationResult.rows,
         certificates,
         demo_videos: demoVideos,
-        payment_plans: paymentPlanResult.rows
-      }
+        payment_plans: paymentPlanResult.rows,
+      },
     });
-
   } catch (error) {
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 };
-
-
 
 exports.getAllTutorbystatus = async (req, res) => {
   try {
@@ -1666,16 +1561,15 @@ exports.getAllTutorbystatus = async (req, res) => {
     if (!status) {
       return res.status(400).json({
         statusCode: 400,
-        message: "status is required"
+        message: "status is required",
       });
     }
 
-    let query = '';
+    let query = "";
     let values = [status];
 
     // 🔴 REJECTED
-    if (status === 'Rejected') {
-
+    if (status === "Rejected") {
       query = `
         SELECT
           t.tutor_id,
@@ -1695,12 +1589,10 @@ exports.getAllTutorbystatus = async (req, res) => {
 
         ORDER BY t.rejected_at DESC
       `;
-
     }
 
     // 🟡 PENDING
-    else if (status === 'Pending') {
-
+    else if (status === "Pending") {
       query = `
         SELECT
           t.tutor_id,
@@ -1748,12 +1640,10 @@ exports.getAllTutorbystatus = async (req, res) => {
 
         ORDER BY t.submitted_at DESC
       `;
-
     }
 
     // 🟢 PUBLISHED
-    else if (status === 'Published') {
-
+    else if (status === "Published") {
       query = `
         SELECT
           t.tutor_id,
@@ -1803,14 +1693,13 @@ exports.getAllTutorbystatus = async (req, res) => {
 
         ORDER BY t.submitted_at DESC
       `;
-
     }
 
     // ❌ INVALID STATUS
     else {
       return res.status(400).json({
         statusCode: 400,
-        message: "Invalid status value"
+        message: "Invalid status value",
       });
     }
 
@@ -1819,24 +1708,15 @@ exports.getAllTutorbystatus = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-        data: rows
+      data: rows,
     });
-
   } catch (error) {
-  return res.status(500).json({
+    return res.status(500).json({
       statusCode: 500,
-      message: "Internal server error"
+      message: "Internal server error",
     });
-
   }
 };
-
-
-
-
-
-
-
 
 exports.updateTutorStatus = async (req, res) => {
   const { tutor_id, status, reject_reason } = req.body;
@@ -1844,20 +1724,20 @@ exports.updateTutorStatus = async (req, res) => {
   if (!tutor_id || !status) {
     return res.status(400).json({
       statusCode: 400,
-      message: "tutor_id and status are required"
+      message: "tutor_id and status are required",
     });
   }
 
   const client = await pool.connect();
 
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
-    let tutorQuery = '';
+    let tutorQuery = "";
     let tutorValues = [];
 
     // 🟢 APPROVE
-    if (status === 'Published' || status === 'Pending') {
+    if (status === "Published" || status === "Pending") {
       tutorQuery = `
         UPDATE tbl_tutor
         SET status = $1,
@@ -1869,11 +1749,11 @@ exports.updateTutorStatus = async (req, res) => {
     }
 
     // 🔴 REJECT
-    else if (status === 'Rejected') {
+    else if (status === "Rejected") {
       if (!reject_reason) {
         return res.status(400).json({
           statusCode: 400,
-          message: "reject_reason is required when rejecting tutor"
+          message: "reject_reason is required when rejecting tutor",
         });
       }
 
@@ -1887,11 +1767,10 @@ exports.updateTutorStatus = async (req, res) => {
         RETURNING tutor_id, user_id, status
       `;
       tutorValues = [status, reject_reason, tutor_id];
-    }
-    else {
+    } else {
       return res.status(400).json({
         statusCode: 400,
-        message: "Invalid status value"
+        message: "Invalid status value",
       });
     }
 
@@ -1899,10 +1778,10 @@ exports.updateTutorStatus = async (req, res) => {
     const tutorResult = await client.query(tutorQuery, tutorValues);
 
     if (tutorResult.rows.length === 0) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       return res.status(404).json({
         statusCode: 404,
-        message: "Tutor not found"
+        message: "Tutor not found",
       });
     }
 
@@ -1915,32 +1794,28 @@ exports.updateTutorStatus = async (req, res) => {
       SET status = $1
       WHERE user_id = $2
       `,
-      [status, user_id]
+      [status, user_id],
     );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
     res.status(200).json({
       statusCode: 200,
       message: `Tutor ${status} successfully`,
-      data: tutorResult.rows[0]
+      data: tutorResult.rows[0],
     });
-
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     console.error("error:", error);
 
     res.status(500).json({
       statusCode: 500,
-      message: "Internal server error"
+      message: "Internal server error",
     });
   } finally {
     client.release();
   }
 };
-
-
-
 
 exports.gettutordetailsbyId = async (req, res) => {
   try {
@@ -1951,11 +1826,11 @@ exports.gettutordetailsbyId = async (req, res) => {
     if (!status) {
       return res.status(400).json({
         statusCode: 400,
-        message: "status is required"
+        message: "status is required",
       });
     }
 
-    let query = '';
+    let query = "";
     let values = [status];
     let condition = `t.status = $1`;
 
@@ -1966,8 +1841,7 @@ exports.gettutordetailsbyId = async (req, res) => {
     }
 
     // 🔴 REJECTED
-    if (status === 'Rejected') {
-
+    if (status === "Rejected") {
       query = `
         SELECT
           t.tutor_id,
@@ -1987,8 +1861,7 @@ exports.gettutordetailsbyId = async (req, res) => {
     }
 
     // 🟡 PENDING
-    else if (status === 'Pending') {
-
+    else if (status === "Pending") {
       query = `
         SELECT
           t.tutor_id,
@@ -2048,8 +1921,7 @@ exports.gettutordetailsbyId = async (req, res) => {
     }
 
     // 🟢 PUBLISHED
-    else if (status === 'Published') {
-
+    else if (status === "Published") {
       query = `
         SELECT
           t.tutor_id,
@@ -2103,12 +1975,10 @@ exports.gettutordetailsbyId = async (req, res) => {
           tp.price,
           dv.short_bio
       `;
-    }
-
-    else {
+    } else {
       return res.status(400).json({
         statusCode: 400,
-        message: "Invalid status value"
+        message: "Invalid status value",
       });
     }
 
@@ -2116,28 +1986,28 @@ exports.gettutordetailsbyId = async (req, res) => {
 
     return res.status(200).json({
       statusCode: 200,
-      data: rows
+      data: rows,
     });
-
   } catch (error) {
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 };
 
-
-
 exports.tutordashboards = async (req, res) => {
-  const { tutor_id } = req.body
+  const { tutor_id } = req.body;
   try {
-    const checktutor = await pool.query(`SELECT role,full_name FROM tbl_user WHERE user_id=$1`, [tutor_id]);
+    const checktutor = await pool.query(
+      `SELECT role,full_name FROM tbl_user WHERE user_id=$1`,
+      [tutor_id],
+    );
     if (checktutor.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: 'Tutor Not Found'
-      })
+        message: "Tutor Not Found",
+      });
     }
     const statsQuery = `
         SELECT
@@ -2195,7 +2065,7 @@ exports.tutordashboards = async (req, res) => {
 
     const [statsResult, recentAssignments] = await Promise.all([
       pool.query(statsQuery, [tutor_id]),
-      pool.query(recentAssignmentQuery, [tutor_id])
+      pool.query(recentAssignmentQuery, [tutor_id]),
     ]);
 
     const tutor_name = checktutor.rows[0].full_name;
@@ -2203,13 +2073,12 @@ exports.tutordashboards = async (req, res) => {
       statusCode: 200,
       tutor_name: tutor_name,
       stats: statsResult.rows[0],
-      recent_assignments: recentAssignments.rows
+      recent_assignments: recentAssignments.rows,
     });
   } catch (error) {
-
     return res.status(500).json({
       statusCode: 500,
-      message: 'Internal Server Error'
-    })
+      message: "Internal Server Error",
+    });
   }
-}
+};

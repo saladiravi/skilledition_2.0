@@ -1,28 +1,41 @@
-const pool = require('../config/db');
-const { uploadToS3, getSignedVideoUrl, deletefroms3 } = require('../utils/s3upload');
-const { sendNotification } = require('../utils/notification');
+const pool = require("../config/db");
+const {
+  uploadToS3,
+  getSignedVideoUrl,
+  deletefroms3,
+} = require("../utils/s3upload");
+const { sendNotification } = require("../utils/notification");
 
 exports.addinternship = async (req, res) => {
   try {
-    const { student_id, project_name, phone_number,github_url, description, web_url } = req.body;
+    const {
+      student_id,
+      project_name,
+      phone_number,
+      github_url,
+      description,
+      web_url,
+    } = req.body;
 
     const certificateCheck = await pool.query(
       `SELECT certificate_id 
        FROM tbl_certificates
        WHERE student_id = $1
        LIMIT 1`,
-      [student_id]
+      [student_id],
     );
 
     if (certificateCheck.rowCount === 0) {
       return res.status(403).json({
         statusCode: 403,
-        message: "You are not eligible to apply for internship. Certificate required."
+        message:
+          "You are not eligible to apply for internship. Certificate required.",
       });
     }
 
     /* 2️⃣ Check Profile Completion */
-    const profileCheck = await pool.query(`
+    const profileCheck = await pool.query(
+      `
       SELECT 
         CASE 
           WHEN 
@@ -39,30 +52,40 @@ exports.addinternship = async (req, res) => {
         END AS is_profile_complete
       FROM tbl_student
       WHERE user_id = $1
-    `, [student_id]);
+    `,
+      [student_id],
+    );
 
     if (!profileCheck.rows[0]?.is_profile_complete) {
       return res.status(403).json({
         statusCode: 403,
-        message: "Please complete your profile before applying for internship"
+        message: "Please complete your profile before applying for internship",
       });
     }
 
     // await pool.query(`
-    //         INSERT INTO tbl_internship 
-    //         (student_id, project_name,phone_number, github_url, web_url, description, applied_date) 
+    //         INSERT INTO tbl_internship
+    //         (student_id, project_name,phone_number, github_url, web_url, description, applied_date)
     //         VALUES ($1, $2, $3, $4, $5,$6, NOW())
     //     `,
     //   [student_id, project_name,phone_number, github_url, web_url, description]);
 
-
-    const internshipResult = await pool.query(`
+    const internshipResult = await pool.query(
+      `
       INSERT INTO tbl_internship 
       (student_id, project_name, phone_number, github_url, web_url, description, applied_date) 
       VALUES ($1, $2, $3, $4, $5, $6, NOW())
       RETURNING internship_id
     `,
-    [student_id, project_name, phone_number, github_url, web_url, description]);
+      [
+        student_id,
+        project_name,
+        phone_number,
+        github_url,
+        web_url,
+        description,
+      ],
+    );
 
     const internship_id = internshipResult.rows[0].internship_id;
 
@@ -85,23 +108,21 @@ exports.addinternship = async (req, res) => {
       await sendNotification({
         sender_id: student_id,
         receiver_id: admin_id,
-        type: 'internship',
+        type: "internship",
         message: `Internship application submitted`,
-        type_id: internship_id
+        type_id: internship_id,
       });
     }
 
-
     return res.status(200).json({
       statusCode: 200,
-      message: "Submitted Successfully"
+      message: "Submitted Successfully",
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
@@ -131,13 +152,13 @@ exports.getinternship = async (req, res) => {
           ON u.user_id = i.student_id
        WHERE u.user_id = $1
        ORDER BY i.internship_id DESC`,
-      [user_id]
+      [user_id],
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "No data found"
+        message: "No data found",
       });
     }
 
@@ -145,28 +166,27 @@ exports.getinternship = async (req, res) => {
     const updatedRows = await Promise.all(
       result.rows.map(async (row) => {
         if (row.intership_certificate) {
-          row.intership_certificate =
-            await getSignedVideoUrl(row.intership_certificate);
+          row.intership_certificate = await getSignedVideoUrl(
+            row.intership_certificate,
+          );
         }
         return row;
-      })
+      }),
     );
 
     return res.status(200).json({
       statusCode: 200,
       message: "Fetched Successfully",
-      data: updatedRows[0]
+      data: updatedRows[0],
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
-
 
 exports.gettotalinternship = async (req, res) => {
   try {
@@ -211,7 +231,7 @@ exports.gettotalinternship = async (req, res) => {
        FROM tbl_user u
        INNER JOIN tbl_internship i 
             ON u.user_id = i.student_id
-       ORDER BY i.applied_date DESC;`
+       ORDER BY i.applied_date DESC;`,
     );
 
     // if (result.rows.length === 0) {
@@ -225,11 +245,12 @@ exports.gettotalinternship = async (req, res) => {
     const updatedRows = await Promise.all(
       result.rows.map(async (row) => {
         if (row.intership_certificate) {
-          row.intership_certificate =
-            await getSignedVideoUrl(row.intership_certificate);
+          row.intership_certificate = await getSignedVideoUrl(
+            row.intership_certificate,
+          );
         }
         return row;
-      })
+      }),
     );
     const stats = statsQuery.rows[0];
 
@@ -237,21 +258,18 @@ exports.gettotalinternship = async (req, res) => {
       statusCode: 200,
       message: "Internship Applications Fetched Successfully",
       stats,
-      data: updatedRows
+      data: updatedRows,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
 
-
 // exports.updateInternship = async (req, res) => {
-
 
 //   try {
 //     const { internship_id, role, status, start_date, end_date } = req.body;
@@ -312,7 +330,6 @@ exports.gettotalinternship = async (req, res) => {
 //       });
 //     }
 
-
 //       const internship = result.rows[0];
 //       const student_id = internship.student_id;
 
@@ -328,7 +345,7 @@ exports.gettotalinternship = async (req, res) => {
 //     return res.status(200).json({
 //       statusCode: 200,
 //       message: "Internship updated successfully"
-    
+
 //     });
 
 //   } catch (error) {
@@ -340,29 +357,22 @@ exports.gettotalinternship = async (req, res) => {
 //   }
 // };
 
-
-
 exports.updateInternship = async (req, res) => {
   try {
-    const {
-      internship_id,
-      role,
-      start_date,
-      end_date
-    } = req.body;
+    const { internship_id, role, start_date, end_date } = req.body;
 
     // ✅ Validation
     if (!internship_id) {
       return res.status(400).json({
         statusCode: 400,
-        message: "internship_id is required"
+        message: "internship_id is required",
       });
     }
 
     if (!role) {
       return res.status(400).json({
         statusCode: 400,
-        message: "role is required"
+        message: "role is required",
       });
     }
 
@@ -372,7 +382,7 @@ exports.updateInternship = async (req, res) => {
     if (req.files?.intership_certificate?.length > 0) {
       certificateKey = await uploadToS3(
         req.files.intership_certificate[0],
-        "internships/certificates"
+        "internships/certificates",
       );
     }
 
@@ -398,12 +408,7 @@ exports.updateInternship = async (req, res) => {
           status = $4
     `;
 
-    const values = [
-      role,
-      start_date || null,
-      end_date || null,
-      status
-    ];
+    const values = [role, start_date || null, end_date || null, status];
 
     let paramIndex = 5;
 
@@ -426,7 +431,7 @@ exports.updateInternship = async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message: "Internship not found"
+        message: "Internship not found",
       });
     }
 
@@ -438,21 +443,20 @@ exports.updateInternship = async (req, res) => {
       receiver_id: internship.student_id,
       type: "internship",
       message: `Your internship status is now ${status}`,
-      type_id: internship_id
+      type_id: internship_id,
     });
 
     return res.status(200).json({
       statusCode: 200,
       message: "Internship updated successfully",
-      status
+      status,
     });
-
   } catch (error) {
     console.error(error);
 
     return res.status(500).json({
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
