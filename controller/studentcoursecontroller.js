@@ -680,88 +680,86 @@ exports.initiatePayment = async (req, res) => {
 exports.paymentCallback = async (req, res) => {
   try {
 
-    console.log(
-      "📥 CALLBACK:",
-      JSON.stringify(req.body, null, 2)
-    );
-
     const order_id =
       req.body?.data?.order?.order_id;
 
-    const payment_status =
-      req.body?.data?.payment?.payment_status ||
-      req.body?.data?.payment_status ||
-      req.body?.data?.payment?.status;
-
-    const transaction_id =
-      req.body?.data?.payment?.cf_payment_id ||
-      req.body?.data?.cf_payment_id;
-
-    console.log("ORDER ID:", order_id);
-    console.log("PAYMENT STATUS:", payment_status);
-
     if (!order_id) {
       return res.status(400).json({
-        success: false,
-        message: "order_id missing",
+        statusCode: 400,
+        message: "order_id required"
       });
     }
 
-    const purchaseData = await pool.query(
+    const paymentResponse =
+      await cashfree.PGOrderFetchPayments(order_id);
+
+    const payments =
+      paymentResponse.data;
+
+    if (!payments || payments.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "No payment found"
+      });
+    }
+
+    const payment =
+      payments[0];
+
+    const payment_status =
+      payment.payment_status;
+
+    const transaction_id =
+      payment.cf_payment_id;
+
+    const payment_method =
+      payment.payment_method;
+
+    await pool.query(
       `
-      SELECT student_id, course_id
-      FROM tbl_student_course
-      WHERE order_id = $1
+      UPDATE tbl_student_course
+      SET
+        status = $1,
+        transaction_id = $2,
+        payment_method = $3
+      WHERE order_id = $4
       `,
-      [order_id]
+      [
+        payment_status,
+        transaction_id,
+        payment_method,
+        order_id
+      ]
     );
 
-    if (purchaseData.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Purchase not found",
-      });
-    }
-
-    const {
-      student_id,
-      course_id
-    } = purchaseData.rows[0];
-
-    if (
-      payment_status?.toUpperCase() === "SUCCESS"
-    ) {
-
+    const purchaseData =
       await pool.query(
         `
-        UPDATE tbl_student_course
-        SET
-          status = 'SUCCESS',
-          transaction_id = $1
-        WHERE order_id = $2
+        SELECT student_id, course_id
+        FROM tbl_student_course
+        WHERE order_id = $1
         `,
-        [transaction_id, order_id]
+        [order_id]
       );
+
+    if (
+      purchaseData.rows.length > 0 &&
+      payment_status === "SUCCESS"
+    ) {
+
+      const {
+        student_id,
+        course_id
+      } = purchaseData.rows[0];
 
       await buyCourseAfterPayment(
         student_id,
         course_id
       );
-
-    } else {
-
-      await pool.query(
-        `
-        UPDATE tbl_student_course
-        SET status = 'FAILED'
-        WHERE order_id = $1
-        `,
-        [order_id]
-      );
     }
 
     return res.status(200).json({
-      success: true,
+      success: true
     });
 
   } catch (error) {
@@ -769,7 +767,8 @@ exports.paymentCallback = async (req, res) => {
     console.error(error);
 
     return res.status(500).json({
-      success: false,
+      statusCode: 500,
+      message: "Internal Server Error"
     });
   }
 };
