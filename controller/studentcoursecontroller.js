@@ -611,27 +611,34 @@ exports.initiatePayment = async (req, res) => {
     const orderId = uniqid("CF_");
 
     // Save ORDER ID only
-    await pool.query(
-      `
-      INSERT INTO tbl_student_course
-      (
-        student_id,
-        course_id,
-        purchase_date,
-        order_id,
-        status
-      )
-      VALUES
-      (
-        $1,
-        $2,
-        CURRENT_DATE,
-        $3,
-        'PENDING'
-      )
-      `,
-      [student_id, course_id, orderId]
-    );
+      await pool.query(
+        `
+        INSERT INTO tbl_student_course
+        (
+          student_id,
+          course_id,
+          purchase_date,
+          order_id,
+          order_amount,
+          status
+        )
+        VALUES
+        (
+          $1,
+          $2,
+          CURRENT_DATE,
+          $3,
+          $4,
+          'PENDING'
+        )
+        `,
+        [
+          student_id,
+          course_id,
+          orderId,
+          orderAmount
+        ]
+      );
 
     const request = {
       order_amount: orderAmount,
@@ -649,7 +656,7 @@ exports.initiatePayment = async (req, res) => {
           "https://skilledition.in/student/courses",
 
         notify_url:
-          "https://api.skilledition.in/studentcourse/callback",
+          "https://app.skilledition.in/studentcourse/callback",
       },
     };
 
