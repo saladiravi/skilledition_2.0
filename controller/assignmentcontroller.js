@@ -948,6 +948,7 @@ exports.gettotalfinalassignment = async (req, res) => {
                         JOIN tbl_course tc2     
                             ON tc2.course_id = tsc.course_id
                         WHERE tc2.tutor_id = $1
+                        AND tsc.status='SUCCESS'
                     ) AS total_purchased_courses
 
                     FROM tbl_student_final_assignment tsf

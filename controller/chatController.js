@@ -876,6 +876,7 @@ exports.chatstats = async (req, res) => {
           FROM tbl_student_course sc
           JOIN tbl_course c2 ON sc.course_id = c2.course_id
           WHERE c2.tutor_id = $1
+           AND sc.status = 'SUCCESS'
         ) AS total_students,
 
         COUNT(q.query_id) AS total_queries,
