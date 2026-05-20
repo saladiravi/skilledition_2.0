@@ -1396,19 +1396,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
       SELECT
         COUNT(DISTINCT sc.student_id) AS total_students,
         COUNT(DISTINCT c.course_id) AS total_course,
-
-        (
-          SELECT COUNT(*)
-          FROM tbl_user u
-          WHERE role = 'student'
-          AND NOT EXISTS (
-            SELECT 1 FROM tbl_student_course sc2
-            JOIN tbl_course c2 ON sc2.course_id = c2.course_id
-            WHERE sc2.student_id = u.user_id
-            AND c2.tutor_id = $1
-          )
-        ) AS total_views,
-
+ 
         (
       SELECT COALESCE(
         ROUND(
@@ -1439,7 +1427,9 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
         ) AS avg_rating
 
       FROM tbl_course c
-      LEFT JOIN tbl_student_course sc ON c.course_id = sc.course_id
+      LEFT JOIN tbl_student_course sc 
+          ON c.course_id = sc.course_id
+          AND sc.status = 'SUCCESS'
       LEFT JOIN tbl_student_final_assignment fa ON c.course_id = fa.course_id
       LEFT JOIN tbl_feedback f ON c.course_id = f.course_id
       WHERE c.tutor_id = $1
@@ -1481,6 +1471,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
       FROM tbl_student_course sc
       JOIN tbl_course c ON sc.course_id = c.course_id
       WHERE c.tutor_id = $1
+      AND sc.status = 'SUCCESS'
       AND sc.created_at >= m.month_date
       AND sc.created_at < m.month_date + INTERVAL '1 month'
       GROUP BY c.course_id, c.course_title
@@ -1492,6 +1483,8 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
         FROM tbl_student_course sc
         JOIN tbl_course c ON sc.course_id = c.course_id
         WHERE c.tutor_id = $1
+        AND sc.status = 'SUCCESS'
+        
         AND sc.created_at >= m.month_date
         AND sc.created_at < m.month_date + INTERVAL '1 month'
       ) AS enrollments,
@@ -1511,7 +1504,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
         FROM tbl_student_final_assignment fa
         JOIN tbl_course c ON fa.course_id = c.course_id
         WHERE c.tutor_id = $1
-        AND fa.is_unlocked = true
+        AND fa.status = 'Completed'
         AND fa.created_at >= m.month_date
         AND fa.created_at < m.month_date + INTERVAL '1 month'
       ) AS completions
@@ -1588,10 +1581,13 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
           FROM tbl_user u
           WHERE role = 'student'
           AND NOT EXISTS (
-            SELECT 1 FROM tbl_student_course sc2
-            JOIN tbl_course c2 ON sc2.course_id = c2.course_id
+            SELECT 1 
+            FROM tbl_student_course sc2
+            JOIN tbl_course c2 
+              ON sc2.course_id = c2.course_id
             WHERE sc2.student_id = u.user_id
             AND c2.tutor_id = $1
+            AND sc2.status = 'SUCCESS'
           )
         ) AS total_views,
         COALESCE(ROUND(
@@ -1605,6 +1601,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
 
       LEFT JOIN tbl_student_course sc
         ON c.course_id = sc.course_id
+        AND sc.status = 'SUCCESS'
 
       LEFT JOIN tbl_student_final_assignment fa
         ON c.course_id = fa.course_id
@@ -1622,9 +1619,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
       [tutor_id],
     );
 
-    // =========================
-    // 5️⃣ STUDENT PERFORMANCE
-    // =========================
+
     const studentPerformanceQuery = await pool.query(
       `
             SELECT 
@@ -1680,6 +1675,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
       FROM tbl_student_course sc
       JOIN tbl_course c ON sc.course_id = c.course_id
       WHERE c.tutor_id = $1
+      AND sc.status = 'SUCCESS'
     ) AS active_students,
 
     -- ✅ Assignment Completion %
