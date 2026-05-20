@@ -722,23 +722,6 @@ exports.paymentCallback = async (req, res) => {
     const payment_method =
       payment.payment_method;
 
-    await pool.query(
-      `
-      UPDATE tbl_student_course
-      SET
-        status = $1,
-        transaction_id = $2,
-        payment_method = $3
-      WHERE order_id = $4
-      `,
-      [
-        payment_status,
-        transaction_id,
-        payment_method,
-        order_id
-      ]
-    );
-
     const purchaseData =
       await pool.query(
         `
@@ -750,18 +733,78 @@ exports.paymentCallback = async (req, res) => {
       );
 
     if (
-      purchaseData.rows.length > 0 &&
-      payment_status === "SUCCESS"
+      purchaseData.rows.length === 0
     ) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Purchase not found"
+      });
+    }
 
-      const {
-        student_id,
-        course_id
-      } = purchaseData.rows[0];
+    const {
+      student_id,
+      course_id
+    } = purchaseData.rows[0];
+
+    if (payment_status === "SUCCESS") {
+
+      // Generate invoice number
+      const invoiceResult =
+        await pool.query(
+          `
+          SELECT COUNT(*) AS total
+          FROM tbl_student_course
+          WHERE invoice_number
+          IS NOT NULL
+          `
+        );
+
+      const count =
+        Number(
+          invoiceResult.rows[0].total
+        ) + 1;
+
+      const invoice_number =
+        `INV-${new Date()
+          .toISOString()
+          .slice(0, 10)
+          .replace(/-/g, "")}-${String(count)
+          .padStart(4, "0")}`;
+
+      // Single update
+      await pool.query(
+        `
+        UPDATE tbl_student_course
+        SET
+          status = 'SUCCESS',
+          transaction_id = $1,
+          payment_method = $2,
+          invoice_number = $3
+        WHERE order_id = $4
+        `,
+        [
+          transaction_id,
+          payment_method,
+          invoice_number,
+          order_id
+        ]
+      );
 
       await buyCourseAfterPayment(
         student_id,
         course_id
+      );
+
+    } else {
+
+      await pool.query(
+        `
+        UPDATE tbl_student_course
+        SET
+          status = 'FAILED'
+        WHERE order_id = $1
+        `,
+        [order_id]
       );
     }
 
@@ -1135,7 +1178,7 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
       LEFT JOIN tbl_student_course tsc
         ON tsc.course_id = tc.course_id
       AND tsc.student_id = $1
-      AND tsc.payment_status = 'SUCCESS'
+      AND tsc.status = 'SUCCESS'
 
       LEFT JOIN tbl_student_course_progress tscp
         ON tscp.course_id = tc.course_id
@@ -3430,7 +3473,7 @@ exports.getCourseenroleDetails = async (req, res) => {
       const enrollmentResult = await pool.query(`
         SELECT student_course_id
         FROM tbl_student_course
-        WHERE course_id = $1 AND student_id = $2 AND status='SUCESS'
+        WHERE course_id = $1 AND student_id = $2 AND status='SUCCESS'
       `, [course_id, student_id]);
 
       studentCourseId = enrollmentResult.rows.length > 0
