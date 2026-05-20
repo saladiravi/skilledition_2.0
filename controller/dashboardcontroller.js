@@ -11,6 +11,7 @@ exports.getDashboardStats = async (req, res) => {
      (
       SELECT COUNT(DISTINCT student_id)
       FROM tbl_student_course
+      WHERE status = 'SUCCESS'
      ) AS total_students,
         COUNT(*) FILTER (WHERE role = 'tutor') AS active_tutors
       FROM tbl_user
@@ -62,6 +63,7 @@ const monthsResult = await pool.query(`
     AND purchase_date < (
       DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
     )::DATE
+    AND status = 'SUCCESS'
   GROUP BY TO_CHAR(purchase_date, 'YYYY-MM')
   ORDER BY month_key
 `);
@@ -97,6 +99,7 @@ const finalGraph = monthsResult.rows.map(row => {
   FROM tbl_course c
   LEFT JOIN tbl_student_course sc 
     ON c.course_id = sc.course_id
+    AND sc.status = 'SUCCESS'
   WHERE c.status = 'Published'
   GROUP BY c.course_id, c.course_title
     `);
@@ -177,7 +180,7 @@ const recentSubmissions = await pool.query(`
       u.created_at AS activity_date
     FROM tbl_user u
     WHERE u.created_at >= NOW() - INTERVAL '2 days'
-
+  
     UNION ALL
 
     SELECT 
@@ -210,7 +213,7 @@ const recentSubmissions = await pool.query(`
     FROM tbl_student_course sc
     JOIN tbl_user u ON u.user_id = sc.student_id
     WHERE sc.created_at >= NOW() - INTERVAL '2 days'
-
+  AND sc.status = 'SUCCESS'
   ) AS activity
 
   ORDER BY activity_date DESC
