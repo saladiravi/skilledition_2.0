@@ -1020,24 +1020,29 @@ exports.studentperformancetutordashboard = async (req, res) => {
 
 exports.getanalyticsAdminDashboard = async (req, res) => {
   try {
-    // =======================
-    // 🔹 OVERVIEW + METRICS
-    // =======================
     const result = await pool.query(`
       SELECT 
        (SELECT COUNT(DISTINCT student_id) 
-              FROM tbl_student_course) AS total_students,
+          FROM tbl_student_course
+          WHERE status = 'SUCCESS'
+          ) AS total_students,
         (SELECT COUNT(DISTINCT tutor_id) FROM tbl_course) AS active_tutors,
         (SELECT COUNT(*) FROM tbl_course) AS total_courses,
-        (SELECT COALESCE(SUM(order_amount::numeric), 0) FROM tbl_student_course) AS total_revenue,
+        (SELECT COALESCE(SUM(order_amount::numeric), 0) 
+            FROM tbl_student_course
+            WHERE status = 'SUCCESS'
+            ) AS total_revenue,
 
         (SELECT COUNT(DISTINCT student_id) 
-          FROM tbl_student_course) AS enrolled_students,
+              FROM tbl_student_course
+              WHERE status = 'SUCCESS'
+              ) AS enrolled_students,
         (SELECT COUNT(*) FROM tbl_student_final_assignment WHERE status='Completed') AS completed_students,
         (SELECT COUNT(*) FROM tbl_student_final_assignment WHERE status = 'Pending') AS in_progress_students,
         (
           SELECT COUNT(*)
-            FROM tbl_student_final_assignment
+          FROM tbl_student_course
+          WHERE status = 'SUCCESS'
         ) AS total_course_purchase,
 
        (SELECT COALESCE(
@@ -1108,9 +1113,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
          FROM tbl_feedback) AS student_satisfaction
     `);
 
-    // =======================
-    // 📊 MONTH SERIES (FIXED)
-    // =======================
+ 
     const monthsResult = await pool.query(`
       SELECT 
         TO_CHAR(month_date, 'YYYY-MM') AS month_key,
@@ -1122,9 +1125,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
       ) AS month_date
     `);
 
-    // =======================
-    // 📊 PLATFORM GROWTH
-    // =======================
+ 
     const platformGrowth = await pool.query(`
       SELECT 
         TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM') AS month_key,
@@ -1136,9 +1137,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
       GROUP BY month_key
     `);
 
-    // =======================
-    // 📊 COURSE GROWTH
-    // =======================
+ 
     const courseGrowth = await pool.query(`
       SELECT 
         TO_CHAR(DATE_TRUNC('month', course_created_at), 'YYYY-MM') AS month_key,
@@ -1149,9 +1148,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
       GROUP BY month_key
     `);
 
-    // =======================
-    // 📊 MAP DATA
-    // =======================
+ 
     const platformMap = {};
     platformGrowth.rows.forEach((row) => {
       platformMap[row.month_key] = {
@@ -1165,9 +1162,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
       courseMap[row.month_key] = parseInt(row.courses);
     });
 
-    // =======================
-    // 📊 FINAL PLATFORM DATA
-    // =======================
+ 
     const finalData = monthsResult.rows.map((row) => ({
       month: new Date(row.month_date).toLocaleString("en-IN", {
         month: "short",
@@ -1178,9 +1173,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
       courses: courseMap[row.month_key] || 0,
     }));
 
-    // =======================
-    // ⭐ RATING DISTRIBUTION
-    // =======================
+ 
     const ratingDistribution = await pool.query(`
       SELECT 
         c.course_id,
@@ -1197,9 +1190,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
       ORDER BY c.course_id
     `);
 
-    // =======================
-    // 📊 COURSE PERFORMANCE
-    // =======================
+ 
     const coursePerformance = await pool.query(`
       SELECT 
         c.course_id,
@@ -1207,15 +1198,15 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         COUNT(DISTINCT sc.student_id) AS enrolled,
         COUNT(DISTINCT sfa.student_id) FILTER (WHERE sfa.status = 'Completed') AS completed
       FROM tbl_course c
-      LEFT JOIN tbl_student_course sc ON c.course_id = sc.course_id
+      LEFT JOIN tbl_student_course sc 
+          ON c.course_id = sc.course_id
+          AND sc.status = 'SUCCESS'
       LEFT JOIN tbl_student_final_assignment sfa ON c.course_id = sfa.course_id
       WHERE c.status = 'Published'
       GROUP BY c.course_id, c.course_title
     `);
 
-    // =======================
-    // 📊 COMPLETION TREND
-    // =======================
+ 
     const trendMonths = await pool.query(`
       SELECT 
         TO_CHAR(month_date, 'YYYY-MM') AS month_key,
@@ -1255,9 +1246,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
       in_progress: trendMap[row.month_key]?.in_progress || 0,
     }));
 
-    // =======================
-    // 📊 COURSE AVG SCORES
-    // =======================
+ 
     const courseAvgScores = await pool.query(`
     SELECT 
         c.course_title,
@@ -1319,7 +1308,7 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
 
   JOIN tbl_course c 
     ON sc.course_id = c.course_id
-
+     
   -- ✅ Assignment table
   LEFT JOIN tbl_student_final_assignment sfa 
     ON sc.student_id = sfa.student_id 
@@ -1333,16 +1322,15 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
   -- ✅ Internship table (IMPORTANT FIX)
   LEFT JOIN tbl_internship i 
     ON sc.student_id = i.student_id
-
+   
+    WHERE sc.status = 'SUCCESS'
   ORDER BY 
     (sfa.status = 'Completed') DESC,     -- Completed first
     (cert.certificate_id IS NOT NULL) DESC, -- Issued first
     (i.internship_id IS NOT NULL) DESC,  -- Applied first
     sc.created_at DESC
 `);
-    // =======================
-    // ✅ RESPONSE
-    // =======================
+ 
     return res.status(200).json({
       statusCode: 200,
       data: {
