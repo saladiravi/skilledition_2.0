@@ -2383,6 +2383,7 @@ exports.getexamstudent = async (req, res) => {
        AND ts.student_id = tsc.student_id
 
       WHERE tsc.student_id = $1
+      AND tsc.status = 'SUCCESS'
 
       GROUP BY
         ta.assignment_id,
