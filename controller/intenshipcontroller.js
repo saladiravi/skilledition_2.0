@@ -195,6 +195,7 @@ exports.gettotalinternship = async (req, res) => {
               (
                   SELECT COUNT(DISTINCT student_id)
                   FROM tbl_student_course
+                  WHERE status='SUCCESS'
               ) AS enrolled_students,
 
               COUNT(*) AS total_applied_internships,
