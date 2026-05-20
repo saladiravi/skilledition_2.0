@@ -1027,7 +1027,10 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
           WHERE status = 'SUCCESS'
           ) AS total_students,
         (SELECT COUNT(DISTINCT tutor_id) FROM tbl_course) AS active_tutors,
-        (SELECT COUNT(*) FROM tbl_course) AS total_courses,
+        (SELECT COUNT(*) 
+            FROM tbl_course 
+            WHERE status = 'Published'
+            ) AS total_courses,
         (SELECT COALESCE(SUM(order_amount::numeric), 0) 
             FROM tbl_student_course
             WHERE status = 'SUCCESS'
@@ -1143,7 +1146,8 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
         TO_CHAR(DATE_TRUNC('month', course_created_at), 'YYYY-MM') AS month_key,
         COUNT(*) AS courses
       FROM tbl_course
-      WHERE course_created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+      WHERE status = 'Published'
+      AND course_created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
       AND course_created_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
       GROUP BY month_key
     `);
