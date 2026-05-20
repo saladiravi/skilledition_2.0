@@ -4392,7 +4392,7 @@ exports.getadminstudentmanagement = async (req, res) => {
       COUNT(DISTINCT tsc.course_id)
           FILTER (
             WHERE tsc.status = 'SUCCESS'
-          ) AS enrolled_courses
+          ) AS enrolled_courses,
 
       COUNT(DISTINCT tsfa.course_id) 
         FILTER (WHERE tsfa.status = 'Completed') AS completed_courses, 
@@ -4811,7 +4811,7 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
          COUNT(DISTINCT tsc.course_id)
             FILTER (
               WHERE tsc.status = 'SUCCESS'
-            ) AS enrolled_courses
+            ) AS enrolled_courses,
 
           COUNT(DISTINCT tsfa.course_id)
           FILTER (WHERE tsfa.status = 'Completed') AS completed_courses,
@@ -4874,7 +4874,7 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
       LEFT JOIN tbl_certificates tcert ON tcert.student_id = tu.user_id
 
       WHERE tu.user_id = $1
-
+      AND tsc.status = 'SUCCESS'
       GROUP BY 
         tu.user_id,
         tu.full_name,
