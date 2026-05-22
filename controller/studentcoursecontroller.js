@@ -607,7 +607,7 @@ exports.initiatePayment = async (req, res) => {
       return res.status(400).json({
         statusCode: 400,
         needAddress: true,
-        message: "Please complete your profile address and pincode",
+        message: "Please complete your profile",
       });
     }
     // Course Details
