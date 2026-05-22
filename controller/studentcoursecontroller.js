@@ -3899,6 +3899,7 @@ exports.getstudentoverview = async (req, res) => {
         ON tc.tutor_id = tu.user_id
 
       WHERE sc.student_id = $1
+      AND sc.status = 'SUCCESS'
 
       GROUP BY tc.course_id, tc.course_title, tcat.category_name, tu.full_name
       ORDER BY tc.course_id DESC
@@ -3930,6 +3931,7 @@ exports.getstudentoverview = async (req, res) => {
         AND tsa.student_id = $1
 
       WHERE sc.student_id = $1
+      AND sc.status = 'SUCCESS'
 
       GROUP BY tc.course_id, tc.course_title
       ORDER BY tc.course_id;
@@ -3964,6 +3966,7 @@ exports.getstudentoverview = async (req, res) => {
         AND svp.student_id = $1
 
       WHERE sc.student_id = $1
+      AND sc.status = 'SUCCESS'
 
       GROUP BY tc.course_id, tc.course_title, tcat.category_name
       ORDER BY tc.course_id ASC
@@ -4022,6 +4025,7 @@ exports.getstudentoverview = async (req, res) => {
         AND scp.student_id = $1
 
       WHERE sc.student_id = $1
+      AND sc.status = 'SUCCESS'
 
       ORDER BY ta.assignment_date DESC
       LIMIT 3
@@ -4044,7 +4048,8 @@ exports.getstudentoverview = async (req, res) => {
   JOIN tbl_user tu
     ON tc.tutor_id = tu.user_id
 
-  WHERE sc.student_id = $1
+    WHERE sc.student_id = $1
+    AND sc.status = 'SUCCESS'
 
   ORDER BY tc.course_id
 `;
@@ -4064,6 +4069,7 @@ FROM
   JOIN tbl_course tc
     ON sc.course_id = tc.course_id
   WHERE sc.student_id = $1
+  AND sc.status = 'SUCCESS'
 ) c
 CROSS JOIN
 (
@@ -4081,6 +4087,7 @@ CROSS JOIN
   JOIN tbl_module_videos tmv
     ON tm.module_id = tmv.module_id
   WHERE sc.student_id = $1
+  AND sc.status = 'SUCCESS'
 ) v
 `;
 
@@ -4134,6 +4141,7 @@ CROSS JOIN
     AND sc.course_id = scp.course_id
 
   WHERE sc.student_id = $1
+  AND sc.status = 'SUCCESS'
 
   GROUP BY sc.student_id, sc.course_id, c.course_title
   ORDER BY sc.course_id
