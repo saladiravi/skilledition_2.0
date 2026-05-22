@@ -1183,6 +1183,7 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
             END AS active_courses
           FROM tbl_student_course
           WHERE student_id = $1
+          AND status = 'SUCCESS'
           `,
       [student_id],
     );
@@ -1190,19 +1191,28 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     /* 3️⃣ Learning Progress */
     const progress = await pool.query(
       `
-         SELECT 
+        SELECT 
           CASE 
             WHEN COUNT(*) = 0 THEN '-' 
             ELSE CONCAT(
               ROUND(
-                (COUNT(*) FILTER (WHERE is_completed = true)::decimal /
-                COUNT(*)) * 100
-              ,0),
+                (
+                  COUNT(*) FILTER (WHERE scp.is_completed = true)::decimal
+                  / COUNT(*)
+                ) * 100,
+              0),
               '%'
             )
           END AS learning_progress
-        FROM tbl_student_course_progress
-        WHERE student_id = $1;
+
+        FROM tbl_student_course_progress scp
+
+        JOIN tbl_student_course sc
+          ON sc.course_id = scp.course_id
+        AND sc.student_id = scp.student_id
+        AND sc.status = 'SUCCESS'
+
+        WHERE scp.student_id = $1;
         `,
       [student_id],
     );
