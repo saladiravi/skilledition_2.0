@@ -5176,7 +5176,7 @@ exports.getPurchaseList = async (req, res) => {
        ON tsc.course_id = tc.course_id
 
        WHERE tsc.student_id = $1
-
+      AND tsc.status = 'SUCCESS'
        ORDER BY tsc.created_at DESC`,
 
       [student_id],
@@ -5212,7 +5212,27 @@ exports.getPurchaseInvoice = async (req, res) => {
 
           tsc.order_amount,
 
-          tsc.payment_method,
+         CASE
+        WHEN tsc.payment_method IS NULL
+          THEN '-'
+
+        WHEN COALESCE(tsc.payment_method::jsonb ? 'upi', false)
+          THEN 'UPI'
+
+        WHEN COALESCE(tsc.payment_method::jsonb ? 'card', false)
+          THEN COALESCE(
+            tsc.payment_method::jsonb->'card'->>'card_type',
+            'Card'
+          )
+
+        WHEN COALESCE(tsc.payment_method::jsonb ? 'netbanking', false)
+          THEN 'Net Banking'
+
+        WHEN COALESCE(tsc.payment_method::jsonb ? 'app', false)
+          THEN 'Wallet'
+
+        ELSE 'Unknown'
+      END AS payment_method,
 
           tsc.status,
 
