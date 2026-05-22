@@ -575,15 +575,6 @@ exports.initiatePayment = async (req, res) => {
       });
     }
 
-    // Student Details
-    // const studentResult = await pool.query(
-    //   `
-    //   SELECT full_name, email, phone_number
-    //   FROM tbl_user
-    //   WHERE user_id = $1
-    //   `,
-    //   [student_id],
-    // );
     const studentResult = await pool.query(
       ` SELECT 
           u.full_name,
@@ -606,7 +597,15 @@ exports.initiatePayment = async (req, res) => {
     }
 
     const student = studentResult.rows[0];
-    if (!student.address?.trim() || !student.pincode?.toString().trim()) {
+   const hasAddress =
+      student.address &&
+      String(student.address).trim() !== "";
+
+    const hasPincode =
+      student.pincode &&
+      String(student.pincode).trim() !== "";
+
+    if (!hasAddress || !hasPincode) {
       return res.status(400).json({
         statusCode: 400,
         needAddress: true,
