@@ -576,17 +576,18 @@ exports.initiatePayment = async (req, res) => {
     }
 
     const studentResult = await pool.query(
-      ` SELECT 
-          u.full_name,
-          u.email,
-          u.phone_number,
-          s.address,
-          s.pincode
-        FROM tbl_user u
-        LEFT JOIN tbl_student s 
-          ON s.student_id = u.user_id
-        WHERE u.user_id = $1
-        `,
+      `
+      SELECT 
+        u.full_name,
+        u.email,
+        u.phone_number,
+        s.address,
+        s.pincode
+      FROM tbl_user u
+      LEFT JOIN tbl_student s 
+        ON s.user_id = u.user_id
+      WHERE u.user_id = $1
+      `,
       [student_id],
     );
     if (studentResult.rows.length === 0) {
@@ -597,18 +598,18 @@ exports.initiatePayment = async (req, res) => {
     }
 
     const student = studentResult.rows[0];
-   if (
-  student.address === null ||
-  student.address === "" ||
-  student.pincode === null ||
-  student.pincode === ""
-) {
-  return res.status(400).json({
-    statusCode: 400,
-    needAddress: true,
-    message: "Please complete your profile address and pincode",
-  });
-}
+    if (
+      student.address === null ||
+      student.address === "" ||
+      student.pincode === null ||
+      student.pincode === ""
+    ) {
+      return res.status(400).json({
+        statusCode: 400,
+        needAddress: true,
+        message: "Please complete your profile address and pincode",
+      });
+    }
     // Course Details
     const courseResult = await pool.query(
       `
