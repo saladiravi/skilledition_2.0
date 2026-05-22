@@ -597,21 +597,18 @@ exports.initiatePayment = async (req, res) => {
     }
 
     const student = studentResult.rows[0];
-   const hasAddress =
-      student.address &&
-      String(student.address).trim() !== "";
-
-    const hasPincode =
-      student.pincode &&
-      String(student.pincode).trim() !== "";
-
-    if (!hasAddress || !hasPincode) {
-      return res.status(400).json({
-        statusCode: 400,
-        needAddress: true,
-        message: "Please complete your profile address and pincode",
-      });
-    }
+   if (
+  student.address === null ||
+  student.address === "" ||
+  student.pincode === null ||
+  student.pincode === ""
+) {
+  return res.status(400).json({
+    statusCode: 400,
+    needAddress: true,
+    message: "Please complete your profile address and pincode",
+  });
+}
     // Course Details
     const courseResult = await pool.query(
       `
