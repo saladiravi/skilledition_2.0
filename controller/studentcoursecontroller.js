@@ -576,15 +576,28 @@ exports.initiatePayment = async (req, res) => {
     }
 
     // Student Details
+    // const studentResult = await pool.query(
+    //   `
+    //   SELECT full_name, email, phone_number
+    //   FROM tbl_user
+    //   WHERE user_id = $1
+    //   `,
+    //   [student_id],
+    // );
     const studentResult = await pool.query(
-      `
-      SELECT full_name, email, phone_number
-      FROM tbl_user
-      WHERE user_id = $1
-      `,
+      ` SELECT 
+          u.full_name,
+          u.email,
+          u.phone_number,
+          s.address,
+          s.pincode
+        FROM tbl_user u
+        LEFT JOIN tbl_student s 
+          ON s.student_id = u.user_id
+        WHERE u.user_id = $1
+        `,
       [student_id],
     );
-
     if (studentResult.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
@@ -593,7 +606,13 @@ exports.initiatePayment = async (req, res) => {
     }
 
     const student = studentResult.rows[0];
-
+    if (!student.address?.trim() || !student.pincode?.toString().trim()) {
+      return res.status(400).json({
+        statusCode: 400,
+        needAddress: true,
+        message: "Please complete your profile address and pincode",
+      });
+    }
     // Course Details
     const courseResult = await pool.query(
       `
@@ -5232,57 +5251,6 @@ exports.getPurchaseInvoice = async (req, res) => {
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
-    });
-  }
-};
-
-exports.getadminPurchaseList = async (req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT
-
-          tsc.student_course_id,
-
-          TO_CHAR(
-            tsc.created_at,
-            'DD/MM/YYYY'
-          ) AS purchase_date,
-
-          'Invoice' AS type,
-
-          tsc.order_id,
-
-          tsc.transaction_id,
-
-          tc.course_title,
-
-          tsc.order_amount,
-
-          tsc.status,
-
-          tsc.payment_method,
-
-          tsc.payment_provider,
-
-          tsc.invoice_number
-
-       FROM tbl_student_course tsc
-
-       JOIN tbl_course tc
-       ON tsc.course_id = tc.course_id
-
-       ORDER BY tsc.created_at DESC`,
-    );
-
-    return res.status(200).json({
-      statusCode: 200,
-      message: "Fetched Sucessfully",
-      data: result.rows,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      statusCode: 500,
-      message: error.message,
     });
   }
 };

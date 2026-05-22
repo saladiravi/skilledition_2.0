@@ -36,85 +36,9 @@ router.post('/getadminstudentmanagementbyid',verifyToken,allowRoles("admin","stu
 router.post('/getPurchaseList',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getPurchaseList)
 
 router.post('/getPurchaseInvoice',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getPurchaseInvoice)
-router.get('/getadminPurchaseList',verifyToken,allowRoles("admin","student","tutor"),studentcourse.getadminPurchaseList)
 
 
-// router.post('/buycourse',studentcourse.initiatePayment);
-// router.post('/callback',studentcourse.paymentCallback);
-
-// // For showing user a success/failure page after payment
-// router.get(
-//   '/payment/redirect/:transactionId',
-//   async (req, res) => {
-
-//     const { transactionId } = req.params;
-
-//     console.log(
-//       "Transaction ID:",
-//       transactionId
-//     );
-
-//     try {
-
-//       const result = await pool.query(
-//         `
-//         SELECT status
-//         FROM tbl_student_course
-//         WHERE transaction_id = $1
-//         `,
-//         [transactionId]
-//       );
-
-//       console.log(
-//         "DB Result:",
-//         result.rows
-//       );
-
-//       if (result.rows.length === 0) {
-
-//         return res
-//           .status(404)
-//           .send("Transaction not found");
-//       }
-
-//       const status =
-//         result.rows[0].status;
-
-//       console.log(
-//         "Payment Status:",
-//         status
-//       );
-
-//       if (status === "SUCCESS") {
-//         return res.send(
-//           "🎉 Payment Successful!"
-//         );
-//       }
-
-//       if (status === "FAILED") {
-//         return res.send(
-//           "❌ Payment Failed."
-//         );
-//       }
-
-//       return res.send(
-//         "⏳ Payment Pending..."
-//       );
-
-//     } catch (err) {
-
-//       console.error(
-//         "Redirect Error:",
-//         err
-//       );
-
-//       return res.status(500).send(`
-//         <h2>Redirect Error</h2>
-//         <pre>${err.message}</pre>
-//       `);
-//     }
-// });
-
+ 
 router.post('/buycourse',studentcourse.initiatePayment);
 router.post('/callback',studentcourse.paymentCallback);
 
