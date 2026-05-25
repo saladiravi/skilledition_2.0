@@ -823,10 +823,21 @@ exports.paymentCallback = async (req, res) => {
 
     // latest payment attempt
     const payment = payments[0];
+console.log(
+  "PAYMENTS RESPONSE:",
+  JSON.stringify(payments, null, 2)
+);
 
+console.log(
+  "PAYMENT OBJECT:",
+  JSON.stringify(payment, null, 2)
+);
     const payment_status = payment.payment_status;
-    const transaction_id =
-      payment.cf_payment_id || null;
+  const transaction_id =
+  payment?.cf_payment_id ||
+  payment?.payment_id ||
+  payment?.bank_reference ||
+  null;
 
     const payment_method =
       payment.payment_method || null;
