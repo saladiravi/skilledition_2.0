@@ -4385,7 +4385,8 @@ exports.getadminstudentmanagement = async (req, res) => {
               WHERE tu.role = 'student'
           ) AS total_students,
 
-          COUNT(DISTINCT tsc.student_id) AS active_students,
+          COUNT(DISTINCT tsc.student_id) 
+        FILTER (WHERE tsc.status = 'SUCCESS') AS active_students,
 
           (
               SELECT COALESCE(
