@@ -692,6 +692,112 @@ exports.initiatePayment = async (req, res) => {
   }
 };
 
+// exports.paymentCallback = async (req, res) => {
+//   try {
+//     const order_id = req.body?.data?.order?.order_id;
+
+//     if (!order_id) {
+//       return res.status(400).json({
+//         statusCode: 400,
+//         message: "order_id required",
+//       });
+//     }
+
+//     const paymentResponse = await cashfree.PGOrderFetchPayments(order_id);
+
+//     const payments = paymentResponse.data;
+
+//     if (!payments || payments.length === 0) {
+//       return res.status(404).json({
+//         statusCode: 404,
+//         message: "No payment found",
+//       });
+//     }
+
+//     const payment = payments[0];
+
+//     const payment_status = payment.payment_status;
+
+//     const transaction_id = payment.cf_payment_id;
+
+//     const payment_method = payment.payment_method;
+
+//     const purchaseData = await pool.query(
+//       `
+//         SELECT student_id, course_id
+//         FROM tbl_student_course
+//         WHERE order_id = $1
+//         `,
+//       [order_id],
+//     );
+
+//     if (purchaseData.rows.length === 0) {
+//       return res.status(404).json({
+//         statusCode: 404,
+//         message: "Purchase not found",
+//       });
+//     }
+
+//     const { student_id, course_id } = purchaseData.rows[0];
+
+//     if (payment_status === "SUCCESS") {
+//       // Generate invoice number
+//       const invoiceResult = await pool.query(
+//         `
+//           SELECT COUNT(*) AS total
+//           FROM tbl_student_course
+//           WHERE invoice_number
+//           IS NOT NULL
+//           `,
+//       );
+
+//       const count = Number(invoiceResult.rows[0].total) + 1;
+
+//       const invoice_number = `INV-${new Date()
+//         .toISOString()
+//         .slice(0, 10)
+//         .replace(/-/g, "")}-${String(count).padStart(4, "0")}`;
+
+//       // Single update
+//       await pool.query(
+//         `
+//         UPDATE tbl_student_course
+//         SET
+//           status = 'SUCCESS',
+//           transaction_id = $1,
+//           payment_method = $2,
+//           invoice_number = $3
+//         WHERE order_id = $4
+//         `,
+//         [transaction_id, payment_method, invoice_number, order_id],
+//       );
+
+//       await buyCourseAfterPayment(student_id, course_id);
+//     } else {
+//       await pool.query(
+//         `
+//         UPDATE tbl_student_course
+//         SET
+//           status = 'FAILED'
+//         WHERE order_id = $1
+//         `,
+//         [order_id],
+//       );
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//     });
+//   } catch (error) {
+//     console.error(error);
+
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error",
+//     });
+//   }
+// };
+
 exports.paymentCallback = async (req, res) => {
   try {
     const order_id = req.body?.data?.order?.order_id;
@@ -703,7 +809,8 @@ exports.paymentCallback = async (req, res) => {
       });
     }
 
-    const paymentResponse = await cashfree.PGOrderFetchPayments(order_id);
+    const paymentResponse =
+      await cashfree.PGOrderFetchPayments(order_id);
 
     const payments = paymentResponse.data;
 
@@ -714,21 +821,23 @@ exports.paymentCallback = async (req, res) => {
       });
     }
 
+    // latest payment attempt
     const payment = payments[0];
 
     const payment_status = payment.payment_status;
+    const transaction_id =
+      payment.cf_payment_id || null;
 
-    const transaction_id = payment.cf_payment_id;
-
-    const payment_method = payment.payment_method;
+    const payment_method =
+      payment.payment_method || null;
 
     const purchaseData = await pool.query(
       `
-        SELECT student_id, course_id
-        FROM tbl_student_course
-        WHERE order_id = $1
-        `,
-      [order_id],
+      SELECT student_id, course_id
+      FROM tbl_student_course
+      WHERE order_id = $1
+      `,
+      [order_id]
     );
 
     if (purchaseData.rows.length === 0) {
@@ -738,56 +847,98 @@ exports.paymentCallback = async (req, res) => {
       });
     }
 
-    const { student_id, course_id } = purchaseData.rows[0];
+    const { student_id, course_id } =
+      purchaseData.rows[0];
 
+    // ==========================
+    // SUCCESS
+    // ==========================
     if (payment_status === "SUCCESS") {
-      // Generate invoice number
-      const invoiceResult = await pool.query(
+
+      // avoid duplicate invoice
+      const existingInvoice = await pool.query(
         `
-          SELECT COUNT(*) AS total
-          FROM tbl_student_course
-          WHERE invoice_number
-          IS NOT NULL
-          `,
-      );
-
-      const count = Number(invoiceResult.rows[0].total) + 1;
-
-      const invoice_number = `INV-${new Date()
-        .toISOString()
-        .slice(0, 10)
-        .replace(/-/g, "")}-${String(count).padStart(4, "0")}`;
-
-      // Single update
-      await pool.query(
-        `
-        UPDATE tbl_student_course
-        SET
-          status = 'SUCCESS',
-          transaction_id = $1,
-          payment_method = $2,
-          invoice_number = $3
-        WHERE order_id = $4
-        `,
-        [transaction_id, payment_method, invoice_number, order_id],
-      );
-
-      await buyCourseAfterPayment(student_id, course_id);
-    } else {
-      await pool.query(
-        `
-        UPDATE tbl_student_course
-        SET
-          status = 'FAILED'
+        SELECT invoice_number
+        FROM tbl_student_course
         WHERE order_id = $1
         `,
-        [order_id],
+        [order_id]
+      );
+
+      let invoice_number =
+        existingInvoice.rows[0]?.invoice_number;
+
+      if (!invoice_number) {
+        const invoiceResult = await pool.query(
+          `
+          SELECT COUNT(*) AS total
+          FROM tbl_student_course
+          WHERE invoice_number IS NOT NULL
+          `
+        );
+
+        const count =
+          Number(invoiceResult.rows[0].total) + 1;
+
+        invoice_number =
+          `INV-${new Date()
+            .toISOString()
+            .slice(0, 10)
+            .replace(/-/g, "")}-${String(count)
+            .padStart(4, "0")}`;
+      }
+
+      await pool.query(
+        `
+        UPDATE tbl_student_course
+        SET
+          status = $1,
+          transaction_id = $2,
+          payment_method = $3,
+          invoice_number = $4
+        WHERE order_id = $5
+        `,
+        [
+          payment_status,
+          transaction_id,
+          payment_method,
+          invoice_number,
+          order_id,
+        ]
+      );
+
+      await buyCourseAfterPayment(
+        student_id,
+        course_id
+      );
+    }
+
+    // ==========================
+    // FAILED / DROPPED / INCOMPLETE
+    // ==========================
+    else {
+      await pool.query(
+        `
+        UPDATE tbl_student_course
+        SET
+          status = $1,
+          transaction_id = $2,
+          payment_method = $3
+        WHERE order_id = $4
+        `,
+        [
+          payment_status,
+          transaction_id,
+          payment_method,
+          order_id,
+        ]
       );
     }
 
     return res.status(200).json({
       success: true,
     });
+
   } catch (error) {
     console.error(error);
 
@@ -797,6 +948,7 @@ exports.paymentCallback = async (req, res) => {
     });
   }
 };
+
 const buyCourseAfterPayment = async (student_id, course_id) => {
   const client = await pool.connect();
 
