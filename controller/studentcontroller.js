@@ -153,8 +153,11 @@ exports.getStudentAccess = async (req, res) => {
 
     // ✅ 2. Check student exists
     const studentCheck = await pool.query(
-      `SELECT user_id FROM tbl_user WHERE user_id = $1 AND role = 'student'`,
-      [student_id],
+      `SELECT user_id 
+       FROM tbl_user 
+       WHERE user_id = $1 
+       AND role = 'student'`,
+      [student_id]
     );
 
     if (studentCheck.rowCount === 0) {
@@ -168,7 +171,7 @@ exports.getStudentAccess = async (req, res) => {
     const result = await pool.query(
       `
       SELECT
-         CASE 
+          CASE 
               WHEN sc.student_id IS NOT NULL THEN true
               ELSE false
           END AS overview_unlocked,
@@ -196,18 +199,19 @@ exports.getStudentAccess = async (req, res) => {
       FROM (SELECT $1::int AS student_id) input
 
       LEFT JOIN (
-          SELECT DISTINCT student_id 
+          SELECT DISTINCT student_id
           FROM tbl_student_course
+          WHERE status = 'SUCCESS'
       ) sc
         ON sc.student_id = input.student_id
 
       LEFT JOIN (
-          SELECT DISTINCT student_id 
+          SELECT DISTINCT student_id
           FROM tbl_certificates
       ) cert
         ON cert.student_id = input.student_id
-    `,
-      [student_id],
+      `,
+      [student_id]
     );
 
     // ✅ 4. Success response

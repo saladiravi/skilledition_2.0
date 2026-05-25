@@ -176,30 +176,30 @@ exports.gettutorNotificationDashboard = async (req, res) => {
       //   WHERE receiver_id = $1
       // `, [tutor_id]),
 
-      pool.query(
+      pool.query( 
         `
-  SELECT 
-    COUNT(*) AS total_notifications,
+          SELECT 
+            COUNT(*) AS total_notifications,
 
-    COUNT(*) FILTER (
-      WHERE type = 'Final Assignment Submited'
-    ) AS assignments,
+            COUNT(*) FILTER (
+              WHERE type = 'Final Assignment Submited'
+            ) AS assignments,
 
-    COUNT(*) FILTER (
-      WHERE type = 'chat'
-    ) AS chat,
+            COUNT(*) FILTER (
+              WHERE type = 'chat'
+            ) AS chat,
 
-    COUNT(*) FILTER (
-      WHERE type = 'Feedback Submitted'
-    ) AS feedbacks,
+            COUNT(*) FILTER (
+              WHERE type = 'Feedback Submitted'
+            ) AS feedbacks,
 
-    COUNT(*) FILTER (
-      WHERE is_read = false
-    ) AS unread_count
+            COUNT(*) FILTER (
+              WHERE is_read = false
+            ) AS unread_count
 
-  FROM tbl_notifications
-  WHERE receiver_id = $1
-`,
+          FROM tbl_notifications
+          WHERE receiver_id = $1
+        `,
         [tutor_id],
       ),
 
