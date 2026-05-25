@@ -545,6 +545,7 @@ exports.getChatList = async (req, res) => {
           ON cr.chat_room_id = tcm.chat_room_id
 
         WHERE sc.student_id = $1
+        AND sc.status = 'SUCCESS'
 
         GROUP BY 
           sc.course_id,
@@ -608,6 +609,7 @@ exports.getChatList = async (req, res) => {
           ON cr.chat_room_id = tcm.chat_room_id
 
         WHERE c.tutor_id = $1
+        AND sc.status = 'SUCCESS'
 
         GROUP BY
           sc.course_id,
@@ -678,6 +680,8 @@ exports.getChatList = async (req, res) => {
         LEFT JOIN tbl_chat_messages tcm
           ON cr.chat_room_id = tcm.chat_room_id
 
+        WHERE sc.status = 'SUCCESS'
+        
         GROUP BY
           sc.course_id,
           c.course_title,
