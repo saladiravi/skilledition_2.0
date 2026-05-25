@@ -985,7 +985,10 @@ exports.paymentCallback = async (req, res) => {
       "WEBHOOK BODY:",
       JSON.stringify(req.body, null, 2)
     );
-
+console.log(
+  "CALLBACK HIT",
+  JSON.stringify(req.body, null, 2)
+);
     // ==========================
     // FETCH ORDER STATUS
     // ==========================
