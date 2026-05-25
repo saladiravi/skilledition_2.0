@@ -1431,7 +1431,8 @@ exports.getadmintotalcourse = async (req, res) => {
       
 
         -- STUDENTS
-        COUNT(DISTINCT tsc.student_id) AS enrolled_count,
+        COUNT(DISTINCT tsc.student_id)
+        FILTER (WHERE tsc.status = 'SUCCESS') AS enrolled_count,
 
         -- TOTAL MODULES
         COALESCE(mc.total_modules, 0) AS total_modules
