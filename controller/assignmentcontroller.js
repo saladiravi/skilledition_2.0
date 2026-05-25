@@ -1448,7 +1448,8 @@ exports.getallstudentcertificates = async (req, res) => {
   try {
     const statsQuery = await pool.query(`
             SELECT
-                COUNT(DISTINCT tsc.student_id) AS enrolled_students,
+               COUNT(DISTINCT tsc.student_id)
+              FILTER (WHERE tsc.status = 'SUCCESS') AS enrolled_students,
 
                 (
                     SELECT COUNT(*)
