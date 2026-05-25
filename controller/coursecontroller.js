@@ -649,8 +649,9 @@ exports.gettotalcourse = async (req, res) => {
         ON tm.module_id = tmv.module_id
        AND tmv.status IN ('Pending', 'Published', 'Rejected')
 
-      LEFT JOIN tbl_student_course tsc
-        ON tc.course_id = tsc.course_id
+     LEFT JOIN tbl_student_course tsc
+      ON tc.course_id = tsc.course_id
+      AND tsc.status = 'SUCCESS'
 
       LEFT JOIN tbl_user tu
         ON tsc.student_id = tu.user_id
