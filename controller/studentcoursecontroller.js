@@ -809,39 +809,47 @@ exports.paymentCallback = async (req, res) => {
       });
     }
 
-    const paymentResponse =
-      await cashfree.PGOrderFetchPayments(order_id);
+   const webhook_payment =
+  req.body?.data?.payment || {};
 
-    const payments = paymentResponse.data;
+const webhook_status =
+  webhook_payment.payment_status;
 
-    if (!payments || payments.length === 0) {
-      return res.status(404).json({
-        statusCode: 404,
-        message: "No payment found",
-      });
-    }
+const paymentResponse =
+  await cashfree.PGOrderFetchPayments(order_id);
 
-    // latest payment attempt
-    const payment = payments[0];
+const payments = paymentResponse.data || [];
+
+const payment =
+  payments[payments.length - 1] || {};
+
 console.log(
-  "PAYMENTS RESPONSE:",
-  JSON.stringify(payments, null, 2)
+  "WEBHOOK PAYMENT:",
+  JSON.stringify(webhook_payment, null, 2)
 );
 
 console.log(
-  "PAYMENT OBJECT:",
+  "FETCH PAYMENT:",
   JSON.stringify(payment, null, 2)
 );
-    const payment_status = payment.payment_status;
-  const transaction_id =
-  payment?.cf_payment_id ||
-  payment?.payment_id ||
-  payment?.bank_reference ||
+
+const payment_status =
+  webhook_status ||
+  payment.payment_status ||
+  "PENDING";
+
+const transaction_id =
+  webhook_payment.cf_payment_id ||
+  payment.cf_payment_id ||
+  payment.payment_id ||
+  payment.bank_reference ||
   null;
 
-    const payment_method =
-      payment.payment_method || null;
-
+const payment_method =
+  webhook_payment.payment_method ||
+  payment.payment_method ||
+  null;
+  
     const purchaseData = await pool.query(
       `
       SELECT student_id, course_id
