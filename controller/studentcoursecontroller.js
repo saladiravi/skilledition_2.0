@@ -974,12 +974,17 @@ exports.paymentCallback = async (req, res) => {
   try {
     const order_id = req.body?.data?.order?.order_id;
 
-    if (!order_id) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "order_id required",
-      });
-    }
+ if (!order_id) {
+  console.log(
+    "Cashfree webhook test hit",
+    req.body
+  );
+
+  return res.status(200).json({
+    success: true,
+    message: "Webhook test received",
+  });
+}
 
     console.log(
       "WEBHOOK BODY:",
