@@ -1309,7 +1309,91 @@ const buyCourseAfterPayment = async (student_id, course_id) => {
     client.release();
   }
 };
+exports.verifyPayment = async (req, res) => {
+  try {
+    const { order_id } = req.body;
 
+    if (!order_id) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "order_id required",
+      });
+    }
+
+    const orderResponse =
+      await cashfree.PGFetchOrder(order_id);
+
+    const paymentResponse =
+      await cashfree.PGOrderFetchPayments(
+        order_id
+      );
+
+    const payments =
+      paymentResponse?.data || [];
+
+    const payment =
+      payments[payments.length - 1] || {};
+
+    let payment_status = "PENDING";
+
+    if (
+      orderResponse.data.order_status ===
+      "PAID"
+    ) {
+      payment_status = "SUCCESS";
+    } else if (
+      orderResponse.data.order_status ===
+      "ACTIVE"
+    ) {
+      payment_status =
+        payment.payment_status ||
+        "INCOMPLETE";
+    } else {
+      payment_status = "FAILED";
+    }
+
+    const transaction_id =
+      payment.cf_payment_id ||
+      payment.payment_id ||
+      payment.bank_reference ||
+      null;
+
+    const payment_method =
+      payment.payment_method || null;
+
+    await pool.query(
+      `
+      UPDATE tbl_student_course
+      SET
+        status = $1,
+        transaction_id = $2,
+        payment_method = $3
+      WHERE order_id = $4
+      `,
+      [
+        payment_status,
+        transaction_id,
+        payment_method,
+        order_id,
+      ]
+    );
+
+    return res.status(200).json({
+      statusCode: 200,
+      payment_status,
+      message:
+        "Payment verified successfully",
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      statusCode: 500,
+      message:
+        "Internal Server Error",
+    });
+  }
+};
 // exports.initiatePayment = async (req, res) => {
 //   try {
 //     const { student_id, course_id } = req.body;

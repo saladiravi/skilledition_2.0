@@ -41,6 +41,7 @@ router.post('/getPurchaseInvoice',verifyToken,allowRoles("admin","student","tuto
  
 router.post('/buycourse',studentcourse.initiatePayment);
 router.post('/callback',studentcourse.paymentCallback);
+router.post('/verifyPayment',studentcourse.verifyPayment);
 
 // For showing user a success/failure page after payment
 router.get('/test/payment/:sessionId', (req, res) => {
