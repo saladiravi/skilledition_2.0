@@ -99,9 +99,9 @@ exports.updateprofile = async (req, res) => {
     let profile_pic_key = checkStudent.rows?.[0]?.profile_image || null;
 
     if (req.file) {
-
       const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
 
+      // If file type is not allowed
       if (!allowedTypes.includes(req.file.mimetype)) {
         return res.status(400).json({
           statusCode: 400,
@@ -167,7 +167,7 @@ exports.getStudentAccess = async (req, res) => {
        FROM tbl_user 
        WHERE user_id = $1 
        AND role = 'student'`,
-      [student_id]
+      [student_id],
     );
 
     if (studentCheck.rowCount === 0) {
@@ -221,7 +221,7 @@ exports.getStudentAccess = async (req, res) => {
       ) cert
         ON cert.student_id = input.student_id
       `,
-      [student_id]
+      [student_id],
     );
 
     // ✅ 4. Success response
