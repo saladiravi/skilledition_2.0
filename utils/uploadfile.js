@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
 });
 
 const allowedMimeTypes = [
-  'image/jpeg', 'image/png', 'image/jpg',
+  'image/jpeg', 'image/png', 'image/jpg','image/webp',
   'video/mp4', 'video/mpeg', 'video/ogg', 'video/webm', 'video/quicktime',
   'application/pdf', 'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
