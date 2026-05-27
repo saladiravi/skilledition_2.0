@@ -159,411 +159,6 @@ exports.studentbuycourse = async (req, res) => {
   }
 };
 
-// exports.initiatePayment = async (req, res) => {
-//   try {
-//     const { student_id, course_id } = req.body;
-
-//     if (!student_id || !course_id) {
-//       return res.status(400).json({
-//         statusCode: 400,
-//         message: "student_id and course_id are required",
-//       });
-//     }
-
-//     // 1️⃣ Fetch student details
-//     const studentResult = await pool.query(
-//       `
-//       SELECT full_name, email, phone_number
-//       FROM tbl_user
-//       WHERE user_id = $1
-//       `,
-//       [student_id]
-//     );
-
-//     if (studentResult.rows.length === 0) {
-//       return res.status(404).json({
-//         statusCode: 404,
-//         message: "Student not found",
-//       });
-//     }
-
-//     const student = studentResult.rows[0];
-
-//     // 2️⃣ Fetch course price
-//     const courseResult = await pool.query(
-//       `
-//       SELECT course_title, price
-//       FROM tbl_course
-//       WHERE course_id = $1
-//       `,
-//       [course_id]
-//     );
-
-//     if (courseResult.rows.length === 0) {
-//       return res.status(404).json({
-//         statusCode: 404,
-//         message: "Course not found",
-//       });
-//     }
-
-//     const course = courseResult.rows[0];
-//     const orderAmount = Number(course.price);
-
-//     // 3️⃣ Generate unique order id
-//     const orderId = uniqid("CF_");
-
-//     // 4️⃣ Save initial order
-//     await pool.query(
-//       `
-//       INSERT INTO tbl_student_course
-//       (
-//         student_id,
-//         course_id,
-//         purchase_date,
-//         order_id,
-//         order_amount,
-//         payment_status,
-//         payment_provider,
-//         status
-//       )
-//       VALUES
-//       (
-//         $1,
-//         $2,
-//         CURRENT_DATE,
-//         $3,
-//         $4,
-//         'PENDING',
-//         'CASHFREE',
-//         'PENDING'
-//       )
-//       `,
-//       [
-//         student_id,
-//         course_id,
-//         orderId,
-//         orderAmount
-//       ]
-//     );
-
-//     // 5️⃣ Cashfree order request
-//     const request = {
-//       order_amount: orderAmount,
-//       order_currency: "INR",
-//       order_id: orderId,
-
-//       customer_details: {
-//         customer_id: `STU_${student_id}`,
-//          customer_name: student.full_name,
-//     customer_email: student.email,
-//     customer_phone: String(student.phone_number),
-//       },
-
-//       order_meta: {
-//         return_url:
-//           `https://skilledition.in/student/courses`,
-
-//         notify_url:
-//           `https://app.skilledition.in/studentcourse/callback`,
-
-//         payment_methods: "cc,dc,upi"
-//       }
-//     };
-
-//     // 6️⃣ Create Cashfree order
-//     const response = await cashfree.PGCreateOrder(request);
-
-//     console.log(
-//       "✅ Cashfree Order Created:",
-//       response.data
-//     );
-
-//     return res.status(200).json({
-//       statusCode: 200,
-//       paymentSessionId:
-//         response.data.payment_session_id,
-
-//       orderId:
-//         response.data.order_id,
-
-//       studentName:
-//         student.full_name,
-
-//       courseName:
-//         course.course_title,
-
-//       amount:
-//         orderAmount,
-
-//       paymentLink:
-//         response.data.payment_link
-//     });
-
-//   } catch (error) {
-//     console.error(
-//       "❌ Error in initiatePayment:",
-//       error.response?.data || error.message
-//     );
-
-//     return res.status(500).json({
-//       statusCode: 500,
-//       error:
-//         error.response?.data || error.message,
-//     });
-//   }
-// };
-
-// exports.paymentCallback = async (req, res) => {
-//   const client = await pool.connect();
-
-//   try {
-
-//     console.log(
-//       "PAYMENT CALLBACK:",
-//       JSON.stringify(req.body, null, 2)
-//     );
-
-//     const order_id =
-//       req.body?.data?.order?.order_id;
-
-//     const payment_status =
-//       req.body?.data?.payment?.payment_status;
-
-//     const transaction_id =
-//       req.body?.data?.payment?.cf_payment_id;
-
-//     // ✅ Use payment_group
-//     const payment_method =
-//       req.body?.data?.payment?.payment_group;
-
-//     if (!order_id) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "order_id missing",
-//       });
-//     }
-
-//     await client.query("BEGIN");
-
-//     // 1️⃣ Get purchase
-//     const purchaseRes = await client.query(
-//       `
-//       SELECT
-//         student_course_id,
-//         student_id,
-//         course_id,
-//         payment_status
-//       FROM tbl_student_course
-//       WHERE order_id = $1
-//       `,
-//       [order_id]
-//     );
-
-//     if (purchaseRes.rows.length === 0) {
-//       throw new Error("Purchase record not found");
-//     }
-
-//     const {
-//       student_course_id,
-//       student_id,
-//       course_id,
-//       payment_status: existingStatus
-//     } = purchaseRes.rows[0];
-
-//     // 2️⃣ Prevent duplicate processing
-//     if (existingStatus === "SUCCESS") {
-//       await client.query("COMMIT");
-
-//       return res.status(200).json({
-//         success: true,
-//         message: "Already processed",
-//       });
-//     }
-
-//     // 3️⃣ Final status
-//     const finalStatus =
-//       payment_status === "SUCCESS"
-//         ? "SUCCESS"
-//         : "FAILED";
-
-//     // ✅ Generate invoice only for success
-//     let invoice_number = null;
-
-//     if (finalStatus === "SUCCESS") {
-
-//       const today = new Date();
-
-//       invoice_number =
-//         `INV-${
-//           today.getFullYear()
-//         }${
-//           String(today.getMonth() + 1)
-//             .padStart(2, "0")
-//         }${
-//           String(today.getDate())
-//             .padStart(2, "0")
-//         }-${
-//           student_id
-//         }-${
-//           student_course_id
-//         }`;
-//     }
-
-//     // 4️⃣ Update payment details
-//     await client.query(
-//       `
-//       UPDATE tbl_student_course
-//       SET
-//         transaction_id = $1,
-//         payment_status = $2,
-//         payment_method = $3,
-//         status = $4,
-//         invoice_number = $5
-//       WHERE order_id = $6
-//       `,
-//       [
-//         transaction_id || null,
-//         finalStatus,
-//         payment_method || null,
-//         finalStatus,
-//         invoice_number,
-//         order_id
-//       ]
-//     );
-
-//     // ❌ Stop if failed
-//     if (finalStatus !== "SUCCESS") {
-
-//       await client.query("COMMIT");
-
-//       return res.status(200).json({
-//         success: true,
-//         message: "Payment failed"
-//       });
-//     }
-
-//     // 5️⃣ Remove old progress
-//     await client.query(
-//       `
-//       DELETE FROM tbl_student_course_progress
-//       WHERE student_id = $1
-//       AND course_id = $2
-//       `,
-//       [student_id, course_id]
-//     );
-
-//     // 6️⃣ Insert videos
-//     await client.query(
-//       `
-//       INSERT INTO tbl_student_course_progress
-//       (
-//         student_id,
-//         course_id,
-//         module_id,
-//         module_video_id,
-//         is_unlocked,
-//         is_completed
-//       )
-//       SELECT
-//         $1,
-//         tm.course_id,
-//         tm.module_id,
-//         tmv.module_video_id,
-//         false,
-//         false
-//       FROM tbl_module tm
-//       JOIN tbl_module_videos tmv
-//         ON tm.module_id = tmv.module_id
-//       WHERE tm.course_id = $2
-//       `,
-//       [student_id, course_id]
-//     );
-
-//     // 7️⃣ Insert assignments
-//     await client.query(
-//       `
-//       INSERT INTO tbl_student_course_progress
-//       (
-//         student_id,
-//         course_id,
-//         module_id,
-//         module_video_id,
-//         assignment_id,
-//         is_unlocked,
-//         is_completed
-//       )
-//       SELECT
-//         $1,
-//         tm.course_id,
-//         tm.module_id,
-//         NULL,
-//         ta.assignment_id,
-//         false,
-//         false
-//       FROM tbl_module tm
-//       JOIN tbl_assignment ta
-//         ON tm.module_id = ta.module_id
-//       WHERE tm.course_id = $2
-//       `,
-//       [student_id, course_id]
-//     );
-
-//     // 8️⃣ Unlock first video
-//     await client.query(
-//       `
-//       UPDATE tbl_student_course_progress
-//       SET
-//         is_unlocked = true,
-//         unlocked_at = NOW()
-//       WHERE student_id = $1
-//       AND course_id = $2
-//       AND module_video_id = (
-//         SELECT tmv.module_video_id
-//         FROM tbl_module tm
-//         JOIN tbl_module_videos tmv
-//           ON tm.module_id = tmv.module_id
-//         WHERE tm.course_id = $2
-//         ORDER BY tm.module_id, tmv.module_video_id
-//         LIMIT 1
-//       )
-//       `,
-//       [student_id, course_id]
-//     );
-
-//     // 9️⃣ Final assignment
-//     await createFinalAssignment(
-//       client,
-//       student_id,
-//       course_id
-//     );
-
-//     await client.query("COMMIT");
-
-//     return res.status(200).json({
-//       success: true,
-//       invoice_number,
-//       message:
-//         "Payment processed successfully",
-//     });
-
-//   } catch (error) {
-
-//     await client.query("ROLLBACK");
-
-//     console.error(
-//       "CALLBACK ERROR:",
-//       error
-//     );
-
-//     return res.status(500).json({
-//       success: false,
-//       message: error.message,
-//     });
-
-//   } finally {
-//     client.release();
-//   }
-// };
 exports.initiatePayment = async (req, res) => {
   try {
     const { student_id, course_id } = req.body;
@@ -598,15 +193,22 @@ exports.initiatePayment = async (req, res) => {
     }
 
     const student = studentResult.rows[0];
-    if (
-      student.address === null ||
-      student.address === "" ||
-      student.pincode === null ||
-      student.pincode === ""
-    ) {
+    const missingFields = [];
+
+    if (!student.gender) missingFields.push("gender");
+    if (!student.date_of_birth) missingFields.push("date_of_birth");
+    if (!student.college) missingFields.push("college");
+    if (!student.qualification) missingFields.push("qualification");
+    if (!student.year_of_passing) missingFields.push("year_of_passing");
+    if (!student.address) missingFields.push("address");
+    if (!student.pincode) missingFields.push("pincode");
+    if (!student.profile_image) missingFields.push("profile_image");
+
+    if (missingFields.length > 0) {
       return res.status(400).json({
         statusCode: 400,
-        needAddress: true,
+        needProfileCompletion: true,
+        missingFields,
         message: "Please complete your profile",
       });
     }
@@ -692,344 +294,40 @@ exports.initiatePayment = async (req, res) => {
   }
 };
 
-// exports.paymentCallback = async (req, res) => {
-//   try {
-//     const order_id = req.body?.data?.order?.order_id;
-
-//     if (!order_id) {
-//       return res.status(400).json({
-//         statusCode: 400,
-//         message: "order_id required",
-//       });
-//     }
-
-//     const paymentResponse = await cashfree.PGOrderFetchPayments(order_id);
-
-//     const payments = paymentResponse.data;
-
-//     if (!payments || payments.length === 0) {
-//       return res.status(404).json({
-//         statusCode: 404,
-//         message: "No payment found",
-//       });
-//     }
-
-//     const payment = payments[0];
-
-//     const payment_status = payment.payment_status;
-
-//     const transaction_id = payment.cf_payment_id;
-
-//     const payment_method = payment.payment_method;
-
-//     const purchaseData = await pool.query(
-//       `
-//         SELECT student_id, course_id
-//         FROM tbl_student_course
-//         WHERE order_id = $1
-//         `,
-//       [order_id],
-//     );
-
-//     if (purchaseData.rows.length === 0) {
-//       return res.status(404).json({
-//         statusCode: 404,
-//         message: "Purchase not found",
-//       });
-//     }
-
-//     const { student_id, course_id } = purchaseData.rows[0];
-
-//     if (payment_status === "SUCCESS") {
-//       // Generate invoice number
-//       const invoiceResult = await pool.query(
-//         `
-//           SELECT COUNT(*) AS total
-//           FROM tbl_student_course
-//           WHERE invoice_number
-//           IS NOT NULL
-//           `,
-//       );
-
-//       const count = Number(invoiceResult.rows[0].total) + 1;
-
-//       const invoice_number = `INV-${new Date()
-//         .toISOString()
-//         .slice(0, 10)
-//         .replace(/-/g, "")}-${String(count).padStart(4, "0")}`;
-
-//       // Single update
-//       await pool.query(
-//         `
-//         UPDATE tbl_student_course
-//         SET
-//           status = 'SUCCESS',
-//           transaction_id = $1,
-//           payment_method = $2,
-//           invoice_number = $3
-//         WHERE order_id = $4
-//         `,
-//         [transaction_id, payment_method, invoice_number, order_id],
-//       );
-
-//       await buyCourseAfterPayment(student_id, course_id);
-//     } else {
-//       await pool.query(
-//         `
-//         UPDATE tbl_student_course
-//         SET
-//           status = 'FAILED'
-//         WHERE order_id = $1
-//         `,
-//         [order_id],
-//       );
-//     }
-
-//     return res.status(200).json({
-//       success: true,
-//     });
-//   } catch (error) {
-//     console.error(error);
-
-//     return res.status(500).json({
-//       statusCode: 500,
-//       message: "Internal Server Error",
-//     });
-//   }
-// };
-
-// exports.paymentCallback = async (req, res) => {
-//   try {
-//     const order_id = req.body?.data?.order?.order_id;
-
-//     if (!order_id) {
-//       return res.status(400).json({
-//         statusCode: 400,
-//         message: "order_id required",
-//       });
-//     }
-
-//    const webhook_payment =
-//   req.body?.data?.payment || {};
-
-// const webhook_status =
-//   webhook_payment.payment_status;
-
-// const paymentResponse =
-//   await cashfree.PGOrderFetchPayments(order_id);
-
-// const payments = paymentResponse.data || [];
-
-// const payment =
-//   payments[payments.length - 1] || {};
-
-// console.log(
-//   "WEBHOOK PAYMENT:",
-//   JSON.stringify(webhook_payment, null, 2)
-// );
-
-// console.log(
-//   "FETCH PAYMENT:",
-//   JSON.stringify(payment, null, 2)
-// );
-
-// const payment_status =
-//   webhook_status ||
-//   payment.payment_status ||
-//   "PENDING";
-
-// const transaction_id =
-//   webhook_payment.cf_payment_id ||
-//   payment.cf_payment_id ||
-//   payment.payment_id ||
-//   payment.bank_reference ||
-//   null;
-
-// const payment_method =
-//   webhook_payment.payment_method ||
-//   payment.payment_method ||
-//   null;
-//     const payment_method =
-//       payment.payment_method || null;
-
-//     const purchaseData = await pool.query(
-//       `
-//       SELECT student_id, course_id
-//       FROM tbl_student_course
-//       WHERE order_id = $1
-//       `,
-//       [order_id]
-//     );
-
-//     if (purchaseData.rows.length === 0) {
-//       return res.status(404).json({
-//         statusCode: 404,
-//         message: "Purchase not found",
-//       });
-//     }
-
-//     const { student_id, course_id } =
-//       purchaseData.rows[0];
-
-//     // ==========================
-//     // SUCCESS
-//     // ==========================
-//     if (payment_status === "SUCCESS") {
-
-//       // avoid duplicate invoice
-//       const existingInvoice = await pool.query(
-//         `
-//         SELECT invoice_number
-//         FROM tbl_student_course
-//         WHERE order_id = $1
-//         `,
-//         [order_id]
-//       );
-
-//       let invoice_number =
-//         existingInvoice.rows[0]?.invoice_number;
-
-//       if (!invoice_number) {
-//         const invoiceResult = await pool.query(
-//           `
-//           SELECT COUNT(*) AS total
-//           FROM tbl_student_course
-//           WHERE invoice_number IS NOT NULL
-//           `
-//         );
-
-//         const count =
-//           Number(invoiceResult.rows[0].total) + 1;
-
-//         invoice_number =
-//           `INV-${new Date()
-//             .toISOString()
-//             .slice(0, 10)
-//             .replace(/-/g, "")}-${String(count)
-//             .padStart(4, "0")}`;
-//       }
-
-//       await pool.query(
-//         `
-//         UPDATE tbl_student_course
-//         SET
-//           status = $1,
-//           transaction_id = $2,
-//           payment_method = $3,
-//           invoice_number = $4
-//         WHERE order_id = $5
-//         `,
-//         [
-//           payment_status,
-//           transaction_id,
-//           payment_method,
-//           invoice_number,
-//           order_id,
-//         ]
-//       );
-
-//       await buyCourseAfterPayment(
-//         student_id,
-//         course_id
-//       );
-//     }
-
-//     // ==========================
-//     // FAILED / DROPPED / INCOMPLETE
-//     // ==========================
-//     else {
-//       await pool.query(
-//         `
-//         UPDATE tbl_student_course
-//         SET
-//           status = $1,
-//           transaction_id = $2,
-//           payment_method = $3
-//         WHERE order_id = $4
-//         `,
-//         [
-//           payment_status,
-//           transaction_id,
-//           payment_method,
-//           order_id,
-//         ]
-//       );
-//     }
-
-//     return res.status(200).json({
-//       success: true,
-//     });
-
-//   } catch (error) {
-//     console.error(error);
-
-//     return res.status(500).json({
-//       statusCode: 500,
-//       message: "Internal Server Error",
-//     });
-//   }
-// };
-
 exports.paymentCallback = async (req, res) => {
   try {
     const order_id = req.body?.data?.order?.order_id;
 
- if (!order_id) {
-  console.log(
-    "Cashfree webhook test hit",
-    req.body
-  );
+    if (!order_id) {
+      console.log("Cashfree webhook test hit", req.body);
 
-  return res.status(200).json({
-    success: true,
-    message: "Webhook test received",
-  });
-}
+      return res.status(200).json({
+        success: true,
+        message: "Webhook test received",
+      });
+    }
 
-    console.log(
-      "WEBHOOK BODY:",
-      JSON.stringify(req.body, null, 2)
-    );
-console.log(
-  "CALLBACK HIT",
-  JSON.stringify(req.body, null, 2)
-);
+    console.log("WEBHOOK BODY:", JSON.stringify(req.body, null, 2));
+    console.log("CALLBACK HIT", JSON.stringify(req.body, null, 2));
     // ==========================
     // FETCH ORDER STATUS
     // ==========================
-    const orderResponse =
-      await cashfree.PGFetchOrder(order_id);
+    const orderResponse = await cashfree.PGFetchOrder(order_id);
 
-    console.log(
-      "ORDER RESPONSE:",
-      JSON.stringify(
-        orderResponse.data,
-        null,
-        2
-      )
-    );
+    console.log("ORDER RESPONSE:", JSON.stringify(orderResponse.data, null, 2));
 
-    const order_status =
-      orderResponse?.data?.order_status;
+    const order_status = orderResponse?.data?.order_status;
 
     // ==========================
     // FETCH PAYMENT DETAILS
     // ==========================
-    const paymentResponse =
-      await cashfree.PGOrderFetchPayments(
-        order_id
-      );
+    const paymentResponse = await cashfree.PGOrderFetchPayments(order_id);
 
-    const payments =
-      paymentResponse?.data || [];
+    const payments = paymentResponse?.data || [];
 
-    const payment =
-      payments[payments.length - 1] || {};
+    const payment = payments[payments.length - 1] || {};
 
-    console.log(
-      "PAYMENT RESPONSE:",
-      JSON.stringify(payment, null, 2)
-    );
+    console.log("PAYMENT RESPONSE:", JSON.stringify(payment, null, 2));
 
     // ==========================
     // MAP STATUS
@@ -1040,13 +338,8 @@ console.log(
       payment_status = "SUCCESS";
     } else if (order_status === "ACTIVE") {
       // user dropped / incomplete / failed
-      payment_status =
-        payment?.payment_status ||
-        "INCOMPLETE";
-    } else if (
-      order_status === "FAILED" ||
-      order_status === "EXPIRED"
-    ) {
+      payment_status = payment?.payment_status || "INCOMPLETE";
+    } else if (order_status === "FAILED" || order_status === "EXPIRED") {
       payment_status = "FAILED";
     }
 
@@ -1059,15 +352,13 @@ console.log(
       payment?.bank_reference ||
       null;
 
-    const payment_method =
-      payment?.payment_method || null;
+    const payment_method = payment?.payment_method || null;
 
     // ==========================
     // PURCHASE CHECK
     // ==========================
-    const purchaseData =
-      await pool.query(
-        `
+    const purchaseData = await pool.query(
+      `
         SELECT
           student_id,
           course_id,
@@ -1076,16 +367,13 @@ console.log(
         FROM tbl_student_course
         WHERE order_id = $1
         `,
-        [order_id]
-      );
+      [order_id],
+    );
 
-    if (
-      purchaseData.rows.length === 0
-    ) {
+    if (purchaseData.rows.length === 0) {
       return res.status(404).json({
         statusCode: 404,
-        message:
-          "Purchase not found",
+        message: "Purchase not found",
       });
     }
 
@@ -1093,8 +381,7 @@ console.log(
       student_id,
       course_id,
       status,
-      invoice_number:
-        existing_invoice,
+      invoice_number: existing_invoice,
     } = purchaseData.rows[0];
 
     // ==========================
@@ -1103,43 +390,31 @@ console.log(
     if (status === "SUCCESS") {
       return res.status(200).json({
         success: true,
-        message:
-          "Already processed",
+        message: "Already processed",
       });
     }
 
     // ==========================
     // SUCCESS
     // ==========================
-    if (
-      payment_status === "SUCCESS"
-    ) {
-      let invoice_number =
-        existing_invoice;
+    if (payment_status === "SUCCESS") {
+      let invoice_number = existing_invoice;
 
       // Generate invoice only once
       if (!invoice_number) {
-        const invoiceResult =
-          await pool.query(`
+        const invoiceResult = await pool.query(`
           SELECT COUNT(*) AS total
           FROM tbl_student_course
           WHERE invoice_number
           IS NOT NULL
         `);
 
-        const count =
-          Number(
-            invoiceResult.rows[0]
-              .total
-          ) + 1;
+        const count = Number(invoiceResult.rows[0].total) + 1;
 
-        invoice_number =
-          `INV-${new Date()
-            .toISOString()
-            .slice(0, 10)
-            .replace(/-/g, "")}-${String(
-            count
-          ).padStart(4, "0")}`;
+        invoice_number = `INV-${new Date()
+          .toISOString()
+          .slice(0, 10)
+          .replace(/-/g, "")}-${String(count).padStart(4, "0")}`;
       }
 
       await pool.query(
@@ -1158,13 +433,10 @@ console.log(
           payment_method,
           invoice_number,
           order_id,
-        ]
+        ],
       );
 
-      await buyCourseAfterPayment(
-        student_id,
-        course_id
-      );
+      await buyCourseAfterPayment(student_id, course_id);
     }
 
     // ==========================
@@ -1181,12 +453,7 @@ console.log(
           payment_method = $3
         WHERE order_id = $4
         `,
-        [
-          payment_status,
-          transaction_id,
-          payment_method,
-          order_id,
-        ]
+        [payment_status, transaction_id, payment_method, order_id],
       );
     }
 
@@ -1196,15 +463,11 @@ console.log(
       transaction_id,
     });
   } catch (error) {
-    console.error(
-      "PAYMENT CALLBACK ERROR:",
-      error
-    );
+    console.error("PAYMENT CALLBACK ERROR:", error);
 
     return res.status(500).json({
       statusCode: 500,
-      message:
-        "Internal Server Error",
+      message: "Internal Server Error",
     });
   }
 };
@@ -1325,34 +588,20 @@ exports.verifyPayment = async (req, res) => {
       });
     }
 
-    const orderResponse =
-      await cashfree.PGFetchOrder(order_id);
+    const orderResponse = await cashfree.PGFetchOrder(order_id);
 
-    const paymentResponse =
-      await cashfree.PGOrderFetchPayments(
-        order_id
-      );
+    const paymentResponse = await cashfree.PGOrderFetchPayments(order_id);
 
-    const payments =
-      paymentResponse?.data || [];
+    const payments = paymentResponse?.data || [];
 
-    const payment =
-      payments[payments.length - 1] || {};
+    const payment = payments[payments.length - 1] || {};
 
     let payment_status = "PENDING";
 
-    if (
-      orderResponse.data.order_status ===
-      "PAID"
-    ) {
+    if (orderResponse.data.order_status === "PAID") {
       payment_status = "SUCCESS";
-    } else if (
-      orderResponse.data.order_status ===
-      "ACTIVE"
-    ) {
-      payment_status =
-        payment.payment_status ||
-        "INCOMPLETE";
+    } else if (orderResponse.data.order_status === "ACTIVE") {
+      payment_status = payment.payment_status || "INCOMPLETE";
     } else {
       payment_status = "FAILED";
     }
@@ -1363,8 +612,7 @@ exports.verifyPayment = async (req, res) => {
       payment.bank_reference ||
       null;
 
-    const payment_method =
-      payment.payment_method || null;
+    const payment_method = payment.payment_method || null;
 
     await pool.query(
       `
@@ -1375,148 +623,23 @@ exports.verifyPayment = async (req, res) => {
         payment_method = $3
       WHERE order_id = $4
       `,
-      [
-        payment_status,
-        transaction_id,
-        payment_method,
-        order_id,
-      ]
+      [payment_status, transaction_id, payment_method, order_id],
     );
 
     return res.status(200).json({
       statusCode: 200,
       payment_status,
-      message:
-        "Payment verified successfully",
+      message: "Payment verified successfully",
     });
   } catch (error) {
     console.error(error);
 
     return res.status(500).json({
       statusCode: 500,
-      message:
-        "Internal Server Error",
+      message: "Internal Server Error",
     });
   }
 };
-// exports.initiatePayment = async (req, res) => {
-//   try {
-//     const { student_id, course_id } = req.body;
-//     if (!student_id || !course_id) {
-//       return res.status(400).json({
-//         statusCode: 400,
-//         message: "student_id and course_id are required",
-//       });
-//     }
-
-//     // 1️⃣ Fetch student details
-//     const studentResult = await pool.query(
-//       `SELECT full_name, email, phone_number
-//        FROM tbl_user
-//        WHERE user_id = $1`,
-//       [student_id]
-//     );
-
-//     if (studentResult.rows.length === 0) {
-//       return res.status(404).json({
-//         statusCode: 404,
-//         message: "Student not found",
-//       });
-//     }
-
-//     const student = studentResult.rows[0];
-//   const courseResult = await pool.query(
-//       `
-//       SELECT course_title, price
-//       FROM tbl_course
-//       WHERE course_id = $1
-//       `,
-//       [course_id]
-//     );
-
-//     if (courseResult.rows.length === 0) {
-//       return res.status(404).json({
-//         statusCode: 404,
-//         message: "Course not found",
-//       });
-//     }
-
-//     const course = courseResult.rows[0];
-//     const orderAmount = Number(course.price);
-//     // 2️⃣ Create a unique order ID
-//     const orderId = uniqid("CF_");
-
-//     // 3️⃣ Save initial order in your DB
-//     await pool.query(
-//       `INSERT INTO tbl_student_course
-//        (student_id, course_id, purchase_date, transaction_id, status)
-//        VALUES ($1, $2, CURRENT_DATE, $3, 'PENDING')`,
-//       [student_id, course_id, orderId]
-//     );
-
-//     // 4️⃣ Prepare Cashfree order request
-//     const request = {
-//       order_amount: orderAmount, // set dynamic course price if available
-//       order_currency: "INR",
-//       order_id: orderId,
-//       customer_details: {
-//         customer_id: `STU_${student_id}`,
-//         customer_email: student.email,
-//         customer_phone: student.phone_number,
-//       },
-//       order_meta: {
-//         return_url: `https://skilledition.in/student/courses`,
-//         notify_url: `https://api.skilledition.in/payment/callback`,
-//         payment_methods: "cc,dc,upi", // optional
-//       },
-//     };
-
-//     // 5️⃣ Create order using Cashfree SDK
-//     const response = await cashfree.PGCreateOrder(request);
-
-//     console.log("✅ Cashfree Order Created:", response.data);
-
-//     // 6️⃣ Return payment details to frontend
-//     return res.json({
-//       statusCode: 200,
-//       paymentSessionId: response.data.payment_session_id,
-//       orderId: response.data.order_id,
-//       studentName: `${student.full_name}`,
-//       paymentLink: response.data.payment_link, // optional
-//     });
-//   } catch (error) {
-//     return res.status(500).json({
-//       statusCode: 500,
-//       error: error.response?.data || error.message,
-//     });
-//   }
-// };
-
-// exports.paymentCallback = async (req, res) => {
-//   try {
-//     console.log("📥 Cashfree Callback:", req.body);
-
-//     const { order_id, order_status } = req.body.data;
-
-//     if (order_status === "PAID") {
-//       await pool.query(
-//         `UPDATE tbl_student_course SET status = 'SUCCESS' WHERE transaction_id = $1`,
-//         [order_id]
-//       );
-//     } else {
-//       await pool.query(
-//         `UPDATE tbl_student_course SET status = 'FAILED' WHERE transaction_id = $1`,
-//         [order_id]
-//       );
-//     }
-
-//     // ✅ Always respond with 200 to acknowledge callback
-//     return res.status(200).json({ success: true });
-//   } catch (error) {
-//     console.error("❌ Error in paymentCallback:", error);
-//     return res.status(500).json({ success: false });
-//   }
-// };
 
 exports.getStudentMyCourse = async (req, res) => {
   const { student_id } = req.body;
@@ -1744,206 +867,6 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     });
   }
 };
-
-// exports.getstudentcourse = async (req, res) => {
-//   const { course_id, student_id } = req.body;
-
-//   try {
-//     const { rows } = await pool.query(`
-//   SELECT
-//     tc.course_id,
-//     tc.course_title,
-//     tc.no_of_modules,
-
-//     tm.module_id,
-//     tm.module_title,
-//     tm.module_description,
-//     tm.sheet_file,
-//     tm.total_duration,
-
-//     tmv.module_video_id,
-//     tmv.video,
-//     tmv.video_title,
-
-//     ta.assignment_id,
-//     ta.assignment_title,
-
-//     tu.full_name,
-//     tt.subject_to_teach,
-//     tt.professional_background,
-
-//     COALESCE(tsp.is_unlocked, false) AS is_unlocked,
-//     COALESCE(tsp.is_completed, false) AS is_completed,
-
-//     COALESCE(tspa.is_unlocked, false) AS assignment_is_unlocked,
-//       tspa.unlocked_at AS assignment_unlocked_at,
-//       COALESCE(tspa.is_completed, false) AS assignment_is_completed,
-
-//     COUNT(tmv.module_video_id) OVER() AS total_videos,
-//      TO_CHAR(
-//     SUM(tmv.video_duration::INTERVAL) OVER (),
-//     'HH24:MI:SS'
-//   ) AS total_video_duration,
-//     COUNT(
-//       CASE WHEN tsp.is_completed = true THEN 1 END
-//     ) OVER() AS completed_videos
-
-//   FROM tbl_course tc
-
-//   JOIN tbl_module tm
-//     ON tc.course_id = tm.course_id
-
-//   LEFT JOIN tbl_module_videos tmv
-//     ON tm.module_id = tmv.module_id
-
-//   LEFT JOIN tbl_assignment ta
-//     ON tm.module_id = ta.module_id
-
-//   LEFT JOIN tbl_student_course_progress tsp
-//     ON tsp.module_video_id = tmv.module_video_id
-//    AND tsp.student_id = $2
-//    AND tsp.course_id = tc.course_id
-
-//     LEFT JOIN tbl_student_course_progress tspa
-//       ON tspa.assignment_id = ta.assignment_id
-//       AND tspa.student_id = $2
-//       AND tspa.course_id = tc.course_id
-
-//   JOIN tbl_user tu
-//     ON tc.tutor_id = tu.user_id
-
-//   /* ✅ FIX */
-//   LEFT JOIN tbl_tutor tt
-//     ON tc.tutor_id = tt.user_id
-
-//   WHERE tc.course_id = $1
-//   ORDER BY
-//   tm.module_id ASC,
-//   tmv.module_video_id ASC
-// `, [course_id, student_id]);
-
-//     if (rows.length === 0) {
-//       return res.status(404).json({
-//         statusCode: 404
-
-//       });
-//     }
-
-//     // 🔹 Overall progress
-//     const totalVideos = Number(rows[0].total_videos);
-//     const completedVideos = Number(rows[0].completed_videos);
-//     const totalVideoDuration = rows[0].total_video_duration;
-//     const progressPercentage =
-//       totalVideos === 0
-//         ? 0
-//         : Math.round((completedVideos / totalVideos) * 100);
-
-//     // 🔹 Base course object
-//     const course = {
-//       course_id: rows[0].course_id,
-//       course_title: rows[0].course_title,
-//       total_video_duration: totalVideoDuration,
-//       no_of_modules: rows[0].no_of_modules,
-//       tutor_name: rows[0].full_name,
-//       subject_to_teach: rows[0].subject_to_teach,
-//       professional_background: rows[0].professional_background,
-//       progress: {
-//         total_videos: totalVideos,
-//         completed_videos: completedVideos,
-//         percentage: progressPercentage
-//       },
-//       modules: []
-//     };
-
-//     // 🔹 Build modules + videos
-//     const moduleMap = {};
-
-//     for (const row of rows) {
-
-//       if (!moduleMap[row.module_id]) {
-
-//         const signedSheet = row.sheet_file
-//           ? await getSignedVideoUrl(row.sheet_file)
-//           : null;
-
-//         moduleMap[row.module_id] = {
-//           module_id: row.module_id,
-//           module_title: row.module_title,
-//           module_description: row.module_description,
-//           total_duration: row.total_duration,
-//           sheet_file: row.sheet_file,
-//           sheet_file_url: signedSheet,
-//           videos: [],
-//           assignment: row.assignment_id
-//             ? {
-//               assignment_id: row.assignment_id,
-//               assignment_title: row.assignment_title,
-//               is_unlocked: row.assignment_is_unlocked,
-//               is_completed: row.assignment_is_completed,
-//               unlocked_at: row.assignment_unlocked_at
-//             }
-//             : null,
-//         };
-
-//         course.modules.push(moduleMap[row.module_id]);
-//       }
-
-//       if (row.module_video_id) {
-
-//         let videoUrl = null;
-
-//         if (row.is_unlocked && row.video) {
-//           videoUrl = await getSignedVideoUrl(row.video);
-//         }
-
-//         moduleMap[row.module_id].videos.push({
-//           module_video_id: row.module_video_id,
-//           video_title: row.video_title,
-//           video_url: videoUrl,
-//           is_unlocked: row.is_unlocked,
-//           is_completed: row.is_completed
-//         });
-//       }
-//     }
-
-//     await pool.query(`
-//   UPDATE tbl_student_final_assignment tfa
-//   SET is_unlocked = true
-//   WHERE tfa.student_id = $1
-//   AND NOT EXISTS (
-//       SELECT 1
-//       FROM tbl_student_course_progress scp
-//       WHERE scp.student_id = tfa.student_id
-//         AND scp.course_id = tfa.course_id
-//         AND (
-//               scp.assignment_id IS NOT NULL
-//               OR scp.module_video_id IS NOT NULL
-//             )
-//         AND scp.is_completed = false
-//   )
-// `, [student_id]);
-// const finalAssignmentRes = await pool.query(`
-//   SELECT final_assignment_id, assignment_title,is_unlocked
-//   FROM tbl_student_final_assignment
-//   WHERE course_id = $1 AND student_id = $2
-//   LIMIT 1
-// `, [course_id, student_id]);
-// const finalAssignment = finalAssignmentRes.rows[0] || null;
-//     return res.status(200).json({
-//       statusCode: 200,
-//       message: 'Fetched Sucessfully',
-//       data: course,
-//       finalAssignment:finalAssignment
-//     });
-
-//   } catch (error) {
-
-//     return res.status(500).json({
-//       statusCode: 500,
-//       message: 'Internal Server Error'
-//     });
-//   }
-// };
 
 exports.getstudentcourse = async (req, res) => {
   const { course_id, student_id } = req.body;
@@ -2672,136 +1595,6 @@ exports.unlockAssignmentAfterModule = async (req, res) => {
   }
 };
 
-// exports.getexamstudent = async (req, res) => {
-//   try {
-//     const { student_id } = req.body;
-
-//     if (!student_id) {
-//       return res.status(400).json({
-//         statusCode: 400,
-//         message: "student_id is required"
-//       });
-//     }
-
-//     const result = await pool.query(`
-//       SELECT
-//         ta.assignment_id,
-//         ta.assignment_title,
-//         ta.total_questions,
-
-//         ts.is_unlocked,
-//         tc.course_title,
-
-//         tsa.student_assignment_id,
-
-//         COALESCE(tsa.status, 'Pending') AS status,
-//         COALESCE(tsa.total_marks, 0) AS total_marks,
-
-//         COUNT(CASE WHEN tans.is_correct = true THEN 1 END) AS correct_answers,
-//         COUNT(CASE WHEN tans.is_correct = false THEN 1 END) AS wrong_answers,
-
-//         COUNT(*) OVER () AS total_assignments,
-
-//         COUNT(
-//           CASE
-//             WHEN COALESCE(tsa.status, 'Pending') = 'Pending'
-//             THEN 1
-//           END
-//         ) OVER () AS pending_assignments,
-
-//         COUNT(
-//           CASE
-//             WHEN tsa.status = 'Completed'
-//             THEN 1
-//           END
-//         ) OVER () AS submitted_assignments
-
-//       FROM tbl_student_course tsc
-//       JOIN tbl_course tc
-//         ON tsc.course_id = tc.course_id
-//       JOIN tbl_assignment ta
-//         ON tc.course_id = ta.course_id
-
-//       LEFT JOIN tbl_student_assignment tsa
-//         ON ta.assignment_id = tsa.assignment_id
-//        AND tsa.student_id = tsc.student_id
-
-//       LEFT JOIN tbl_student_answers tans
-//         ON tsa.student_assignment_id = tans.student_assignment_id
-
-//       LEFT JOIN tbl_student_course_progress ts
-//         ON ts.assignment_id = ta.assignment_id
-//        AND ts.student_id = tsc.student_id
-
-//       WHERE tsc.student_id = $1
-
-//       GROUP BY
-//         ta.assignment_id,
-//         ta.assignment_title,
-//         ta.total_questions,
-//         tc.course_title,
-//         tsa.student_assignment_id,
-//         tsa.status,
-//         tsa.total_marks,
-//         ts.is_unlocked
-
-//       ORDER BY ta.assignment_id ASC
-//     `, [student_id]);
-
-//     if (result.rows.length === 0) {
-//       return res.status(200).json({
-//         statusCode: 200,
-//         data: {
-//           counts: {
-//             total_assignments: 0,
-//             pending_assignments: 0,
-//             submitted_assignments: 0
-//           },
-//           assignment: []
-//         }
-//       });
-//     }
-
-//     // ✅ Extract counts from FIRST row
-//     const {
-//       total_assignments,
-//       pending_assignments,
-//       submitted_assignments
-//     } = result.rows[0];
-
-//     // ✅ Remove count fields from list items
-//     const assignment = result.rows.map(row => {
-//       const {
-//         total_assignments,
-//         pending_assignments,
-//         submitted_assignments,
-//         ...rest
-//       } = row;
-//       return rest;
-//     });
-
-//     return res.status(200).json({
-//       statusCode: 200,
-//       message: 'Fetched Successfully',
-//       data: {
-//         counts: {
-//           total_assignments: Number(total_assignments),
-//           pending_assignments: Number(pending_assignments),
-//           submitted_assignments: Number(submitted_assignments)
-//         },
-//         assignment
-//       }
-//     });
-
-//   } catch (error) {
-//     console.error("getexamstudent Error:", error);
-//     return res.status(500).json({
-//       statusCode: 500,
-//       message: "Internal Server Error"
-//     });
-//   }
-// };
-
 exports.getexamstudent = async (req, res) => {
   try {
     const { student_id } = req.body;
@@ -3219,95 +2012,6 @@ exports.getAssignmentById = async (req, res) => {
     });
   }
 };
-
-// const createFinalAssignment = async (client, student_id, course_id) => {
-//   try {
-
-//     // 1. Create final assignment entry
-//     const finalAssignmentResult = await client.query(`
-//   INSERT INTO tbl_student_final_assignment
-//     (student_id, course_id, assignment_title, created_at, unlocked_date, is_unlocked, status)
-//   SELECT
-//     $1::integer,
-//     $2::integer,
-//     'Final Assignment',
-//     NOW(),
-//     NOW() + (tc.duration || ' days')::INTERVAL,
-//     false,
-//     'Pending'
-//   FROM tbl_course tc
-//   WHERE tc.course_id = $2::integer
-//   RETURNING final_assignment_id
-// `, [student_id, course_id]);
-
-//     const final_assignment_id = finalAssignmentResult.rows[0].final_assignment_id;
-
-//     // 2. Get all modules
-//     const modules = await client.query(`
-//       SELECT module_id
-//       FROM tbl_module
-//       WHERE course_id = $1
-//       ORDER BY module_id
-//     `, [course_id]);
-
-//     let totalInsertedQuestions = 0;
-
-//     // 3. Loop modules
-//     for (const module of modules.rows) {
-
-//       const questions = await client.query(`
-//         SELECT tq.question, tq.a, tq.b, tq.c, tq.d, tq.answer
-//         FROM tbl_assignment ta
-//         JOIN tbl_questions tq ON ta.assignment_id = tq.assignment_id
-//         WHERE ta.course_id = $1
-//           AND ta.module_id = $2
-
-//         ORDER BY RANDOM()
-//         LIMIT 5
-//       `, [course_id, module.module_id]);
-
-//       for (const q of questions.rows) {
-//         await client.query(`
-//           INSERT INTO tbl_student_final_assignment_questions
-//             (final_assignment_id, question, a, b, c, d, answer)
-//           VALUES
-//             ($1, $2, $3, $4, $5, $6, $7)
-//         `, [
-//           final_assignment_id,
-//           q.question,
-//           q.a,
-//           q.b,
-//           q.c,
-//           q.d,
-//           q.answer
-//         ]);
-
-//         totalInsertedQuestions++;
-//       }
-//     }
-
-//     // 4. Calculate Timer (1 question = 1 minute)
-//     const timerMinutes = totalInsertedQuestions; // 1 min per question
-
-//     // 5. Update final assignment with totals
-//     await client.query(`
-//       UPDATE tbl_student_final_assignment
-//       SET total_questions = $1,
-//           total_marks = $1,
-//           timmer = $2
-//       WHERE final_assignment_id = $3
-//     `, [
-//       totalInsertedQuestions,
-//       timerMinutes + ' minutes',
-//       final_assignment_id
-//     ]);
-
-//     return final_assignment_id;
-
-//   } catch (error) {
-//     throw error;
-//   }
-// };
 
 const createFinalAssignment = async (client, student_id, course_id) => {
   try {
@@ -3995,360 +2699,6 @@ exports.getCourseenroleDetails = async (req, res) => {
   }
 };
 
-// exports.getstudentoverview = async (req, res) => {
-
-//   const { student_id } = req.body;
-
-//   if (!student_id) {
-//     return res.status(400).json({
-//       statusCode: 400,
-//       message: "student_id is required"
-//     });
-//   }
-
-//   try {
-//     const studentname = await pool.query(
-//       `SELECT full_name FROM tbl_user WHERE user_id=$1`,
-//       [student_id]
-//     );
-
-//     const studentName = studentname.rows.length
-//       ? studentname.rows[0].full_name
-//       : null;
-
-//     // 1️⃣ Courses with progress
-//     const courseQuery = `
-//       SELECT
-//         tc.course_id,
-//         tc.course_title,
-//         tcat.category_name,
-//         tu.full_name AS mentor_name,
-
-//         COUNT(DISTINCT tmv.module_video_id) AS total_videos,
-
-//         COUNT(DISTINCT svp.module_video_id)
-//         FILTER (WHERE svp.is_completed = true) AS watched_videos
-
-//       FROM tbl_student_course sc
-
-//       JOIN tbl_course tc
-//         ON sc.course_id = tc.course_id
-
-//       JOIN tbl_category tcat
-//         ON tc.category_id = tcat.category_id
-
-//       JOIN tbl_module tm
-//         ON tc.course_id = tm.course_id
-
-//       JOIN tbl_module_videos tmv
-//         ON tm.module_id = tmv.module_id
-
-//       LEFT JOIN tbl_student_course_progress svp
-//         ON tmv.module_video_id = svp.module_video_id
-//         AND svp.student_id = $1
-
-//       JOIN tbl_user tu
-//         ON tc.tutor_id = tu.user_id
-
-//       WHERE sc.student_id = $1
-
-//       GROUP BY tc.course_id, tc.course_title, tcat.category_name, tu.full_name
-//       ORDER BY tc.course_id DESC
-//     `;
-
-//     const coursesection = `
-//       SELECT
-//         tc.course_id,
-//         tc.course_title,
-//         tcat.category_name,
-
-//         COUNT(DISTINCT tmv.module_video_id) AS total_videos,
-
-//         COUNT(DISTINCT svp.module_video_id)
-//         FILTER (WHERE svp.is_completed = true) AS watched_videos
-
-//       FROM tbl_student_course sc
-
-//       JOIN tbl_course tc
-//         ON sc.course_id = tc.course_id
-
-//       JOIN tbl_category tcat
-//         ON tc.category_id = tcat.category_id
-
-//       JOIN tbl_module tm
-//         ON tc.course_id = tm.course_id
-
-//       JOIN tbl_module_videos tmv
-//         ON tm.module_id = tmv.module_id
-
-//       LEFT JOIN tbl_student_course_progress svp
-//         ON tmv.module_video_id = svp.module_video_id
-//         AND svp.student_id = $1
-
-//       WHERE sc.student_id = $1
-
-//       GROUP BY tc.course_id, tc.course_title, tcat.category_name
-//       ORDER BY tc.course_id ASC
-//     `;
-
-//     // 2️⃣ Last watched video
-//     const lastVideoQuery = `
-//       SELECT
-//         tc.course_id,
-//         tc.course_title,
-//         tcat.category_name,
-//         tmv.video_title
-
-//       FROM tbl_student_course_progress svp
-
-//       JOIN tbl_module_videos tmv
-//         ON svp.module_video_id = tmv.module_video_id
-
-//       JOIN tbl_module tm
-//         ON tmv.module_id = tm.module_id
-
-//       JOIN tbl_course tc
-//         ON tm.course_id = tc.course_id
-
-//         JOIN tbl_category tcat
-//       ON tc.category_id = tcat.category_id
-
-//       WHERE svp.student_id = $1
-//       AND svp.is_completed = true
-
-//       ORDER BY svp.student_course_progress_id DESC
-//       LIMIT 1
-//     `;
-
-//     // 3️⃣ Latest assignments
-//     const assignmentQuery = `
-//       SELECT
-//         ta.assignment_title,
-//         ta.total_questions,
-
-//         CASE
-//           WHEN scp.is_completed = true THEN 'Completed'
-//           ELSE 'Pending'
-//         END AS status
-
-//       FROM tbl_student_course sc
-
-//       JOIN tbl_module tm
-//         ON sc.course_id = tm.course_id
-
-//       JOIN tbl_assignment ta
-//         ON tm.module_id = ta.module_id
-
-//       LEFT JOIN tbl_student_course_progress scp
-//         ON ta.assignment_id = scp.assignment_id
-//         AND scp.student_id = $1
-
-//       WHERE sc.student_id = $1
-
-//       ORDER BY ta.assignment_date DESC
-//       LIMIT 3
-//     `;
-
-//     // 4️⃣ Mentors
-//     const mentorQuery = `
-//       SELECT DISTINCT
-//         tu.user_id,
-//         tu.full_name,
-//         tu.role
-
-//       FROM tbl_student_course sc
-
-//       JOIN tbl_course tc
-//         ON sc.course_id = tc.course_id
-
-//       JOIN tbl_user tu
-//         ON tc.tutor_id = tu.user_id
-
-//       WHERE sc.student_id = $1
-//     `;
-
-//     // 5️⃣ Learning Time
-//  const learningTimeQuery = `
-// SELECT
-//   c.duration,
-//   c.no_of_modules,
-//   v.total_learning_time
-// FROM
-// (
-//   SELECT
-//     SUM(REGEXP_REPLACE(tc.duration, '[^0-9]', '', 'g')::int) AS duration,
-//     SUM(tc.no_of_modules) AS no_of_modules
-//   FROM tbl_student_course sc
-//   JOIN tbl_course tc
-//     ON sc.course_id = tc.course_id
-//   WHERE sc.student_id = $1
-// ) c
-// CROSS JOIN
-// (
-//   SELECT
-//     COALESCE(
-//       CONCAT(
-//         EXTRACT(HOUR FROM SUM(tmv.video_duration::interval)), 'h',
-//         EXTRACT(MINUTE FROM SUM(tmv.video_duration::interval)), 'm'
-//       ),
-//       '0h0m'
-//     ) AS total_learning_time
-//   FROM tbl_student_course sc
-//   JOIN tbl_module tm
-//     ON sc.course_id = tm.course_id
-//   JOIN tbl_module_videos tmv
-//     ON tm.module_id = tmv.module_id
-//   WHERE sc.student_id = $1
-// ) v
-// `;
-
-//     const availableCoursesQuery = `
-//       SELECT
-//         tc.course_id,
-//         tc.course_title,
-//         tcat.category_name,
-//         COUNT(tmv.module_video_id) AS total_videos
-
-//       FROM tbl_course tc
-
-//       JOIN tbl_category tcat
-//         ON tc.category_id = tcat.category_id
-
-//       LEFT JOIN tbl_module tm
-//         ON tc.course_id = tm.course_id
-
-//       LEFT JOIN tbl_module_videos tmv
-//         ON tm.module_id = tmv.module_id
-
-//       GROUP BY tc.course_id, tc.course_title, tcat.category_name
-//       ORDER BY tc.course_id DESC
-//     `;
-
-//     const studentProgressGraphQuery = `
-//   SELECT
-//     sc.student_id,
-//     sc.course_id,
-//     c.course_title,
-
-//     COUNT(scp.module_video_id) AS total_videos,
-
-//     COUNT(scp.module_video_id)
-//       FILTER (WHERE scp.is_completed = true) AS watched_videos,
-
-//     COALESCE(
-//       ROUND(
-//         (COUNT(scp.module_video_id) FILTER (WHERE scp.is_completed = true) * 100.0)
-//         / NULLIF(COUNT(scp.module_video_id), 0),
-//       2),
-//     0) AS progress_percentage
-
-//   FROM tbl_student_course sc
-
-//   JOIN tbl_course c
-//     ON c.course_id = sc.course_id
-
-//   LEFT JOIN tbl_student_course_progress scp
-//     ON sc.student_id = scp.student_id
-//     AND sc.course_id = scp.course_id
-
-//   WHERE sc.student_id = $1
-
-//   GROUP BY sc.student_id, sc.course_id, c.course_title
-//   ORDER BY sc.course_id
-// `;
-
-//     const [courses, lastVideo, assignments, mentors, learningTime, coursection, availableCourses,studentProgressGraph] = await Promise.all([
-//       pool.query(courseQuery, [student_id]),
-//       pool.query(lastVideoQuery, [student_id]),
-//       pool.query(assignmentQuery, [student_id]),
-//       pool.query(mentorQuery, [student_id]),
-//       pool.query(learningTimeQuery, [student_id]),
-//       pool.query(coursesection, [student_id]),
-//       pool.query(availableCoursesQuery),
-//       pool.query(studentProgressGraphQuery, [student_id])
-//     ]);
-
-//     // Learning time data
-//     const learningData = learningTime.rows[0]
-//       ? {
-//         duration: learningTime.rows[0].duration,
-//         no_of_modules: Number(learningTime.rows[0].no_of_modules),
-//         total_learning_time: learningTime.rows[0].total_learning_time
-//       }
-//       : {
-//         duration: "0 Days",
-//         no_of_modules: 0,
-//         total_learning_time: "00:00:00"
-//       };
-
-//     // Course progress
-//     const courseData = courses.rows.map(course => {
-
-//       const totalVideos = Number(course.total_videos);
-//       const watchedVideos = Number(course.watched_videos);
-
-//       const percentage =
-//         totalVideos === 0
-//           ? 0
-//           : Math.round((watchedVideos / totalVideos) * 100);
-
-//       return {
-//         course_id: course.course_id,
-//         course_title: course.course_title,
-//         category_name: course.category_name,
-//         percentage
-//       };
-
-//     });
-
-//     // If student did not purchase any course
-//     if (courseData.length === 0) {
-
-//       const availableCourseList = availableCourses.rows.map(course => ({
-//         course_id: course.course_id,
-//         course_title: course.course_title,
-//         category_name: course.category_name,
-//         total_videos: Number(course.total_videos)
-//       }));
-
-//       return res.status(200).json({
-//         statusCode: 200,
-//         message: "No purchased courses",
-//         data: {
-//           student_name: studentName,
-//           course_watching: [],
-//           course_section: availableCourseList
-//         }
-//       });
-//     }
-
-//     return res.status(200).json({
-//       statusCode: 200,
-//       message: "Fetched successfully",
-//       data: {
-//         student_name: studentName,
-//         course_watching: courseData,
-//         course_section: coursection.rows,
-//         learningtime: learningData,
-//         last_video: lastVideo.rows[0] || null,
-//         assignments: assignments.rows,
-//         mentors: mentors.rows,
-//         student_progress_graph: studentProgressGraph.rows
-//       }
-//     });
-
-//   } catch (error) {
-
-//     console.error(error);
-
-//     return res.status(500).json({
-//       statusCode: 500,
-//       message: "Internal Server Error"
-//     });
-
-//   }
-// };
-
 exports.getstudentoverview = async (req, res) => {
   const { student_id } = req.body;
 
@@ -4760,117 +3110,6 @@ CROSS JOIN
     });
   }
 };
-// exports.getadminstudentmanagement = async (req, res) => {
-
-//   try {
-
-//        const statsQuery = await pool.query(`
-//             SELECT
-//         -- ✅ Total Students (only role = student)
-//         COUNT(DISTINCT tu.user_id) FILTER (
-//           WHERE tu.role = 'student'
-//         ) AS total_students,
-
-//         -- ✅ Active Students (purchased at least 1 course)
-//         COUNT(DISTINCT tsc.student_id) AS active_students,
-
-//         -- ✅ Avg Progress
-//         COALESCE(
-//           ROUND(
-//             AVG(
-//               (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
-//             ), 2
-//           ),
-//         0) AS avg_progress,
-
-//         -- ✅ Certificates Issued (from tbl_certificates)
-//         COUNT(DISTINCT tc.certificate_id) AS certificates_issued
-
-//       FROM tbl_user tu
-
-//       LEFT JOIN tbl_student_course tsc
-//         ON tsc.student_id = tu.user_id
-
-//       LEFT JOIN tbl_student_final_assignment tsfa
-//         ON tsfa.student_id = tu.user_id
-
-//       LEFT JOIN tbl_certificates tc
-//         ON tc.student_id = tu.user_id
-//     `);
-//     const query = await pool.query(`
-//           SELECT
-//               tu.user_id AS student_id,
-//               tu.full_name,
-//               tu.email,
-//               ts.mobile_number,
-
-//               COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
-
-//               COUNT(*) FILTER (WHERE tsfa.is_unlocked = true) AS completed_courses,
-
-//               COALESCE(
-//                   ROUND(
-//                       AVG(
-//                           (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
-//                       ),2
-//                   ),
-//               0) AS average_score,
-
-//               CASE
-//         WHEN EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at)))) < 60
-//           THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))))) || ' seconds ago'
-
-//         WHEN EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at)))) < 3600
-//           THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))) ) / 60) || ' minutes ago'
-
-//         WHEN EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at)))) < 86400
-//           THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))) ) / 3600) || ' hours ago'
-
-//         ELSE
-//           FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(COALESCE(scp.completed_at, scp.unlocked_at))) ) / 86400) || ' days ago'
-//     END AS last_active,
-
-//               CASE
-//                   WHEN EXTRACT(DAY FROM MAX(tsfa.created_at)) <= 15
-//                   THEN TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-A'
-//                   ELSE TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-B'
-//               END AS batch
-
-//           FROM tbl_student_course tsc
-
-//           JOIN tbl_user tu
-//               ON tu.user_id = tsc.student_id
-
-//           LEFT JOIN tbl_student ts
-//               ON ts.user_id = tu.user_id
-
-//           LEFT JOIN tbl_student_final_assignment tsfa
-//               ON tsfa.student_id = tu.user_id
-
-//           LEFT JOIN tbl_student_course_progress scp
-//              ON scp.student_id = tu.user_id
-
-//           GROUP BY
-//               tu.user_id,
-//               tu.full_name,
-//               tu.email,
-//               ts.mobile_number
-//           `);
-
-//     return res.status(200).json({
-//       statusCode: 200,
-//       message: 'fetched sucessfully',
-//       stats: statsQuery.rows[0],
-//       data: query.rows
-
-//     })
-//   } catch (error) {
-//     return res.status(500).json({
-//       statusCode: 500,
-//       message: 'Internal Server Error'
-//     })
-//   }
-// }
 
 exports.getadminstudentmanagement = async (req, res) => {
   try {
@@ -4995,318 +3234,6 @@ exports.getadminstudentmanagement = async (req, res) => {
     });
   }
 };
-
-// exports.getadminstudentmanagementbyid = async (req, res) => {
-
-//   const { student_id } = req.body;
-
-//   if (!student_id) {
-//     return res.status(400).json({
-//       statusCode: 400,
-//       message: "student_id is required"
-//     });
-//   }
-
-//   try {
-//     const studentCheck = await pool.query(
-//       `SELECT user_id, full_name FROM tbl_user WHERE user_id = $1`,
-//       [student_id]
-//     );
-
-//     if (studentCheck.rows.length === 0) {
-//       return res.status(404).json({
-//         statusCode: 404,
-//         message: "Student not found"
-//       });
-//     }
-//     // Profile + Stats
-//     const profileQuery = `
-//       SELECT
-//           tu.full_name,
-//           tu.email,
-//           tu.phone_number,
-
-//           COUNT(DISTINCT tsc.course_id) AS enrolled_courses,
-
-//          COUNT(DISTINCT tsfa.course_id)
-//         FILTER (WHERE tsfa.is_unlocked = true) AS completed_courses,
-
-//           COUNT(DISTINCT tcert.certificate_id) AS certificates,
-
-//           COALESCE(
-//               ROUND(
-//                   AVG(
-//                       (tsfa.correct_answers::decimal / NULLIF(tsfa.total_questions::decimal,0)) * 100
-//                   ),2
-//               ),
-//           0) AS average_score,
-
-//                 CASE
-//             WHEN EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) < 60
-//                 THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at)))) || ' seconds ago'
-
-//             WHEN EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) < 3600
-//                 THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) / 60) || ' minutes ago'
-
-//             WHEN EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) < 86400
-//                 THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) / 3600) || ' hours ago'
-
-//             ELSE
-//                 FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(tsfa.created_at))) / 86400) || ' days ago'
-//         END AS last_active,
-
-//           CASE
-//               WHEN EXTRACT(DAY FROM MAX(tsfa.created_at)) <= 15
-//               THEN TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-A'
-//               ELSE TO_CHAR(MAX(tsfa.created_at), 'YYYY-MM') || '-B'
-//           END AS batch
-
-//       FROM tbl_student_course tsc
-
-//       JOIN tbl_user tu
-//           ON tu.user_id = tsc.student_id
-
-//       LEFT JOIN tbl_student ts
-//           ON ts.user_id = tu.user_id
-
-//       LEFT JOIN tbl_student_final_assignment tsfa
-//           ON tsfa.student_id = tu.user_id
-
-//       LEFT JOIN tbl_certificates tcert
-//           ON tcert.student_id = tu.user_id
-
-//       WHERE tu.user_id = $1
-
-//       GROUP BY
-//           tu.user_id,
-//           tu.full_name,
-//           tu.email,
-//           tu.phone_number
-//     `;
-
-//     // Courses with progress
-//     const courseQuery = `
-//       SELECT
-//         tc.course_id,
-//         tc.course_title,
-//         tcat.category_name,
-
-//    COALESCE(
-//     ROUND(
-//       (
-//         COUNT(DISTINCT svp.module_video_id)
-//         FILTER (WHERE svp.is_completed = true)::decimal
-//         /
-//         NULLIF(COUNT(DISTINCT tmv.module_video_id),0)
-//       ) * 100,
-//     2),
-//   0) AS progress_percentage
-
-//       FROM tbl_student_course sc
-
-//       JOIN tbl_course tc
-//         ON sc.course_id = tc.course_id
-
-//       JOIN tbl_category tcat
-//         ON tc.category_id = tcat.category_id
-
-//       JOIN tbl_module tm
-//         ON tc.course_id = tm.course_id
-
-//       JOIN tbl_module_videos tmv
-//         ON tm.module_id = tmv.module_id
-
-//       LEFT JOIN tbl_student_course_progress svp
-//         ON tmv.module_video_id = svp.module_video_id
-//         AND svp.student_id = $1
-
-//       WHERE sc.student_id = $1
-
-//       GROUP BY tc.course_id, tc.course_title, tcat.category_name
-//     `;
-
-//     // Assignments
-//     const assignmentQuery = `
-//       SELECT
-//         ta.assignment_title,
-//         ta.total_questions,
-
-//         CASE
-//           WHEN scp.is_completed = true THEN 'Completed'
-//           ELSE 'Pending'
-//         END AS status
-
-//       FROM tbl_student_course sc
-
-//       JOIN tbl_module tm
-//         ON sc.course_id = tm.course_id
-
-//       JOIN tbl_assignment ta
-//         ON tm.module_id = ta.module_id
-
-//       LEFT JOIN tbl_student_course_progress scp
-//         ON ta.assignment_id = scp.assignment_id
-//         AND scp.student_id = $1
-
-//       WHERE sc.student_id = $1
-
-//       ORDER BY ta.assignment_date DESC
-//       LIMIT 3
-//     `;
-
-//     // Recent Activity
-// //     const activityQuery = `
-// //      SELECT
-// //   tc.course_title,
-// //   tcat.category_name,
-
-// //   COALESCE(tmv.video_title, ta.assignment_title) AS video_title,
-
-// //   CASE
-// //     WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.unlocked_at, scp.completed_at::timestamp))) < 60
-// //       THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.unlocked_at, scp.completed_at::timestamp)))) || ' seconds ago'
-
-// //     WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.unlocked_at, scp.completed_at::timestamp))) < 3600
-// //       THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.unlocked_at, scp.completed_at::timestamp))) / 60) || ' minutes ago'
-
-// //     WHEN EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.unlocked_at, scp.completed_at::timestamp))) < 86400
-// //       THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.unlocked_at, scp.completed_at::timestamp))) / 3600) || ' hours ago'
-
-// //     ELSE
-// //       FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(scp.unlocked_at, scp.completed_at::timestamp))) / 86400) || ' days ago'
-// //   END AS activity_time
-
-// // FROM tbl_student_course_progress scp
-
-// // LEFT JOIN tbl_module_videos tmv
-// //   ON scp.module_video_id = tmv.module_video_id
-
-// // LEFT JOIN tbl_assignment ta
-// //   ON scp.assignment_id = ta.assignment_id
-
-// // LEFT JOIN tbl_module tm
-// //   ON scp.module_id = tm.module_id
-
-// // LEFT JOIN tbl_course tc
-// //   ON scp.course_id = tc.course_id
-
-// // LEFT JOIN tbl_category tcat
-// //   ON tc.category_id = tcat.category_id
-
-// // WHERE scp.student_id = $1
-// // AND scp.is_completed = true
-// // ORDER BY COALESCE(scp.unlocked_at, scp.completed_at::timestamp) DESC
-// // LIMIT 5
-// //     `;
-
-//    const activityQuery = `
-//  SELECT
-//   tc.course_title,
-//   tcat.category_name,
-
-//   COALESCE(tmv.video_title, ta.assignment_title) AS video_title,
-
-//   CASE
-//     WHEN EXTRACT(EPOCH FROM (NOW() - activity_time)) < 60
-//       THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - activity_time))) || ' seconds ago'
-
-//     WHEN EXTRACT(EPOCH FROM (NOW() - activity_time)) < 3600
-//       THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - activity_time)) / 60) || ' minutes ago'
-
-//     WHEN EXTRACT(EPOCH FROM (NOW() - activity_time)) < 86400
-//       THEN FLOOR(EXTRACT(EPOCH FROM (NOW() - activity_time)) / 3600) || ' hours ago'
-
-//     ELSE
-//       FLOOR(EXTRACT(EPOCH FROM (NOW() - activity_time)) / 86400) || ' days ago'
-//   END AS activity_time
-
-// FROM (
-//   SELECT
-//     scp.*,
-//     COALESCE(scp.completed_at, scp.unlocked_at) AS activity_time
-//   FROM tbl_student_course_progress scp
-//   WHERE scp.student_id = $1
-//   AND scp.is_completed = true
-// ) scp
-
-// LEFT JOIN tbl_module_videos tmv
-//   ON scp.module_video_id = tmv.module_video_id
-
-// LEFT JOIN tbl_assignment ta
-//   ON scp.assignment_id = ta.assignment_id
-
-// LEFT JOIN tbl_module tm
-//   ON scp.module_id = tm.module_id
-
-// LEFT JOIN tbl_course tc
-//   ON scp.course_id = tc.course_id
-
-// LEFT JOIN tbl_category tcat
-//   ON tc.category_id = tcat.category_id
-
-// ORDER BY activity_time DESC
-// LIMIT 5
-//     `;
-//     const overallProgressQuery = `
-//       SELECT
-//       COALESCE(
-//         ROUND(
-//           (
-//             COUNT(DISTINCT scp.module_video_id)
-//             FILTER (WHERE scp.is_completed = true)::decimal
-//             /
-//             NULLIF(COUNT(DISTINCT tmv.module_video_id),0)
-//           ) * 100,
-//         2),
-//       0) AS overall_progress_percentage
-
-//       FROM tbl_student_course sc
-
-//       JOIN tbl_module tm
-//         ON sc.course_id = tm.course_id
-
-//       JOIN tbl_module_videos tmv
-//         ON tm.module_id = tmv.module_id
-
-//       LEFT JOIN tbl_student_course_progress scp
-//         ON tmv.module_video_id = scp.module_video_id
-//         AND scp.student_id = $1
-
-//       WHERE sc.student_id = $1
-//       `;
-//     // Run all queries together
-//     const [profile,overall, courses, assignments, activity] = await Promise.all([
-//       pool.query(profileQuery, [student_id]),
-//        pool.query(overallProgressQuery, [student_id]),
-//       pool.query(courseQuery, [student_id]),
-//       pool.query(assignmentQuery, [student_id]),
-//       pool.query(activityQuery, [student_id])
-//     ]);
-
-//     return res.status(200).json({
-//       statusCode: 200,
-//       message: "Dashboard fetched successfully",
-//       data: {
-//         profile: profile.rows[0] || null,
-//         overall_progress: overall.rows[0].overall_progress_percentage,
-//         courses: courses.rows,
-//         assignments: assignments.rows,
-//         recent_activity: activity.rows
-//       }
-//     });
-
-//   } catch (error) {
-
-//     console.error(error);
-
-//     return res.status(500).json({
-//       statusCode: 500,
-//       message: "Internal Server Error"
-//     });
-
-//   }
-
-// };
 
 exports.getadminstudentmanagementbyid = async (req, res) => {
   const { student_id } = req.body;
@@ -5661,7 +3588,7 @@ exports.getPurchaseList = async (req, res) => {
        AND tsc.status IN ('SUCCESS', 'FAILED')
 
        ORDER BY tsc.created_at DESC`,
-      [student_id]
+      [student_id],
     );
 
     return res.status(200).json({
