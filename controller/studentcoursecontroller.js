@@ -172,17 +172,23 @@ exports.initiatePayment = async (req, res) => {
 
     const studentResult = await pool.query(
       `
-      SELECT 
-        u.full_name,
-        u.email,
-        u.phone_number,
-        s.address,
-        s.pincode
-      FROM tbl_user u
-      LEFT JOIN tbl_student s 
-        ON s.user_id = u.user_id
-      WHERE u.user_id = $1
-      `,
+        SELECT 
+          u.full_name,
+          u.email,
+          u.phone_number,
+          s.gender,
+          s.date_of_birth,
+          s.college,
+          s.qualification,
+          s.year_of_passing,
+          s.address,
+          s.pincode,
+          s.profile_image
+        FROM tbl_user u
+        LEFT JOIN tbl_student s 
+          ON s.user_id = u.user_id
+        WHERE u.user_id = $1
+       `,
       [student_id],
     );
     if (studentResult.rows.length === 0) {
