@@ -99,6 +99,16 @@ exports.updateprofile = async (req, res) => {
     let profile_pic_key = checkStudent.rows?.[0]?.profile_image || null;
 
     if (req.file) {
+
+      const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
+
+      if (!allowedTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({
+          statusCode: 400,
+          message: "Only JPG, JPEG, and PNG images are allowed",
+        });
+      }
+
       profile_pic_key = await uploadToS3(req.file, "users/profile_image");
     }
 
