@@ -185,7 +185,6 @@ exports.sendMessage = async (req, res) => {
       chat_room_id: chatRoomId,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -272,8 +271,10 @@ exports.getMessages = async (req, res) => {
       messages,
     });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error",
+    });
   }
 };
 
@@ -515,8 +516,6 @@ exports.getChatList = async (req, res) => {
       chatList: result.rows,
     });
   } catch (error) {
-    console.error(error);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -624,7 +623,6 @@ exports.updatepausechat = async (req, res) => {
       message: "pause chat successfully",
     });
   } catch (error) {
-    console.log(error);
     res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -730,7 +728,6 @@ exports.chatstats = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -754,7 +751,6 @@ exports.closeQuery = async (req, res) => {
       message: "Query closed successfully",
     });
   } catch (err) {
-    console.log(err);
     res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",

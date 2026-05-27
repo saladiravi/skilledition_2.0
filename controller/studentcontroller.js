@@ -58,7 +58,7 @@ exports.getprofile = async (req, res) => {
       data: userData,
     });
   } catch (error) {
-    console.error(error);
+   
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -131,7 +131,7 @@ exports.updateprofile = async (req, res) => {
       message: "Profile updated successfully",
     });
   } catch (error) {
-    console.log(error);
+   
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -221,7 +221,7 @@ exports.getStudentAccess = async (req, res) => {
       data: result.rows[0],
     });
   } catch (error) {
-    console.error(error);
+   
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",

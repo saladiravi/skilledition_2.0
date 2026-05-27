@@ -149,7 +149,7 @@ exports.studentbuycourse = async (req, res) => {
     });
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("FULL ERROR:", error); // 👈 important
+
     return res.status(500).json({
       statusCode: 500,
       message: error.message, // 👈 send actual error
@@ -305,22 +305,16 @@ exports.paymentCallback = async (req, res) => {
     const order_id = req.body?.data?.order?.order_id;
 
     if (!order_id) {
-      console.log("Cashfree webhook test hit", req.body);
-
       return res.status(200).json({
         success: true,
         message: "Webhook test received",
       });
     }
 
-    console.log("WEBHOOK BODY:", JSON.stringify(req.body, null, 2));
-    console.log("CALLBACK HIT", JSON.stringify(req.body, null, 2));
     // ==========================
     // FETCH ORDER STATUS
     // ==========================
     const orderResponse = await cashfree.PGFetchOrder(order_id);
-
-    console.log("ORDER RESPONSE:", JSON.stringify(orderResponse.data, null, 2));
 
     const order_status = orderResponse?.data?.order_status;
 
@@ -332,8 +326,6 @@ exports.paymentCallback = async (req, res) => {
     const payments = paymentResponse?.data || [];
 
     const payment = payments[payments.length - 1] || {};
-
-    console.log("PAYMENT RESPONSE:", JSON.stringify(payment, null, 2));
 
     // ==========================
     // MAP STATUS
@@ -469,8 +461,6 @@ exports.paymentCallback = async (req, res) => {
       transaction_id,
     });
   } catch (error) {
-    console.error("PAYMENT CALLBACK ERROR:", error);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -638,8 +628,6 @@ exports.verifyPayment = async (req, res) => {
       message: "Payment verified successfully",
     });
   } catch (error) {
-    console.error(error);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -866,7 +854,6 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
       result: result.rows,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -1076,8 +1063,6 @@ exports.getstudentcourse = async (req, res) => {
       finalAssignment,
     });
   } catch (error) {
-    console.log(error);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -1146,7 +1131,6 @@ exports.studentwatchvideo = async (req, res) => {
       result: videoData,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -1254,8 +1238,11 @@ exports.submitExam = async (req, res) => {
       marks: totalMarks,
     });
   } catch (err) {
-    console.error("Submit Exam Error:", err);
-    res.status(500).json({ success: false });
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error",
+      success: false,
+    });
   }
 };
 
@@ -1456,8 +1443,6 @@ exports.updateWatchProgress = async (req, res) => {
       message: "Video Completed & Next Unlocked",
     });
   } catch (err) {
-    console.error(err);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Server Error",
@@ -1592,8 +1577,6 @@ exports.unlockAssignmentAfterModule = async (req, res) => {
       message: "Assignment Unlocked Successfully",
     });
   } catch (err) {
-    console.error(err);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Server Error",
@@ -1780,7 +1763,6 @@ exports.getexamstudent = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("getexamstudent Error:", error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -1938,8 +1920,10 @@ exports.writeExam = async (req, res) => {
       total_marks: totalMarks,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error",
+    });
   }
 };
 
@@ -2419,7 +2403,6 @@ exports.updatedtime = async (req, res) => {
       message: "Updated time successfully",
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -2543,7 +2526,6 @@ exports.unlockfinalassignment = async (req, res) => {
       data: result.rows[0],
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -2697,7 +2679,6 @@ exports.getCourseenroleDetails = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -3108,8 +3089,6 @@ CROSS JOIN
       },
     });
   } catch (error) {
-    console.error(error);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -3558,8 +3537,6 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -3603,8 +3580,6 @@ exports.getPurchaseList = async (req, res) => {
       data: result.rows,
     });
   } catch (error) {
-    console.log(error);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",

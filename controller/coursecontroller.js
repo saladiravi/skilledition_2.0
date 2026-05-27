@@ -178,7 +178,6 @@ exports.updatecourse = async (req, res) => {
       data: result.rows[0],
     });
   } catch (error) {
-    console.error("Update Error:", error);
     res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -227,7 +226,6 @@ exports.getcourseBytutor = async (req, res) => {
       course: coursesWithSignedUrl,
     });
   } catch (error) {
-    console.log("Error:", error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -338,7 +336,7 @@ exports.addModulesWithVideos = async (req, res) => {
     });
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error(error);
+
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -416,7 +414,6 @@ exports.getcoursewithmoduledetails = async (req, res) => {
       course: response,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -512,7 +509,6 @@ exports.getcoursemoduleById = async (req, res) => {
       course: finalcourse,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -574,8 +570,6 @@ exports.updatestatus = async (req, res) => {
       message: "Video status updated successfully",
     });
   } catch (error) {
-    console.log("updatestatus Error:", error);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -780,7 +774,6 @@ exports.gettotalcourse = async (req, res) => {
       data: Object.values(coursesMap),
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -805,7 +798,6 @@ exports.getvideosbymoduleid = async (req, res) => {
       videos: result.rows,
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -946,7 +938,7 @@ exports.updateModuleVideos = async (req, res) => {
     });
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error(error);
+
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -1023,7 +1015,6 @@ exports.getvideos = async (req, res) => {
       data: videosWithSignedUrl,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -1224,7 +1215,6 @@ exports.deleteCourse = async (req, res) => {
     });
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error(error);
 
     return res.status(500).json({
       statusCode: 500,
@@ -1302,10 +1292,10 @@ exports.getTutorCoursesWithModules = async (req, res) => {
       data: Object.values(coursesMap),
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({
+      statusCode: 500,
       status: false,
-      message: "Server error",
+      message: "Internal Server error",
     });
   }
 };
@@ -1371,8 +1361,6 @@ exports.getAdminCourseList = async (req, res) => {
       data: rows,
     });
   } catch (error) {
-    console.error("getAdminCourseList Error:", error);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Internal server error",
@@ -1671,8 +1659,6 @@ exports.updateadminassignmentstatus = async (req, res) => {
       message: "Assignment status updated successfully",
     });
   } catch (error) {
-    console.log(error);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -2121,7 +2107,6 @@ exports.getstudenttotalcourseprogress = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",

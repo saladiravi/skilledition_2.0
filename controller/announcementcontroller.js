@@ -43,8 +43,10 @@ exports.createAnnouncement = async (req, res) => {
       message: "Announcement published successfully",
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error",
+    });
   }
 };
 
@@ -77,8 +79,10 @@ exports.getStudentAnnouncements = async (req, res) => {
       data: result.rows,
     });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal Server Error",
+    });
   }
 };
 
@@ -177,7 +181,6 @@ exports.updateAnnouncement = async (req, res) => {
       data: result.rows[0],
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -226,7 +229,6 @@ exports.deleteAnnouncement = async (req, res) => {
       message: "Announcement deleted successfully",
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",

@@ -112,7 +112,6 @@ exports.delcategory = async (req, res) => {
       message: "Delete category Sucessfully",
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -156,7 +155,6 @@ exports.updatecategory = async (req, res) => {
       category: updated.rows[0],
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",

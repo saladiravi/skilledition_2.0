@@ -18,7 +18,6 @@ const sendNotification = async ({
 
     return result.rows[0];
   } catch (error) {
-    console.error("Notification Error:", error);
     return null;
   }
 };

@@ -104,7 +104,6 @@ exports.addUser = async (req, res) => {
       data: newUser.rows[0],
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal server error",
@@ -185,7 +184,6 @@ exports.loginUser = async (req, res) => {
       user,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal server error",
@@ -251,7 +249,6 @@ exports.adminloginUser = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal server error",
@@ -312,7 +309,6 @@ exports.getuser = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -385,7 +381,6 @@ exports.changePassword = async (req, res) => {
       message: "Password updated successfully",
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({
       statusCode: 500,
       message: "Internal server error",
@@ -431,7 +426,6 @@ exports.getTutorBankDetails = async (req, res) => {
       data: result.rows[0],
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({
       statusCode: 500,
       message: "Internal server error",
@@ -566,7 +560,6 @@ exports.getProfile = async (req, res) => {
       data: profile,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -629,7 +622,6 @@ exports.updateProfile = async (req, res) => {
       message: "Profile updated successfully",
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -683,7 +675,6 @@ exports.sendOTP = async (req, res) => {
       message: "OTP sent successfully",
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal server error",
@@ -737,7 +728,6 @@ exports.sendpasswordOTP = async (req, res) => {
       email_otp_id, // ✅ send to frontend
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -775,8 +765,10 @@ exports.verifyOTP = async (req, res) => {
       message: "OTP verified successfully",
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+    });
   }
 };
 
@@ -834,8 +826,10 @@ exports.resetPassword = async (req, res) => {
       message: "Password reset successfully",
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+    });
   }
 };
 
@@ -886,7 +880,6 @@ exports.logoutUser = async (req, res) => {
       message: "Logout successful",
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal server error",

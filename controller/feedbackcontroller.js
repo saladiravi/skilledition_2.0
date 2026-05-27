@@ -273,7 +273,6 @@ exports.respondToFeedback = async (req, res) => {
       data: result.rows[0],
     });
   } catch (error) {
-    console.error("RESPOND FEEDBACK ERROR 🔴:", error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal server error",
@@ -302,8 +301,8 @@ exports.getStudentFeedbacks = async (req, res) => {
       data: result.rows,
     });
   } catch (error) {
-    console.error("GET STUDENT FEEDBACKS ERROR 🔴:", error);
     return res.status(500).json({
+      statusCode: 500,
       message: "Internal server error",
     });
   }
@@ -400,7 +399,6 @@ exports.getStudentCoursefeedback = async (req, res) => {
       data,
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal server error",

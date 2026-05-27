@@ -119,7 +119,6 @@ exports.addinternship = async (req, res) => {
       message: "Submitted Successfully",
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -180,7 +179,6 @@ exports.getinternship = async (req, res) => {
       data: updatedRows[0],
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -262,7 +260,6 @@ exports.gettotalinternship = async (req, res) => {
       data: updatedRows,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -365,8 +362,6 @@ exports.updateInternship = async (req, res) => {
       status,
     });
   } catch (error) {
-    console.error(error);
-
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",

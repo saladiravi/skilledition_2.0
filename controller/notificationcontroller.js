@@ -29,7 +29,6 @@ exports.getnotification = async (req, res) => {
       notification_data: result.rows,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -72,7 +71,6 @@ exports.markNotificationAsRead = async (req, res) => {
       message: "Notification marked as read",
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",

@@ -44,9 +44,9 @@ exports.writeassignment = async (req, res) => {
       );
 
       const correct_answer = correctResult.rows[0]?.answer || null;
-      // console.log(correct_answer,'correct_answer');
+      
       const is_correct = correct_answer === selected_answer;
-      console.log(is_correct, "iscorrect");
+      
       if (is_correct) {
         total_marks += 1;
       }
@@ -66,7 +66,7 @@ exports.writeassignment = async (req, res) => {
       message: "exam Submit sucessfully",
     });
   } catch (error) {
-    console.log(error);
+   
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -92,7 +92,7 @@ exports.getAttemptHistory = async (req, res) => {
       attempts: attempts.rows,
     });
   } catch (error) {
-    console.error(error);
+ 
     return res
       .status(500)
       .json({ statusCode: 500, message: "Internal Server Error" });
@@ -198,7 +198,7 @@ exports.getassigmenthistroy = async (req, res) => {
       assignments: assignmentHistory,
     });
   } catch (error) {
-    console.log(error);
+    
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",

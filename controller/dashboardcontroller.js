@@ -250,7 +250,6 @@ exports.getDashboardStats = async (req, res) => {
       recent_submissions: recentSubmissions.rows,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -454,7 +453,6 @@ exports.getTutoranalyticsDashboard = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error(err);
     return res.status(500).json({
       success: false,
       message: "Server Error",
@@ -556,7 +554,6 @@ exports.studentperformancetutordashboard = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -906,7 +903,6 @@ exports.getanalyticsAdminDashboard = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -1272,7 +1268,6 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
@@ -1337,7 +1332,6 @@ WHERE sc.status = 'SUCCESS';
       data: studentPurchases.rows,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",

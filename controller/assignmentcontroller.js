@@ -70,7 +70,6 @@ exports.addasignment = async (req, res) => {
       assignment: assignmentRes.rows[0],
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -158,7 +157,6 @@ exports.updateAssignment = async (req, res) => {
       updated_assignment: updateRes.rows[0],
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -194,7 +192,6 @@ exports.addassignmentquestion = async (req, res) => {
 
     const totalAllowed = existAssign.rows[0].total_questions;
     const incomingCount = questions.length;
-    console.log("totalAllowd", totalAllowed);
 
     // Strict total match check
     if (incomingCount !== totalAllowed) {
@@ -226,7 +223,6 @@ exports.addassignmentquestion = async (req, res) => {
       added: incomingCount,
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -267,7 +263,6 @@ exports.getAssignmentById = async (req, res) => {
     );
 
     const questions = questionData.rows;
-    console.log(questions, "questions");
 
     return res.status(200).json({
       statusCode: 200,
@@ -288,7 +283,6 @@ exports.getAssignmentById = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -321,7 +315,6 @@ exports.getAssignments = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -485,7 +478,6 @@ exports.getTutorAssignmentDetails = async (req, res) => {
       data: finalData,
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({
       status: false,
       message: "Server error",
@@ -689,9 +681,9 @@ exports.rejectQuestion = async (req, res) => {
     });
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error(error.message);
 
     res.status(500).json({
+      statusCode: 500,
       message: error.message || "Internal Server Error",
     });
   } finally {
@@ -781,7 +773,6 @@ exports.getRejectedQuestions = async (req, res) => {
       rejectedQuestions,
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -910,7 +901,6 @@ exports.deleteAssignmentIfPending = async (req, res) => {
       message: "Assignment deleted successfully",
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -1140,7 +1130,6 @@ exports.updatetutorfinalassingmentfeedback = async (req, res) => {
       message: "Tutor feedback updated successfully",
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -1350,7 +1339,6 @@ exports.updatefinalassigmentbyadmin = async (req, res) => {
       certificate_number,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -1436,7 +1424,6 @@ exports.getstudentcertificates = async (req, res) => {
       certificates_data: result.rows,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
@@ -1540,7 +1527,6 @@ exports.getallstudentcertificates = async (req, res) => {
       data: result.rows,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
