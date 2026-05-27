@@ -5640,30 +5640,16 @@ exports.getPurchaseList = async (req, res) => {
 
     const result = await pool.query(
       `SELECT
-
           tsc.student_course_id,
-
-          TO_CHAR(
-            tsc.created_at,
-            'DD/MM/YYYY'
-          ) AS purchase_date,
-
+          TO_CHAR(tsc.created_at, 'DD/MM/YYYY') AS purchase_date,
           'Invoice' AS type,
-
           tsc.order_id,
-
           tsc.transaction_id,
-
           tc.course_title,
-
           tsc.order_amount,
-
           tsc.status,
-
           tsc.payment_method,
-
           tsc.payment_provider,
-
           tsc.invoice_number
 
        FROM tbl_student_course tsc
@@ -5672,18 +5658,20 @@ exports.getPurchaseList = async (req, res) => {
        ON tsc.course_id = tc.course_id
 
        WHERE tsc.student_id = $1
-      AND tsc.status = 'SUCCESS'
-       ORDER BY tsc.created_at DESC`,
+       AND tsc.status IN ('SUCCESS', 'FAILED')
 
-      [student_id],
+       ORDER BY tsc.created_at DESC`,
+      [student_id]
     );
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Fetched Sucessfully",
+      message: "Fetched Successfully",
       data: result.rows,
     });
   } catch (error) {
+    console.log(error);
+
     return res.status(500).json({
       statusCode: 500,
       message: "Internal Server Error",
