@@ -3,14 +3,14 @@ exports.validateCertificateFiles = (req, res, next) => {
     "image/jpeg",
     "image/png",
     "image/jpg",
-    "application/pdf"
+    "application/pdf",
   ];
 
-const maxSize = 5 * 1024 * 1024; // 5MB
+  const maxSize = 5 * 1024 * 1024; // 5MB
 
   if (!req.files || !req.files.certificate_file) {
     return res.status(400).json({
-      message: "Certificate files are required"
+      message: "Certificate files are required",
     });
   }
 
@@ -19,15 +19,15 @@ const maxSize = 5 * 1024 * 1024; // 5MB
   for (let file of files) {
     if (!allowedTypes.includes(file.mimetype)) {
       return res.status(400).json({
-        statusCode:400,
-        message: "Only image and PDF files are allowed for certificates"
+        statusCode: 400,
+        message: "Only image and PDF files are allowed for certificates",
       });
     }
 
     if (file.size > maxSize) {
       return res.status(400).json({
-        statusCode:400,
-        message: "Certificate file size should not exceed 5MB"
+        statusCode: 400,
+        message: "Certificate file size should not exceed 5MB",
       });
     }
   }
@@ -40,7 +40,7 @@ exports.updatevalidateCertificateFiles = (req, res, next) => {
     "image/jpeg",
     "image/png",
     "image/jpg",
-    "application/pdf"
+    "application/pdf",
   ];
 
   const maxSize = 10 * 1024 * 1024;
@@ -53,14 +53,14 @@ exports.updatevalidateCertificateFiles = (req, res, next) => {
     if (!allowedTypes.includes(file.mimetype)) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Only image and PDF files are allowed"
+        message: "Only image and PDF files are allowed",
       });
     }
 
     if (file.size > maxSize) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Certificate file size should not exceed 10MB"
+        message: "Certificate file size should not exceed 10MB",
       });
     }
   }
@@ -68,15 +68,8 @@ exports.updatevalidateCertificateFiles = (req, res, next) => {
   next();
 };
 
-
-
-
 exports.validateProfilePic = (req, res, next) => {
-  const allowedTypes = [
-    "image/jpeg",
-    "image/png",
-    "image/jpg"
-  ];
+  const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
 
   const maxSize = 50 * 1024; // 50KB
 
@@ -91,38 +84,41 @@ exports.validateProfilePic = (req, res, next) => {
 
   if (!allowedTypes.includes(file.mimetype)) {
     return res.status(400).json({
-        statusCode:400,
-      message: "Only JPG, JPEG, PNG images are allowed for profile picture"
+      statusCode: 400,
+      message: "Only JPG, JPEG, PNG images are allowed for profile picture",
     });
   }
 
   if (file.size > maxSize) {
     return res.status(400).json({
-        statusCode:400,
-      message: "Profile picture size should not exceed 50KB"
+      statusCode: 400,
+      message: "Profile picture size should not exceed 50KB",
     });
   }
 
   next();
 };
 
-
 exports.validateDemoVideos = (req, res, next) => {
   const allowedTypes = [
     "video/mp4",
     "video/mpeg",
-    "video/quicktime",   // .mov
-    "video/x-msvideo",   // .avi
-    "video/x-matroska",  // .mkv
-    "video/webm"
+    "video/quicktime", // .mov
+    "video/x-msvideo", // .avi
+    "video/x-matroska", // .mkv
+    "video/webm",
   ];
 
   const maxSize = 100 * 1024 * 1024; // 100MB
 
-  if (!req.files || !req.files.video_file || req.files.video_file.length === 0) {
+  if (
+    !req.files ||
+    !req.files.video_file ||
+    req.files.video_file.length === 0
+  ) {
     return res.status(400).json({
       statusCode: 400,
-      message: "Video file is required"
+      message: "Video file is required",
     });
   }
 
@@ -132,21 +128,20 @@ exports.validateDemoVideos = (req, res, next) => {
     if (!allowedTypes.includes(file.mimetype)) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Only video files are allowed (mp4, mov, avi, mkv, webm)"
+        message: "Only video files are allowed (mp4, mov, avi, mkv, webm)",
       });
     }
 
     if (file.size > maxSize) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Video file size should not exceed 100MB"
+        message: "Video file size should not exceed 100MB",
       });
     }
   }
 
   next();
 };
-
 
 exports.studentvalidateProfilePic = (req, res, next) => {
   const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
@@ -162,14 +157,14 @@ exports.studentvalidateProfilePic = (req, res, next) => {
   if (!allowedTypes.includes(file.mimetype)) {
     return res.status(400).json({
       statusCode: 400,
-      message: "Only JPG, JPEG, PNG allowed"
+      message: "Only JPG, JPEG, PNG allowed",
     });
   }
 
   if (file.size > maxSize) {
     return res.status(400).json({
       statusCode: 400,
-      message: "Profile picture size should not exceed 50KB"
+      message: "Profile picture size should not exceed 50KB",
     });
   }
 
@@ -194,7 +189,7 @@ exports.tutorvalidateProfilePic = (req, res, next) => {
   if (!allowedTypes.includes(file.mimetype)) {
     return res.status(400).json({
       statusCode: 400,
-      message: "Only JPG, JPEG, PNG images are allowed"
+      message: "Only JPG, JPEG, PNG images are allowed",
     });
   }
 
@@ -202,7 +197,7 @@ exports.tutorvalidateProfilePic = (req, res, next) => {
   if (file.size > maxSize) {
     return res.status(400).json({
       statusCode: 400,
-      message: "Profile picture size should not exceed 50KB"
+      message: "Profile picture size should not exceed 50KB",
     });
   }
 
@@ -214,7 +209,11 @@ exports.validateTutorProfilePic = (req, res, next) => {
   const maxSize = 50 * 1024; // 50KB
 
   // ✅ If no file uploaded → allow (optional upload)
-  if (!req.files || !req.files.profile_pic || req.files.profile_pic.length === 0) {
+  if (
+    !req.files ||
+    !req.files.profile_pic ||
+    req.files.profile_pic.length === 0
+  ) {
     return next();
   }
 
@@ -224,7 +223,7 @@ exports.validateTutorProfilePic = (req, res, next) => {
   if (!allowedTypes.includes(file.mimetype)) {
     return res.status(400).json({
       statusCode: 400,
-      message: "Only JPG, JPEG, PNG images are allowed"
+      message: "Only JPG, JPEG, PNG images are allowed",
     });
   }
 
@@ -232,7 +231,7 @@ exports.validateTutorProfilePic = (req, res, next) => {
   if (file.size > maxSize) {
     return res.status(400).json({
       statusCode: 400,
-      message: "Profile picture size should not exceed 50KB"
+      message: "Profile picture size should not exceed 50KB",
     });
   }
 

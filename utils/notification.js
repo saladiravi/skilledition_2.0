@@ -1,11 +1,11 @@
-const pool = require('../config/db'); // adjust path
+const pool = require("../config/db"); // adjust path
 
 const sendNotification = async ({
   sender_id,
   receiver_id,
   type,
   message,
-  type_id
+  type_id,
 }) => {
   try {
     const result = await pool.query(
@@ -13,13 +13,12 @@ const sendNotification = async ({
        (sender_id, receiver_id, type, message, type_id)
        VALUES ($1,$2,$3,$4,$5)
        RETURNING *`,
-      [sender_id, receiver_id, type, message, type_id]
+      [sender_id, receiver_id, type, message, type_id],
     );
 
     return result.rows[0];
-
   } catch (error) {
-    console.error('Notification Error:', error);
+    console.error("Notification Error:", error);
     return null;
   }
 };

@@ -157,7 +157,7 @@ exports.getStudentAccess = async (req, res) => {
        FROM tbl_user 
        WHERE user_id = $1 
        AND role = 'student'`,
-      [student_id]
+      [student_id],
     );
 
     if (studentCheck.rowCount === 0) {
@@ -211,7 +211,7 @@ exports.getStudentAccess = async (req, res) => {
       ) cert
         ON cert.student_id = input.student_id
       `,
-      [student_id]
+      [student_id],
     );
 
     // ✅ 4. Success response

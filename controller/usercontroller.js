@@ -259,25 +259,6 @@ exports.adminloginUser = async (req, res) => {
   }
 };
 
-// exports.getuser = async (req, res) => {
-//   const { user_id } = req.body
-
-//   try {
-
-//     const user = await pool.query(`SELECT full_name,role,status,student_reg_number FROM tbl_user WHERE user_id=$1`, [user_id]);
-//     return res.status(200).json({
-//       statusCode: 200,
-//       message: 'Fetched Sucessfully',
-//       user: user.rows[0]
-//     })
-//   } catch (error) {
-//     return res.status(500).json({
-//       message: 500,
-//       statusCode: 'Internal Server Error'
-//     })
-//   }
-// }
-
 exports.getuser = async (req, res) => {
   const { user_id } = req.body;
 

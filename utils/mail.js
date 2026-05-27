@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
     user: process.env.HOSTINGER_MAIL_USER,
     pass: process.env.HOSTINGER_MAIL_PASS,
   },
-  tls: { rejectUnauthorized: false }
+  tls: { rejectUnauthorized: false },
 });
 
 transporter.verify(() => {
@@ -29,12 +29,9 @@ exports.sendContactMail = async (data) => {
         Level: ${data.learning_level}
         Heard About: ${data.hear_about}
         role:${data.role}
-        `
+        `,
   });
 };
-
-
-
 
 exports.sendOtpMail = async (email, otp) => {
   await transporter.sendMail({
@@ -98,7 +95,7 @@ exports.sendOtpMail = async (email, otp) => {
 
           </div>
         </div>
-      `
+      `,
   });
 };
 
@@ -168,6 +165,6 @@ exports.sendforgotpasswordOtpMail = async (email, otp) => {
               </div>
             </div>
 
-            `
+            `,
   });
 };

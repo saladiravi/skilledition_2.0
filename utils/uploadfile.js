@@ -1,8 +1,8 @@
-const path = require('path');
-const multer = require('multer');
-const fs = require('fs');
+const path = require("path");
+const multer = require("multer");
+const fs = require("fs");
 
-const uploadDir = path.join(__dirname, '../uploads');
+const uploadDir = path.join(__dirname, "../uploads");
 
 // Ensure directory exists
 if (!fs.existsSync(uploadDir)) {
@@ -15,29 +15,40 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     cb(null, file.originalname);
-  }
+  },
 });
 
 const allowedMimeTypes = [
-  'image/jpeg', 'image/png', 'image/jpg','image/webp',
-  'video/mp4', 'video/mpeg', 'video/ogg', 'video/webm', 'video/quicktime',
-  'application/pdf', 'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  "image/jpeg",
+  "image/png",
+  "image/jpg",
+  "image/webp",
+  "video/mp4",
+  "video/mpeg",
+  "video/ogg",
+  "video/webm",
+  "video/quicktime",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ];
 
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
     if (!allowedMimeTypes.includes(file.mimetype)) {
-      return cb(new Error('Only image, video, and document files are allowed!'), false);
+      return cb(
+        new Error("Only image, video, and document files are allowed!"),
+        false,
+      );
     }
     cb(null, true);
   },
-  // limits: { fileSize: 1000 * 1024 * 1024 } 
+  // limits: { fileSize: 1000 * 1024 * 1024 }
 
-   limits: { fileSize: 2 * 1024 * 1024 * 1024 } 
-    
+  limits: { fileSize: 2 * 1024 * 1024 * 1024 },
 });
 
 module.exports = upload;
