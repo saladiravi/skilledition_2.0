@@ -1152,62 +1152,51 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
       [tutor_id],
     );
 
-   const studentPerformanceQuery = await pool.query(
-  `
-  SELECT 
-    u.full_name AS student_name,
-    c.course_title,
+    const studentPerformanceQuery = await pool.query(
+      `
+            SELECT 
+        u.full_name AS student_name,
+        c.course_title,
+      fa.grade,
+      fa.total_marks,
+        ROUND(
+            (
+              COUNT(*) FILTER (WHERE fa.status = 'Completed')::decimal
+              /
+              COUNT(*) 
+            ) * 100,
+          0) AS progress,
 
-    MAX(fa.grade) AS grade,
+       ROUND(
+          COALESCE(
+            AVG(fa.total_marks::int)
+            FILTER (
+              WHERE 
+                fa.status = 'Completed' 
+                AND fa.total_marks ~ '^[0-9]+$'
+            ),
+          0),
+        2) AS avg_score,
+        
 
-    ROUND(
-      (
-        COUNT(*) FILTER (WHERE fa.status = 'Completed')::decimal
-        /
-        NULLIF(COUNT(*), 0)
-      ) * 100,
-      0
-    ) AS progress,
+        CASE 
+          WHEN MAX(fa.created_at) >= NOW() - INTERVAL '7 days'
+          THEN 'Active'
+          ELSE 'Inactive'
+        END AS activity_status
 
-    ROUND(
-      COALESCE(
-        AVG(fa.total_marks::int)
-        FILTER (
-          WHERE 
-            fa.status = 'Completed'
-            AND fa.total_marks ~ '^[0-9]+$'
-        ),
-        0
-      ),
-      2
-    ) AS avg_score,
-
-    CASE 
-      WHEN MAX(fa.created_at) >= NOW() - INTERVAL '7 days'
-      THEN 'Active'
-      ELSE 'Inactive'
-    END AS activity_status
-
-  FROM tbl_student_final_assignment fa
-  JOIN tbl_user u 
-    ON fa.student_id = u.user_id
-  JOIN tbl_course c 
-    ON fa.course_id = c.course_id
-
-  WHERE c.tutor_id = $1
-  AND fa.status = 'Completed'
-
-  GROUP BY 
-    u.user_id,
-    u.full_name,
-    c.course_id,
-    c.course_title
-
-  ORDER BY avg_score DESC
-  LIMIT 10;
-  `,
-  [tutor_id],
-);
+      FROM tbl_student_final_assignment fa
+      JOIN tbl_user u ON fa.student_id = u.user_id
+      JOIN tbl_course c ON fa.course_id = c.course_id
+      WHERE c.tutor_id = $1
+       AND fa.status = 'Completed'
+       
+      GROUP BY u.full_name, c.course_title,fa.grade,fa.total_marks
+      ORDER BY avg_score DESC
+      LIMIT 10;
+    `,
+      [tutor_id],
+    );
 
     const engagementMetrics = await pool.query(
       `
