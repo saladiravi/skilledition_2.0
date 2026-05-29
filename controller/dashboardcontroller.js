@@ -1320,6 +1320,27 @@ WHERE sc.status = 'SUCCESS';
         sc.invoice_number,
         sc.transaction_id,
         sc.status,
+             CASE
+        WHEN sc.payment_method IS NULL
+          THEN '-'
+
+        WHEN COALESCE(sc.payment_method::jsonb ? 'upi', false)
+          THEN 'UPI'
+
+        WHEN COALESCE(sc.payment_method::jsonb ? 'card', false)
+          THEN COALESCE(
+            sc.payment_method::jsonb->'card'->>'card_type',
+            'Card'
+          )
+
+        WHEN COALESCE(sc.payment_method::jsonb ? 'netbanking', false)
+          THEN 'Net Banking'
+
+        WHEN COALESCE(sc.payment_method::jsonb ? 'app', false)
+          THEN 'Wallet'
+
+        ELSE 'Unknown'
+      END AS payment_method,
         TO_CHAR(sc.created_at AT TIME ZONE 'Asia/Kolkata', 'DD-MM-YYYY') AS submitted_at
       FROM tbl_student_course sc
       JOIN tbl_user u ON sc.student_id = u.user_id
