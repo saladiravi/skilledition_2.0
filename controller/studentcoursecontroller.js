@@ -3628,10 +3628,10 @@ exports.getPurchaseInvoice = async (req, res) => {
 
           tsc.status,
 
-          TO_CHAR(
-            tsc.created_at,
-            'DD/MM/YYYY'
-          ) AS purchase_date,
+      TO_CHAR(
+      tsc.created_at AT TIME ZONE 'Asia/Kolkata',
+      'DD/MM/YYYY HH12:MI AM'
+    ) AS purchase_date
 
           tc.course_title,
 
