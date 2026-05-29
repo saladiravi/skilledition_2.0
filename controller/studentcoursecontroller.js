@@ -3558,7 +3558,27 @@ exports.getPurchaseList = async (req, res) => {
           tc.course_title,
           tsc.order_amount,
           tsc.status,
-          tsc.payment_method,
+           CASE
+        WHEN tsc.payment_method IS NULL
+          THEN '-'
+
+        WHEN COALESCE(tsc.payment_method::jsonb ? 'upi', false)
+          THEN 'UPI'
+
+        WHEN COALESCE(tsc.payment_method::jsonb ? 'card', false)
+          THEN COALESCE(
+            tsc.payment_method::jsonb->'card'->>'card_type',
+            'Card'
+          )
+
+        WHEN COALESCE(tsc.payment_method::jsonb ? 'netbanking', false)
+          THEN 'Net Banking'
+
+        WHEN COALESCE(tsc.payment_method::jsonb ? 'app', false)
+          THEN 'Wallet'
+
+        ELSE 'Unknown'
+      END AS payment_method,
           tsc.payment_provider,
           tsc.invoice_number
 
