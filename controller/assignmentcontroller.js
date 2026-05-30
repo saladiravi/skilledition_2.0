@@ -1346,6 +1346,91 @@ exports.updatefinalassigmentbyadmin = async (req, res) => {
   }
 };
 
+// exports.getstudentcertificates = async (req, res) => {
+//   const { student_id } = req.body;
+
+//   try {
+//     if (!student_id) {
+//       return res.status(400).json({
+//         statusCode: 400,
+//         message: "student_id is required",
+//       });
+//     }
+
+//     const progress = await pool.query(
+//       `
+//                 SELECT 
+//                     tc.course_id,
+//                     tc.course_title
+//                 FROM tbl_student_course sc
+//                 JOIN tbl_course tc 
+//                     ON sc.course_id = tc.course_id
+//                 WHERE sc.student_id = $1
+//                 AND NOT EXISTS (
+//                     SELECT 1
+//                     FROM tbl_certificates tcr
+//                     WHERE tcr.course_id = sc.course_id
+//                     AND tcr.student_id = sc.student_id
+//                 )
+//             `,
+//       [student_id],
+//     );
+
+//     // 1️⃣ Certificate List
+//     const result = await pool.query(
+//       `
+//             SELECT  
+//                 tcr.certificate_number,
+//                 TO_CHAR(tcr.issued_at, 'DD-MM-YYYY') AS issued_at,
+//                 tc.course_id,
+//                 tc.course_title,
+//                 tu.full_name
+//             FROM tbl_certificates tcr
+//             JOIN tbl_course tc 
+//                 ON tcr.course_id = tc.course_id
+//             JOIN tbl_user tu 
+//                 ON tcr.student_id = tu.user_id
+//             WHERE tcr.student_id = $1
+//             `,
+//       [student_id],
+//     );
+
+//     // 2️⃣ Stats
+//     const stats = await pool.query(
+//       `
+//       SELECT
+//         (SELECT COUNT(*) 
+//          FROM tbl_student_course 
+//          WHERE student_id = $1) AS purchased_courses,
+
+//         (SELECT COUNT(*) 
+//          FROM tbl_student_final_assignment 
+//          WHERE student_id = $1 
+//          AND is_unlocked = true) AS courses_completed,
+
+//         (SELECT COUNT(*) 
+//          FROM tbl_certificates 
+//          WHERE student_id = $1) AS certificates_earned
+//     `,
+//       [student_id],
+//     );
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: "Certificates fetched successfully",
+
+//       stats: stats.rows[0],
+//       progress: progress.rows,
+//       certificates_data: result.rows,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error",
+//     });
+//   }
+// };
+
 exports.getstudentcertificates = async (req, res) => {
   const { student_id } = req.body;
 
@@ -1357,72 +1442,81 @@ exports.getstudentcertificates = async (req, res) => {
       });
     }
 
+    // Pending certificates (only SUCCESS courses)
     const progress = await pool.query(
       `
-                SELECT 
-                    tc.course_id,
-                    tc.course_title
-                FROM tbl_student_course sc
-                JOIN tbl_course tc 
-                    ON sc.course_id = tc.course_id
-                WHERE sc.student_id = $1
-                AND NOT EXISTS (
-                    SELECT 1
-                    FROM tbl_certificates tcr
-                    WHERE tcr.course_id = sc.course_id
-                    AND tcr.student_id = sc.student_id
-                )
-            `,
-      [student_id],
+      SELECT 
+          tc.course_id,
+          tc.course_title
+      FROM tbl_student_course sc
+      JOIN tbl_course tc 
+          ON sc.course_id = tc.course_id
+      WHERE sc.student_id = $1
+      AND sc.status = 'SUCCESS'
+      AND NOT EXISTS (
+          SELECT 1
+          FROM tbl_certificates tcr
+          WHERE tcr.course_id = sc.course_id
+          AND tcr.student_id = sc.student_id
+      )
+      `,
+      [student_id]
     );
 
-    // 1️⃣ Certificate List
+    // Certificate List
     const result = await pool.query(
       `
-            SELECT  
-                tcr.certificate_number,
-                TO_CHAR(tcr.issued_at, 'DD-MM-YYYY') AS issued_at,
-                tc.course_id,
-                tc.course_title,
-                tu.full_name
-            FROM tbl_certificates tcr
-            JOIN tbl_course tc 
-                ON tcr.course_id = tc.course_id
-            JOIN tbl_user tu 
-                ON tcr.student_id = tu.user_id
-            WHERE tcr.student_id = $1
-            `,
-      [student_id],
+      SELECT  
+          tcr.certificate_number,
+          TO_CHAR(tcr.issued_at, 'DD-MM-YYYY') AS issued_at,
+          tc.course_id,
+          tc.course_title,
+          tu.full_name
+      FROM tbl_certificates tcr
+      JOIN tbl_course tc 
+          ON tcr.course_id = tc.course_id
+      JOIN tbl_user tu 
+          ON tcr.student_id = tu.user_id
+      WHERE tcr.student_id = $1
+      `,
+      [student_id]
     );
 
-    // 2️⃣ Stats
+    // Stats (only SUCCESS purchased courses)
     const stats = await pool.query(
       `
       SELECT
-        (SELECT COUNT(*) 
-         FROM tbl_student_course 
-         WHERE student_id = $1) AS purchased_courses,
+        (
+          SELECT COUNT(*) 
+          FROM tbl_student_course 
+          WHERE student_id = $1
+          AND status = 'SUCCESS'
+        ) AS purchased_courses,
 
-        (SELECT COUNT(*) 
-         FROM tbl_student_final_assignment 
-         WHERE student_id = $1 
-         AND is_unlocked = true) AS courses_completed,
+        (
+          SELECT COUNT(*) 
+          FROM tbl_student_final_assignment 
+          WHERE student_id = $1 
+          AND is_unlocked = true
+        ) AS courses_completed,
 
-        (SELECT COUNT(*) 
-         FROM tbl_certificates 
-         WHERE student_id = $1) AS certificates_earned
-    `,
-      [student_id],
+        (
+          SELECT COUNT(*) 
+          FROM tbl_certificates 
+          WHERE student_id = $1
+        ) AS certificates_earned
+      `,
+      [student_id]
     );
 
     return res.status(200).json({
       statusCode: 200,
       message: "Certificates fetched successfully",
-
       stats: stats.rows[0],
       progress: progress.rows,
       certificates_data: result.rows,
     });
+
   } catch (error) {
     return res.status(500).json({
       statusCode: 500,
