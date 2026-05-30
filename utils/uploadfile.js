@@ -23,6 +23,7 @@ const allowedMimeTypes = [
   "image/png",
   "image/jpg",
   "image/webp",
+  "image/avif",
   "video/mp4",
   "video/mpeg",
   "video/ogg",
