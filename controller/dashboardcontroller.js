@@ -12,8 +12,12 @@ exports.getDashboardStats = async (req, res) => {
       FROM tbl_student_course
       WHERE status = 'SUCCESS'
      ) AS total_students,
-        COUNT(*) FILTER (WHERE role = 'tutor') AS active_tutors
-      FROM tbl_user
+     SELECT 
+    COUNT(DISTINCT u.user_id) FILTER (WHERE u.role = 'tutor') AS active_tutors
+        FROM tbl_user u
+        INNER JOIN tbl_course c 
+            ON u.user_id = c.tutor_id
+        WHERE c.status = 'Published';
     `);
 
     // =======================
