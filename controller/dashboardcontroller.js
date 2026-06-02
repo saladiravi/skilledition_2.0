@@ -1290,11 +1290,9 @@ exports.studentpurchaselist = async (req, res) => {
     COUNT(DISTINCT sc.student_id)::int
       AS total_students,
 
-    COUNT(*) FILTER (
-      WHERE sc.created_at >=
-      NOW() - INTERVAL '7 days'
-    )::int
-      AS last_week_purchases,
+     COUNT(*) FILTER (
+        WHERE sc.created_at::date >= CURRENT_DATE - INTERVAL '7 days'
+    )::int AS last_week_purchases,
 
     COUNT(*)::int
       AS total_purchased_courses,
