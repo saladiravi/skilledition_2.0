@@ -3273,7 +3273,7 @@ exports.getadminstudentmanagement = async (req, res) => {
       tu.student_reg_number,
       ts.gender
 
-      ORDER BY MAX(COALESCE(scp.completed_at, scp.unlocked_at)) DESC;
+      ORDER BY MAX(COALESCE(scp.completed_at, scp.unlocked_at)) ASC;
 `);
 
     return res.status(200).json({
@@ -3531,7 +3531,7 @@ exports.getadminstudentmanagementbyid = async (req, res) => {
             COALESCE(
                 ROUND(
                     AVG(course_progress)::numeric,
-                    2
+                    0
                 ),
                 0
             ) AS overall_progress_percentage
