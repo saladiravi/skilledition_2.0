@@ -804,34 +804,101 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     );
 
     /* 3️⃣ Learning Progress */
+    // const progress = await pool.query(
+    //   `
+    //     SELECT 
+    //       CASE 
+    //         WHEN COUNT(*) = 0 THEN '-' 
+    //         ELSE CONCAT(
+    //           ROUND(
+    //             (
+    //               COUNT(*) FILTER (WHERE scp.is_completed = true)::decimal
+    //               / COUNT(*)
+    //             ) * 100,
+    //           0),
+    //           '%'
+    //         )
+    //       END AS learning_progress
+
+    //     FROM tbl_student_course_progress scp
+
+    //     JOIN tbl_student_course sc
+    //       ON sc.course_id = scp.course_id
+    //     AND sc.student_id = scp.student_id
+    //     AND sc.status = 'SUCCESS'
+
+    //     WHERE scp.student_id = $1;
+    //     `,
+    //   [student_id],
+    // );
+
+
     const progress = await pool.query(
-      `
-        SELECT 
-          CASE 
-            WHEN COUNT(*) = 0 THEN '-' 
-            ELSE CONCAT(
-              ROUND(
-                (
-                  COUNT(*) FILTER (WHERE scp.is_completed = true)::decimal
-                  / COUNT(*)
-                ) * 100,
-              0),
-              '%'
+`
+SELECT 
+    COALESCE(
+        CONCAT(
+            ROUND(
+                AVG(course_progress),
+                0
+            ),
+            '%'
+        ),
+        '0%'
+    ) AS learning_progress
+
+FROM (
+    SELECT 
+        tc.course_id,
+
+        CASE
+            WHEN EXISTS (
+                SELECT 1
+                FROM tbl_student_final_assignment tsfa
+                WHERE tsfa.student_id = $1
+                AND tsfa.course_id = tc.course_id
+                AND tsfa.status = 'Completed'
             )
-          END AS learning_progress
+            THEN 100::numeric
 
-        FROM tbl_student_course_progress scp
+            ELSE COALESCE(
+                LEAST(
+                    (
+                        COUNT(DISTINCT scp.module_video_id)
+                        FILTER (WHERE scp.is_completed = true)::decimal
+                        /
+                        NULLIF(COUNT(DISTINCT tmv.module_video_id), 0)
+                    ) * 100,
+                    99
+                ),
+                0
+            )
+        END AS course_progress
 
-        JOIN tbl_student_course sc
-          ON sc.course_id = scp.course_id
-        AND sc.student_id = scp.student_id
-        AND sc.status = 'SUCCESS'
+    FROM tbl_student_course sc
 
-        WHERE scp.student_id = $1;
-        `,
-      [student_id],
-    );
+    JOIN tbl_course tc
+        ON sc.course_id = tc.course_id
 
+    JOIN tbl_module tm
+        ON tc.course_id = tm.course_id
+
+    JOIN tbl_module_videos tmv
+        ON tm.module_id = tmv.module_id
+
+    LEFT JOIN tbl_student_course_progress scp
+        ON tmv.module_video_id = scp.module_video_id
+        AND scp.student_id = $1
+        AND scp.course_id = tc.course_id
+
+    WHERE sc.student_id = $1
+    AND sc.status = 'SUCCESS'
+
+    GROUP BY tc.course_id
+) progress
+`,
+[student_id]
+);
     /* 4️⃣ Learner Satisfaction */
     const rating = await pool.query(
       `
