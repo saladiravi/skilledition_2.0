@@ -1250,6 +1250,7 @@ exports.getTutorCoursesWithModules = async (req, res) => {
         LEFT JOIN tbl_module m
           ON c.course_id = m.course_id
         WHERE c.tutor_id = $1
+        AND c.status != 'Published'
         ORDER BY c.course_id, m.module_id
       `;
 
