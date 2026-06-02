@@ -1102,7 +1102,7 @@ exports.getTutorAnalyticsDashboard = async (req, res) => {
     const g = gradeQuery.rows[0];
 
     const gradeChart = {
-      xAxis: ["A (100-80)", "B (80-60)", "C (60-50)", "D (<50)"],
+      xAxis: ["A (100-80%)", "B (80-60%)", "C (60-50%)", "D (<50%)"],
       yAxis: [Number(g["A"]), Number(g["B"]), Number(g["C"]), Number(g["D"])],
     };
 
