@@ -3273,7 +3273,7 @@ exports.getadminstudentmanagement = async (req, res) => {
       tu.student_reg_number,
       ts.gender
 
-      ORDER BY MAX(COALESCE(scp.completed_at, scp.unlocked_at)) ASC;
+      ORDER BY MAX(COALESCE(scp.completed_at, scp.unlocked_at)) DESC;
 `);
 
     return res.status(200).json({
