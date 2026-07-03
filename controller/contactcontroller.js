@@ -17,10 +17,7 @@ exports.addContact = async (req, res) => {
     !first_name ||
     !last_name ||
     !phone ||
-    !email ||
-    !course ||
-    !learning_level ||
-    !role
+    !email 
   ) {
     return res.status(400).json({
       statusCode: 400,
