@@ -283,8 +283,9 @@ exports.initiatePayment = async (req, res) => {
         notify_url: "https://apis.skilledition.in/studentcourse/callback",
       },
     };
-
+console.log("Create Order Request:", JSON.stringify(request, null, 2));
     const response = await cashfree.PGCreateOrder(request);
+    console.log("Create Order Response:", JSON.stringify(response.data, null, 2));
 
     return res.json({
       statusCode: 200,
@@ -301,9 +302,7 @@ exports.initiatePayment = async (req, res) => {
 };
 
 exports.paymentCallback = async (req, res) => {
-    console.log("========== CASHFREE CALLBACK ==========");
-  console.log("Headers:", req.headers);
-  console.log("Body:", req.body);
+    
   try {
     const order_id = req.body?.data?.order?.order_id;
 
