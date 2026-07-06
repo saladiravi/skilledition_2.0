@@ -301,6 +301,9 @@ exports.initiatePayment = async (req, res) => {
 };
 
 exports.paymentCallback = async (req, res) => {
+    console.log("========== CASHFREE CALLBACK ==========");
+  console.log("Headers:", req.headers);
+  console.log("Body:", req.body);
   try {
     const order_id = req.body?.data?.order?.order_id;
 
