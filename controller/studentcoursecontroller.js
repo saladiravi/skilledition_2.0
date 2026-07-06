@@ -280,7 +280,7 @@ exports.initiatePayment = async (req, res) => {
       order_meta: {
         return_url: "https://skilledition.in/student/courses",
 
-        notify_url: "https://app.skilledition.in/studentcourse/callback",
+        notify_url: "https://apis.skilledition.in/studentcourse/callback",
       },
     };
 
