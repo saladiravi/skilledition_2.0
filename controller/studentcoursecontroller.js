@@ -283,9 +283,12 @@ exports.initiatePayment = async (req, res) => {
         notify_url: "https://apis.skilledition.in/studentcourse/callback",
       },
     };
-console.log("Create Order Request:", JSON.stringify(request, null, 2));
+    console.log("Create Order Request:", JSON.stringify(request, null, 2));
     const response = await cashfree.PGCreateOrder(request);
-    console.log("Create Order Response:", JSON.stringify(response.data, null, 2));
+    console.log(
+      "Create Order Response:",
+      JSON.stringify(response.data, null, 2),
+    );
 
     return res.json({
       statusCode: 200,
@@ -302,7 +305,6 @@ console.log("Create Order Request:", JSON.stringify(request, null, 2));
 };
 
 exports.paymentCallback = async (req, res) => {
-    
   try {
     const order_id = req.body?.data?.order?.order_id;
 
@@ -469,8 +471,6 @@ exports.paymentCallback = async (req, res) => {
     });
   }
 };
-
- 
 
 const buyCourseAfterPayment = async (student_id, course_id) => {
   const client = await pool.connect();
@@ -808,9 +808,9 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     /* 3️⃣ Learning Progress */
     // const progress = await pool.query(
     //   `
-    //     SELECT 
-    //       CASE 
-    //         WHEN COUNT(*) = 0 THEN '-' 
+    //     SELECT
+    //       CASE
+    //         WHEN COUNT(*) = 0 THEN '-'
     //         ELSE CONCAT(
     //           ROUND(
     //             (
@@ -834,9 +834,8 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     //   [student_id],
     // );
 
-
     const progress = await pool.query(
-`
+      `
 SELECT 
     COALESCE(
         CONCAT(
@@ -899,8 +898,8 @@ FROM (
     GROUP BY tc.course_id
 ) progress
 `,
-[student_id]
-);
+      [student_id],
+    );
     /* 4️⃣ Learner Satisfaction */
     const rating = await pool.query(
       `
@@ -1008,7 +1007,12 @@ exports.getstudentcourse = async (req, res) => {
 
       WHERE tc.course_id = $1
 
-      ORDER BY tm.module_id ASC, tmv.module_video_id ASC
+      ORDER BY
+    tm.module_id ASC,
+    CAST(
+        SUBSTRING(tmv.video FROM '_(\d+)\.')
+        AS INTEGER
+    ) ASC
     `,
       [course_id, student_id],
     );
