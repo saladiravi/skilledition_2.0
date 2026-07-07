@@ -283,12 +283,9 @@ exports.initiatePayment = async (req, res) => {
         notify_url: "https://apis.skilledition.in/studentcourse/callback",
       },
     };
-    console.log("Create Order Request:", JSON.stringify(request, null, 2));
+console.log("Create Order Request:", JSON.stringify(request, null, 2));
     const response = await cashfree.PGCreateOrder(request);
-    console.log(
-      "Create Order Response:",
-      JSON.stringify(response.data, null, 2),
-    );
+    console.log("Create Order Response:", JSON.stringify(response.data, null, 2));
 
     return res.json({
       statusCode: 200,
@@ -305,6 +302,7 @@ exports.initiatePayment = async (req, res) => {
 };
 
 exports.paymentCallback = async (req, res) => {
+    
   try {
     const order_id = req.body?.data?.order?.order_id;
 
@@ -471,6 +469,8 @@ exports.paymentCallback = async (req, res) => {
     });
   }
 };
+
+ 
 
 const buyCourseAfterPayment = async (student_id, course_id) => {
   const client = await pool.connect();
@@ -808,9 +808,9 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     /* 3️⃣ Learning Progress */
     // const progress = await pool.query(
     //   `
-    //     SELECT
-    //       CASE
-    //         WHEN COUNT(*) = 0 THEN '-'
+    //     SELECT 
+    //       CASE 
+    //         WHEN COUNT(*) = 0 THEN '-' 
     //         ELSE CONCAT(
     //           ROUND(
     //             (
@@ -834,8 +834,9 @@ exports.getAllCoursesWithEnrollStatus = async (req, res) => {
     //   [student_id],
     // );
 
+
     const progress = await pool.query(
-      `
+`
 SELECT 
     COALESCE(
         CONCAT(
@@ -898,8 +899,8 @@ FROM (
     GROUP BY tc.course_id
 ) progress
 `,
-      [student_id],
-    );
+[student_id]
+);
     /* 4️⃣ Learner Satisfaction */
     const rating = await pool.query(
       `
@@ -931,6 +932,216 @@ FROM (
     });
   }
 };
+
+// exports.getstudentcourse = async (req, res) => {
+//   const { course_id, student_id } = req.body;
+
+//   try {
+//     const { rows } = await pool.query(
+//       `
+//       SELECT
+//         tc.course_id,
+//         tc.course_title,
+//         tc.no_of_modules,
+
+//         tm.module_id,
+//         tm.module_title,
+//         tm.module_description,
+//         tm.sheet_file,
+//         tm.total_duration,
+
+//         tmv.module_video_id,
+//         tmv.video,
+//         tmv.video_title,
+
+//         ta.assignment_id,
+//         ta.assignment_title,
+
+//         tu.full_name,
+//         tt.subject_to_teach,
+//         tt.professional_background,
+
+//         COALESCE(tsp.is_unlocked, false) AS is_unlocked,
+//         COALESCE(tsp.is_completed, false) AS is_completed,
+
+//         COALESCE(tspa.is_unlocked, false) AS assignment_is_unlocked,
+//         tspa.unlocked_at AS assignment_unlocked_at,
+//         COALESCE(tspa.is_completed, false) AS assignment_is_completed,
+
+//         COUNT(tmv.module_video_id) OVER() AS total_videos,
+
+//         TO_CHAR(
+//           SUM(tmv.video_duration::INTERVAL) OVER (),
+//           'HH24:MI:SS'
+//         ) AS total_video_duration,
+
+//         COUNT(
+//           CASE WHEN tsp.is_completed = true THEN 1 END
+//         ) OVER() AS completed_videos
+
+//       FROM tbl_course tc
+
+//       JOIN tbl_module tm
+//         ON tc.course_id = tm.course_id
+
+//       LEFT JOIN tbl_module_videos tmv
+//         ON tm.module_id = tmv.module_id
+
+//       LEFT JOIN tbl_assignment ta
+//         ON tm.module_id = ta.module_id
+
+//       LEFT JOIN tbl_student_course_progress tsp
+//         ON tsp.module_video_id = tmv.module_video_id
+//        AND tsp.student_id = $2
+//        AND tsp.course_id = tc.course_id
+
+//       LEFT JOIN tbl_student_course_progress tspa
+//         ON tspa.assignment_id = ta.assignment_id
+//         AND tspa.student_id = $2
+//         AND tspa.course_id = tc.course_id
+
+//       JOIN tbl_user tu
+//         ON tc.tutor_id = tu.user_id
+
+//       LEFT JOIN tbl_tutor tt
+//         ON tc.tutor_id = tt.user_id
+
+//       WHERE tc.course_id = $1
+
+//       ORDER BY tm.module_id ASC, tmv.module_video_id ASC
+//     `,
+//       [course_id, student_id],
+//     );
+
+//     if (rows.length === 0) {
+//       return res.status(404).json({
+//         statusCode: 404,
+//       });
+//     }
+
+//     const totalVideos = Number(rows[0].total_videos);
+//     const completedVideos = Number(rows[0].completed_videos);
+//     const totalVideoDuration = rows[0].total_video_duration;
+
+//     const progressPercentage =
+//       totalVideos === 0 ? 0 : Math.round((completedVideos / totalVideos) * 100);
+
+//     const course = {
+//       course_id: rows[0].course_id,
+//       course_title: rows[0].course_title,
+//       total_video_duration: totalVideoDuration,
+//       no_of_modules: rows[0].no_of_modules,
+//       tutor_name: rows[0].full_name,
+//       subject_to_teach: rows[0].subject_to_teach,
+//       professional_background: rows[0].professional_background,
+//       progress: {
+//         total_videos: totalVideos,
+//         completed_videos: completedVideos,
+//         percentage: progressPercentage,
+//       },
+//       modules: [],
+//     };
+
+//     const moduleMap = {};
+
+//     for (const row of rows) {
+//       if (!moduleMap[row.module_id]) {
+//         const signedSheet = row.sheet_file
+//           ? await getSignedVideoUrl(row.sheet_file)
+//           : null;
+
+//         moduleMap[row.module_id] = {
+//           module_id: row.module_id,
+//           module_title: row.module_title,
+//           module_description: row.module_description,
+//           total_duration: row.total_duration,
+//           sheet_file: row.sheet_file,
+//           sheet_file_url: signedSheet,
+//           videos: [],
+//           assignment: row.assignment_id
+//             ? {
+//                 assignment_id: row.assignment_id,
+//                 assignment_title: row.assignment_title,
+//                 is_unlocked: row.assignment_is_unlocked,
+//                 is_completed: row.assignment_is_completed,
+//                 unlocked_at: row.assignment_unlocked_at,
+//               }
+//             : null,
+//         };
+
+//         course.modules.push(moduleMap[row.module_id]);
+//       }
+
+//       if (row.module_video_id) {
+//         let videoUrl = null;
+
+//         if (row.is_unlocked && row.video) {
+//           videoUrl = await getSignedVideoUrl(row.video);
+//         }
+
+//         moduleMap[row.module_id].videos.push({
+//           module_video_id: row.module_video_id,
+//           video_title: row.video_title,
+//           video_url: videoUrl,
+//           is_unlocked: row.is_unlocked,
+//           is_completed: row.is_completed,
+//         });
+//       }
+//     }
+
+//     await pool.query(
+//       `
+//       UPDATE tbl_student_final_assignment tfa
+//       SET is_unlocked = true
+//       WHERE tfa.student_id = $1
+//       AND NOT EXISTS (
+//           SELECT 1
+//           FROM tbl_student_course_progress scp
+//           WHERE scp.student_id = tfa.student_id
+//             AND scp.course_id = tfa.course_id
+//             AND (
+//                   scp.assignment_id IS NOT NULL
+//                   OR scp.module_video_id IS NOT NULL
+//                 )
+//             AND scp.is_completed = false
+//       )
+//     `,
+//       [student_id],
+//     );
+
+//     const finalAssignmentRes = await pool.query(
+//       `
+//       SELECT final_assignment_id, assignment_title, is_unlocked, status
+//       FROM tbl_student_final_assignment
+//       WHERE course_id = $1 AND student_id = $2
+//       LIMIT 1
+//     `,
+//       [course_id, student_id],
+//     );
+
+//     const finalAssignment = finalAssignmentRes.rows[0] || null;
+
+//     // ✅ Only show 100% if final assignment is completed
+//     course.progress.percentage =
+//       course.progress.percentage === 100 &&
+//       finalAssignment?.status !== "Completed"
+//         ? 99
+//         : course.progress.percentage;
+
+//     return res.status(200).json({
+//       statusCode: 200,
+//       message: "Fetched Successfully",
+//       data: course,
+//       finalAssignment,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({
+//       statusCode: 500,
+//       message: "Internal Server Error",
+//     });
+//   }
+// };
+
 
 exports.getstudentcourse = async (req, res) => {
   const { course_id, student_id } = req.body;
@@ -1007,12 +1218,7 @@ exports.getstudentcourse = async (req, res) => {
 
       WHERE tc.course_id = $1
 
-   ORDER BY
-    tm.module_id ASC,
-    CAST(
-        SUBSTRING(tmv.video FROM '_(\d+)')
-        AS INTEGER
-    ) ASC
+      ORDER BY tm.module_id ASC, tmv.module_video_id ASC
     `,
       [course_id, student_id],
     );
@@ -1132,6 +1338,18 @@ exports.getstudentcourse = async (req, res) => {
         ? 99
         : course.progress.percentage;
 
+    // Sort videos inside each module based on the number at the beginning of video_title
+    for (const module of course.modules) {
+      module.videos.sort((a, b) => {
+        const getOrder = (title) => {
+          const match = title.match(/^(\d+)/);
+          return match ? parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
+        };
+
+        return getOrder(a.video_title) - getOrder(b.video_title);
+      });
+    }
+
     return res.status(200).json({
       statusCode: 200,
       message: "Fetched Successfully",
@@ -1145,6 +1363,7 @@ exports.getstudentcourse = async (req, res) => {
     });
   }
 };
+
 
 exports.studentwatchvideo = async (req, res) => {
   const { student_id, module_video_id } = req.body;
