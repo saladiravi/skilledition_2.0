@@ -1007,10 +1007,10 @@ exports.getstudentcourse = async (req, res) => {
 
       WHERE tc.course_id = $1
 
-      ORDER BY
+   ORDER BY
     tm.module_id ASC,
     CAST(
-        SUBSTRING(tmv.video FROM '_(\d+)\.')
+        SUBSTRING(tmv.video FROM '_(\d+)')
         AS INTEGER
     ) ASC
     `,
