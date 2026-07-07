@@ -192,7 +192,7 @@ exports.loginUser = async (req, res) => {
 };
 
 exports.adminloginUser = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body || {};
 
   if (!email || !password) {
     return res.status(400).json({
