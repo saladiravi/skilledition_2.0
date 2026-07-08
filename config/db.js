@@ -25,14 +25,12 @@ const pool = new Pool({
 });
 
 // ✅ SET TIMEZONE TO IST
-pool.on('connect', (client) => {
-  client.query("SET TIME ZONE 'Asia/Kolkata'")
-    .then(() => {
-      console.log("Timezone set to IST");
-    })
-    .catch((err) => {
-      console.error("Error setting timezone", err);
-    });
+pool.on('connect', async (client) => {
+  try {
+    await client.query("SET TIME ZONE 'Asia/Kolkata'");
+  } catch (err) {
+    console.error("Error setting timezone", err);
+  }
 });
 
 console.log("Database URL:", process.env.DATABASE_URL);
