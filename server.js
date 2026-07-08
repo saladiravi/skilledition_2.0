@@ -21,12 +21,35 @@ const sanitizeInput =require('./middleware/sanitizeInput');
 
 const app = express();
 
+app.use((req, res, next) => {
+    const start = Date.now();
 
+    console.log(`[START] ${req.method} ${req.originalUrl}`);
+
+    res.on("finish", () => {
+        const duration = Date.now() - start;
+
+        console.log(
+            `[END] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`
+        );
+    });
+
+    next();
+});
  
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); 
+ 
 app.use(express.json());
 // app.use(sanitizeInput);
 app.use(cors()); 
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.get("/health", (req, res) => {
+    res.status(200).json({
+        status: "OK",
+        uptime: process.uptime(),
+        timestamp: new Date()
+    });
+});
 
 app.use('/userroutes',user);
 app.use('/category',category);
@@ -49,3 +72,12 @@ app.use('/dashboard',dashboard);
 app.listen(3000, () => {
     console.log("Server is running on port 3000");
 });
+
+process.on("uncaughtException", (err) => {
+    console.error("UNCAUGHT EXCEPTION:", err);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("UNHANDLED REJECTION:", reason);
+});
+
