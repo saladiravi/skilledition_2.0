@@ -437,6 +437,7 @@ exports.getTodayAssessments = async (req, res) => {
          email,
          phone,
          college_name,
+         specialization,
          college_id,
          current_year,
          graduation_year

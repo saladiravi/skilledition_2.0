@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { sendforgotpasswordOtpMail } = require("../utils/mail");
 
+
 exports.registerInternshipStudent = async (req, res) => {
   const {
     full_name,
@@ -11,6 +12,7 @@ exports.registerInternshipStudent = async (req, res) => {
     password,
     college_id,
     college_name,
+    specialization,
     current_year,
     graduation_year,
   } = req.body || {};
@@ -31,6 +33,8 @@ exports.registerInternshipStudent = async (req, res) => {
       !/^[1-9]\d*$/.test(String(college_id)) ||
       typeof college_name !== "string" ||
       !college_name.trim() ||
+      typeof specialization !== "string" ||
+      !specialization.trim() ||
       typeof current_year !== "string" ||
       !current_year.trim() ||
       graduation_year === undefined ||
@@ -48,6 +52,7 @@ exports.registerInternshipStudent = async (req, res) => {
     const cleanedEmail = email.trim().toLowerCase();
     const cleanedPhone = phone.trim().replace(/[\s()-]/g, "");
     const cleanedCollegeName = college_name.trim();
+    const cleanedSpecialization = specialization.trim();
     const cleanedCurrentYear = current_year.trim();
     const parsedCollegeId = Number(college_id);
     const parsedGraduationYear = Number(graduation_year);
@@ -75,8 +80,8 @@ exports.registerInternshipStudent = async (req, res) => {
     }
 
     if (
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanedEmail) ||
-      cleanedEmail.length > 255
+      cleanedEmail.length > 255 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanedEmail)
     ) {
       return res.status(400).json({
         success: false,
@@ -98,6 +103,14 @@ exports.registerInternshipStudent = async (req, res) => {
         success: false,
         statusCode: 400,
         message: "College name must not exceed 255 characters",
+      });
+    }
+
+    if (cleanedSpecialization.length > 150) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Specialization must not exceed 150 characters",
       });
     }
 
@@ -155,10 +168,11 @@ exports.registerInternshipStudent = async (req, res) => {
         password_hash,
         college_id,
         college_name,
+        specialization,
         current_year,
         graduation_year
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING
         student_id,
         full_name,
@@ -166,6 +180,7 @@ exports.registerInternshipStudent = async (req, res) => {
         phone,
         college_id,
         college_name,
+        specialization,
         current_year,
         graduation_year,
         created_at`,
@@ -176,6 +191,7 @@ exports.registerInternshipStudent = async (req, res) => {
         passwordHash,
         parsedCollegeId,
         cleanedCollegeName,
+        cleanedSpecialization,
         cleanedCurrentYear,
         parsedGraduationYear,
       ]
@@ -205,6 +221,7 @@ exports.registerInternshipStudent = async (req, res) => {
     });
   }
 };
+
 
 
 
@@ -246,6 +263,7 @@ exports.loginInternshipStudent = async (req, res) => {
          phone,
          password_hash,
          college_name,
+         specialization,
          college_id,
          current_year,
          graduation_year
