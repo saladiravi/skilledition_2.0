@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt");
 const { sendforgotpasswordOtpMail } = require("../utils/mail");
 
 
+
 exports.registerInternshipStudent = async (req, res) => {
   const {
     full_name,
@@ -27,10 +28,9 @@ exports.registerInternshipStudent = async (req, res) => {
       !phone.trim() ||
       typeof password !== "string" ||
       !password ||
-      college_id === undefined ||
-      college_id === null ||
-      college_id === "" ||
-      !/^[1-9]\d*$/.test(String(college_id)) ||
+      typeof college_id !== "string" ||
+      !college_id.trim() ||
+      !/^[1-9]\d*$/.test(college_id.trim()) ||
       typeof college_name !== "string" ||
       !college_name.trim() ||
       typeof specialization !== "string" ||
@@ -44,17 +44,17 @@ exports.registerInternshipStudent = async (req, res) => {
       return res.status(400).json({
         success: false,
         statusCode: 400,
-        message: "All fields are required and college ID must be a positive number",
+        message: "All fields are required",
       });
     }
 
     const cleanedName = full_name.trim();
     const cleanedEmail = email.trim().toLowerCase();
     const cleanedPhone = phone.trim().replace(/[\s()-]/g, "");
+    const cleanedCollegeId = college_id.trim();
     const cleanedCollegeName = college_name.trim();
     const cleanedSpecialization = specialization.trim();
     const cleanedCurrentYear = current_year.trim();
-    const parsedCollegeId = Number(college_id);
     const parsedGraduationYear = Number(graduation_year);
 
     let normalizedPhone;
@@ -98,6 +98,14 @@ exports.registerInternshipStudent = async (req, res) => {
       });
     }
 
+    if (cleanedCollegeId.length > 50) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "College ID must not exceed 50 characters",
+      });
+    }
+
     if (cleanedCollegeName.length > 255) {
       return res.status(400).json({
         success: false,
@@ -131,14 +139,6 @@ exports.registerInternshipStudent = async (req, res) => {
         success: false,
         statusCode: 400,
         message: "Valid graduation year is required",
-      });
-    }
-
-    if (!Number.isSafeInteger(parsedCollegeId)) {
-      return res.status(400).json({
-        success: false,
-        statusCode: 400,
-        message: "Valid college ID is required",
       });
     }
 
@@ -189,7 +189,7 @@ exports.registerInternshipStudent = async (req, res) => {
         cleanedEmail,
         normalizedPhone,
         passwordHash,
-        parsedCollegeId,
+        cleanedCollegeId,
         cleanedCollegeName,
         cleanedSpecialization,
         cleanedCurrentYear,
@@ -221,6 +221,7 @@ exports.registerInternshipStudent = async (req, res) => {
     });
   }
 };
+
 
 
 
