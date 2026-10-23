@@ -437,6 +437,7 @@ exports.getTodayAssessments = async (req, res) => {
          email,
          phone,
          college_name,
+         college_id,
          current_year,
          graduation_year
        FROM tbl_internship_students
@@ -768,6 +769,8 @@ exports.submitAssessmentAnswers = async (req, res) => {
   const { answers } = req.body || {};
   const studentId = req.user?.student_id;
 
+  let client;
+
   try {
     if (!/^[1-9]\d*$/.test(assessment_id || "")) {
       return res.status(400).json({
@@ -787,7 +790,7 @@ exports.submitAssessmentAnswers = async (req, res) => {
       });
     }
 
-    if (!Number.isInteger(studentId) || studentId <= 0) {
+    if (!Number.isSafeInteger(studentId) || studentId <= 0) {
       return res.status(401).json({
         success: false,
         statusCode: 401,
@@ -832,13 +835,17 @@ exports.submitAssessmentAnswers = async (req, res) => {
       submittedQuestionIds.add(answer.question_id);
     }
 
-    const client = await pool.connect();
+    client = await pool.connect();
 
     try {
       await client.query("BEGIN");
 
       const assessmentResult = await client.query(
-        `SELECT assessment_id, total_questions, total_marks, qualification_percentage
+        `SELECT
+           assessment_id,
+           total_questions,
+           total_marks,
+           qualification_percentage
          FROM tbl_internship_assessments
          WHERE assessment_id = $1
          FOR SHARE`,
@@ -857,6 +864,7 @@ exports.submitAssessmentAnswers = async (req, res) => {
 
       const assessment = assessmentResult.rows[0];
       const totalQuestions = Number(assessment.total_questions);
+      const maximumMarks = Number(assessment.total_marks);
 
       const attemptResult = await client.query(
         `SELECT attempt_id, status, started_at
@@ -909,9 +917,68 @@ exports.submitAssessmentAnswers = async (req, res) => {
         });
       }
 
-      const questionIds = answers.map(
-        (answer) => answer.question_id
+      const sectionResult = await client.query(
+        `SELECT
+           section_id,
+           section_type,
+           question_count,
+           marks_per_question,
+           negative_marks
+         FROM tbl_internship_assessment_sections
+         WHERE assessment_id = $1`,
+        [assessmentId]
       );
+
+      const sections = {};
+      let configuredQuestionCount = 0;
+
+      for (const section of sectionResult.rows) {
+        const sectionQuestionCount = Number(section.question_count);
+        const marksPerQuestion = Number(section.marks_per_question);
+
+        if (
+          !Number.isSafeInteger(sectionQuestionCount) ||
+          sectionQuestionCount < 0 ||
+          !Number.isFinite(marksPerQuestion) ||
+          marksPerQuestion < 0
+        ) {
+          throw new Error("Invalid assessment section configuration");
+        }
+
+        configuredQuestionCount += sectionQuestionCount;
+
+        sections[section.section_id] = {
+          section_type: section.section_type,
+          section_name:
+            section.section_type === "APTITUDE"
+              ? "Aptitude Test"
+              : section.section_type === "TECHNICAL"
+                ? "Technical MCQ Test"
+                : section.section_type,
+          total_questions: sectionQuestionCount,
+          attempted_questions: 0,
+          answered_questions: 0,
+          unanswered_questions: sectionQuestionCount,
+          correct_answers: 0,
+          incorrect_answers: 0,
+          total_marks: 0,
+          maximum_marks: sectionQuestionCount * marksPerQuestion,
+          percentage: 0,
+        };
+      }
+
+      if (configuredQuestionCount !== totalQuestions) {
+        await client.query("ROLLBACK");
+
+        return res.status(500).json({
+          success: false,
+          statusCode: 500,
+          message:
+            "Assessment question count does not match its section configuration",
+        });
+      }
+
+      const questionIds = answers.map((answer) => answer.question_id);
 
       let questionsResult = { rows: [], rowCount: 0 };
 
@@ -920,6 +987,7 @@ exports.submitAssessmentAnswers = async (req, res) => {
           `SELECT
              q.question_id,
              q.correct_option,
+             s.section_id,
              s.section_type,
              s.marks_per_question,
              s.negative_marks
@@ -950,11 +1018,30 @@ exports.submitAssessmentAnswers = async (req, res) => {
         ])
       );
 
+      const sectionAnswerCounts = {};
+
+      for (const answer of answers) {
+        const question = questionMap.get(answer.question_id);
+        sectionAnswerCounts[question.section_id] =
+          (sectionAnswerCounts[question.section_id] || 0) + 1;
+      }
+
+      for (const [sectionId, count] of Object.entries(sectionAnswerCounts)) {
+        if (!sections[sectionId] || count > sections[sectionId].total_questions) {
+          await client.query("ROLLBACK");
+
+          return res.status(400).json({
+            success: false,
+            statusCode: 400,
+            message:
+              "Submitted answers exceed the configured question count for a section",
+          });
+        }
+      }
+
       let correctCount = 0;
       let incorrectCount = 0;
       let totalMarksObtained = 0;
-      let aptitudeScore = 0;
-      let technicalScore = 0;
 
       const answerRecords = answers.map((answer) => {
         const question = questionMap.get(answer.question_id);
@@ -965,19 +1052,22 @@ exports.submitAssessmentAnswers = async (req, res) => {
           ? Number(question.marks_per_question)
           : -Number(question.negative_marks);
 
+        const section = sections[question.section_id];
+
+        section.attempted_questions++;
+        section.answered_questions++;
+        section.unanswered_questions--;
+
         if (isCorrect) {
           correctCount++;
+          section.correct_answers++;
         } else {
           incorrectCount++;
+          section.incorrect_answers++;
         }
 
+        section.total_marks += marksAwarded;
         totalMarksObtained += marksAwarded;
-
-        if (question.section_type === "APTITUDE") {
-          aptitudeScore += marksAwarded;
-        } else if (question.section_type === "TECHNICAL") {
-          technicalScore += marksAwarded;
-        }
 
         return {
           question_id: answer.question_id,
@@ -1018,31 +1108,61 @@ exports.submitAssessmentAnswers = async (req, res) => {
         );
       }
 
-      const answeredCount = answers.length;
+      const answeredCount = answerRecords.length;
       const unansweredCount = totalQuestions - answeredCount;
-      const maximumMarks = Number(assessment.total_marks);
 
-      const percentage = maximumMarks > 0
-        ? Math.max(
-          0,
-          (totalMarksObtained / maximumMarks) * 100
-        )
-        : 0;
+      let aptitudeScore = 0;
+      let technicalScore = 0;
+
+      const sectionSummaries = Object.values(sections).map((section) => {
+        section.total_marks = Number(section.total_marks.toFixed(2));
+
+        section.percentage =
+          section.maximum_marks > 0
+            ? Number(
+              Math.max(
+                0,
+                (section.total_marks / section.maximum_marks) * 100
+              ).toFixed(2)
+            )
+            : 0;
+
+        if (section.section_type === "APTITUDE") {
+          aptitudeScore = section.total_marks;
+        }
+
+        if (section.section_type === "TECHNICAL") {
+          technicalScore = section.total_marks;
+        }
+
+        return section;
+      });
+
+      const percentage =
+        maximumMarks > 0
+          ? Number(
+            Math.max(
+              0,
+              (totalMarksObtained / maximumMarks) * 100
+            ).toFixed(2)
+          )
+          : 0;
 
       const timeResult = await client.query(
         `SELECT GREATEST(
            0,
-           FLOOR(EXTRACT(EPOCH FROM (
-             CURRENT_TIMESTAMP - started_at
-           )) / 60)
+           FLOOR(
+             EXTRACT(
+               EPOCH FROM (CURRENT_TIMESTAMP - started_at)
+             ) / 60
+           )
          )::INTEGER AS time_spent_minutes
          FROM tbl_internship_assessment_attempts
          WHERE attempt_id = $1`,
         [attempt.attempt_id]
       );
 
-      const timeSpentMinutes =
-        timeResult.rows[0].time_spent_minutes;
+      const timeSpentMinutes = timeResult.rows[0].time_spent_minutes;
 
       const isQualified =
         percentage >= Number(assessment.qualification_percentage);
@@ -1069,7 +1189,7 @@ exports.submitAssessmentAnswers = async (req, res) => {
           answeredCount,
           unansweredCount,
           timeSpentMinutes,
-          Number(percentage.toFixed(2)),
+          percentage,
           Number(aptitudeScore.toFixed(2)),
           Number(technicalScore.toFixed(2)),
           isQualified,
@@ -1085,17 +1205,22 @@ exports.submitAssessmentAnswers = async (req, res) => {
         message: "Assessment submitted and evaluated successfully",
         data: {
           assessment_id: assessmentId,
-          total_questions: totalQuestions,
-          answered_questions: answeredCount,
-          unanswered_questions: unansweredCount,
-          correct_answers: correctCount,
-          incorrect_answers: incorrectCount,
-          total_marks: Number(totalMarksObtained.toFixed(2)),
-          percentage: Number(percentage.toFixed(2)),
-          aptitude_score: Number(aptitudeScore.toFixed(2)),
-          technical_score: Number(technicalScore.toFixed(2)),
+          overall: {
+            total_questions: totalQuestions,
+            attempted_questions: answeredCount,
+            answered_questions: answeredCount,
+            unanswered_questions: unansweredCount,
+            correct_answers: correctCount,
+            incorrect_answers: incorrectCount,
+            total_marks: Number(totalMarksObtained.toFixed(2)),
+            maximum_marks: maximumMarks,
+            percentage,
+          },
+          sections: sectionSummaries,
           time_spent_minutes: timeSpentMinutes,
-          qualifying_percentage: assessment.qualification_percentage,
+          qualifying_percentage: Number(
+            assessment.qualification_percentage
+          ),
           is_qualified: isQualified,
         },
       });
@@ -1112,17 +1237,20 @@ exports.submitAssessmentAnswers = async (req, res) => {
       return res.status(409).json({
         success: false,
         statusCode: 409,
-        message: "Answers have already been submitted for one or more questions",
+        message:
+          "Answers have already been submitted for one or more questions",
       });
     }
 
     return res.status(500).json({
       success: false,
       statusCode: 500,
-      message: "Internal server error while submitting assessment answers",
+      message:
+        "Internal server error while submitting assessment answers",
     });
   }
 };
+
 
 
 exports.getStudentAssessmentResult = async (req, res) => {
