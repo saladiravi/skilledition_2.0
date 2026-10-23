@@ -377,14 +377,14 @@ exports.sendForgotPasswordOTP = async (req, res) => {
       [normalizedEmail, otp]
     );
 
-    const email_otp_id = otpResult.rows[0].email_otp_id;
+    emailOtpId = otpResult.rows[0].email_otp_id;
 
     await sendforgotpasswordOtpMail(normalizedEmail, otp);
 
     return res.status(200).json({
       statusCode: 200,
       message: "Forgot password OTP sent successfully",
-      email_otp_id,
+      email_otp_id: emailOtpId,
     });
   } catch (error) {
 
