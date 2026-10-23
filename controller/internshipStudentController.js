@@ -4,7 +4,6 @@ const bcrypt = require("bcrypt");
 const { sendforgotpasswordOtpMail } = require("../utils/mail");
 
 
-
 exports.registerInternshipStudent = async (req, res) => {
   const {
     full_name,
@@ -30,7 +29,6 @@ exports.registerInternshipStudent = async (req, res) => {
       !password ||
       typeof college_id !== "string" ||
       !college_id.trim() ||
-      !/^[1-9]\d*$/.test(college_id.trim()) ||
       typeof college_name !== "string" ||
       !college_name.trim() ||
       typeof specialization !== "string" ||
