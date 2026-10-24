@@ -1302,26 +1302,16 @@ exports.getStudentAssessmentResult = async (req, res) => {
           s.full_name,
           a.assessment_id,
           a.title AS assessment_title,
-          COUNT(ans.answer_id)::INTEGER AS total_answered,
-          COUNT(ans.answer_id) FILTER (
-              WHERE ans.is_correct = TRUE
-          )::INTEGER AS correct_answers,
-          COUNT(ans.answer_id) FILTER (
-              WHERE ans.is_correct = FALSE
-          )::INTEGER AS incorrect_answers,
-          COALESCE(SUM(ans.marks_awarded), 0) AS total_marks
-       FROM tbl_internship_students s
-       CROSS JOIN tbl_internship_assessments a
-       LEFT JOIN tbl_internship_assessment_answers ans
-          ON ans.student_id = s.student_id
-          AND ans.assessment_id = a.assessment_id
-       WHERE s.student_id = $1
-         AND a.assessment_id = $2
-       GROUP BY
-          s.student_id,
-          s.full_name,
-          a.assessment_id,
-          a.title`,
+          att.*
+      FROM tbl_internship_students s
+      CROSS JOIN tbl_internship_assessments a
+      JOIN tbl_internship_assessment_attempts att
+          ON att.student_id = s.student_id
+          AND att.assessment_id = a.assessment_id
+      WHERE s.student_id = $1
+        AND a.assessment_id = $2
+      ORDER BY att.attempt_id DESC
+      LIMIT 1`,
       [Number(student_id), Number(assessment_id)]
     );
 
@@ -1333,13 +1323,21 @@ exports.getStudentAssessmentResult = async (req, res) => {
       });
     }
 
-    const studentResult = result.rows[0];
+    const data = result.rows[0];
+
+    if (data.attempt_id === null) {
+      return res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "Assessment attempt not found for this student",
+      });
+    }
 
     return res.status(200).json({
       success: true,
       statusCode: 200,
       message: "Student assessment result retrieved successfully",
-      data: studentResult,
+      data,
     });
   } catch (error) {
     console.error("Get student assessment result error:", error);
