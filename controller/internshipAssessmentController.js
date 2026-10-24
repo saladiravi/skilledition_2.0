@@ -1300,7 +1300,11 @@ exports.getStudentAssessmentResult = async (req, res) => {
       `SELECT
           s.student_id,
           s.full_name,
+          s.email,
+          s.phone,
           a.assessment_id,
+          a.total_questions,
+          att.answered_answers AS attempted_questions,
           a.title AS assessment_title,
           att.*
       FROM tbl_internship_students s
