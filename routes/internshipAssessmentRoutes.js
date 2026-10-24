@@ -2,7 +2,7 @@ const express = require("express");
 
 const internshipAssessmentRouter = express.Router();
 
-const { createAssessment, getAssessments, createAssessmentSection, getAssessmentSections, createMultipleQuestions, submitAssessmentAnswers, getStudentAssessmentResult, startAssessment, getTodayAssessments } = require("../controller/internshipAssessmentController");
+const { createAssessment, getAssessments, createAssessmentSection, getAssessmentSections, createMultipleQuestions, submitAssessmentAnswers, getStudentAssessmentResult, startAssessment, getTodayAssessments, getAssessmentQuestions } = require("../controller/internshipAssessmentController");
 const { verifyToken } = require("../middleware/authMiddleware");
 const { allowRoles } = require("../middleware/roleMiddleware");
 
@@ -31,9 +31,19 @@ internshipAssessmentRouter.post(
   submitAssessmentAnswers
 );
 
+// internshipAssessmentRouter.post(
+//   "/:assessment_id/start",
+//   startAssessment
+// );
+
 internshipAssessmentRouter.post(
   "/:assessment_id/start",
   startAssessment
+);
+
+internshipAssessmentRouter.get(
+  "/:assessment_id/questions",
+  getAssessmentQuestions
 );
 
 internshipAssessmentRouter.get(

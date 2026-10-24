@@ -579,6 +579,209 @@ exports.getTodayAssessments = async (req, res) => {
   }
 };
 
+// exports.startAssessment = async (req, res) => {
+//   const { assessment_id } = req.params;
+//   const studentId = req.user?.student_id;
+
+//   try {
+//     if (!/^[1-9]\d*$/.test(assessment_id || "")) {
+//       return res.status(400).json({
+//         success: false,
+//         statusCode: 400,
+//         message: "Valid assessment ID is required",
+//       });
+//     }
+
+//     if (!Number.isInteger(studentId) || studentId <= 0) {
+//       return res.status(401).json({
+//         success: false,
+//         statusCode: 401,
+//         message: "Authenticated student ID is required",
+//       });
+//     }
+
+//     const assessmentResult = await pool.query(
+//       `SELECT
+//          assessment_id,
+//          title,
+//          total_questions,
+//          total_duration_minutes,
+//          total_marks,
+//          starts_at,
+//          ends_at,
+//          CURRENT_TIMESTAMP AS current_time
+//        FROM tbl_internship_assessments
+//        WHERE assessment_id = $1
+//          AND status = 'PUBLISHED'`,
+//       [Number(assessment_id)]
+//     );
+
+//     if (assessmentResult.rowCount === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         statusCode: 404,
+//         message: "Published assessment not found",
+//       });
+//     }
+
+//     const assessment = assessmentResult.rows[0];
+
+//     if (new Date(assessment.current_time) < new Date(assessment.starts_at)) {
+//       return res.status(403).json({
+//         success: false,
+//         statusCode: 403,
+//         message: "Assessment has not started yet",
+//       });
+//     }
+
+//     if (new Date(assessment.current_time) >= new Date(assessment.ends_at)) {
+//       return res.status(403).json({
+//         success: false,
+//         statusCode: 403,
+//         message: "Assessment has ended",
+//       });
+//     }
+
+//     const attemptResult = await pool.query(
+//       `SELECT attempt_id, student_id, assessment_id, status, started_at
+//        FROM tbl_internship_assessment_attempts
+//        WHERE student_id = $1
+//          AND assessment_id = $2`,
+//       [studentId, Number(assessment_id)]
+//     );
+
+//     let attempt;
+
+//     if (attemptResult.rowCount > 0) {
+//       attempt = attemptResult.rows[0];
+
+//       if (attempt.status !== "IN_PROGRESS") {
+//         return res.status(409).json({
+//           success: false,
+//           statusCode: 409,
+//           message: "You have already attempted this assessment",
+//         });
+//       }
+//     }
+
+//     const questionsResult = await pool.query(
+//       `SELECT
+//          s.section_id,
+//          s.section_name,
+//          s.section_type,
+//          q.question_id,
+//          q.topic,
+//          q.question_text,
+//          q.option_a,
+//          q.option_b,
+//          q.option_c,
+//          q.option_d,
+//          q.difficulty
+//        FROM tbl_internship_assessment_sections s
+//        CROSS JOIN LATERAL (
+//          SELECT
+//            question_id,
+//            topic,
+//            question_text,
+//            option_a,
+//            option_b,
+//            option_c,
+//            option_d,
+//            difficulty
+//          FROM tbl_internship_question_bank
+//          WHERE section_id = s.section_id
+//            AND is_active = TRUE
+//          ORDER BY RANDOM()
+//          LIMIT CASE
+//            WHEN s.section_type = 'APTITUDE' THEN 15
+//            WHEN s.section_type = 'TECHNICAL' THEN 30
+//          END
+//        ) q
+//        WHERE s.assessment_id = $1
+//          AND s.section_type IN ('APTITUDE', 'TECHNICAL')
+//        ORDER BY s.display_order, RANDOM()`,
+//       [Number(assessment_id)]
+//     );
+
+//     const aptitudeQuestions = questionsResult.rows.filter(
+//       (question) => question.section_type === "APTITUDE"
+//     );
+
+//     const technicalQuestions = questionsResult.rows.filter(
+//       (question) => question.section_type === "TECHNICAL"
+//     );
+
+//     if (
+//       aptitudeQuestions.length !== 15 ||
+//       technicalQuestions.length !== 30
+//     ) {
+//       return res.status(400).json({
+//         success: false,
+//         statusCode: 400,
+//         message: "The assessment does not have enough active questions",
+//         data: {
+//           aptitude_available: aptitudeQuestions.length,
+//           aptitude_required: 15,
+//           technical_available: technicalQuestions.length,
+//           technical_required: 30,
+//         },
+//       });
+//     }
+
+//     if (!attempt) {
+//       const result = await pool.query(
+//         `INSERT INTO tbl_internship_assessment_attempts (
+//            student_id,
+//            assessment_id,
+//            status,
+//            started_at
+//          )
+//          VALUES ($1, $2, 'IN_PROGRESS', CURRENT_TIMESTAMP)
+//          RETURNING attempt_id, student_id, assessment_id, status, started_at`,
+//         [studentId, Number(assessment_id)]
+//       );
+
+//       attempt = result.rows[0];
+//     }
+
+//     return res.status(attemptResult.rowCount > 0 ? 200 : 201).json({
+//       success: true,
+//       statusCode: attemptResult.rowCount > 0 ? 200 : 201,
+//       message:
+//         attemptResult.rowCount > 0
+//           ? "Assessment resumed successfully"
+//           : "Assessment started successfully",
+//       data: {
+//         attempt,
+//         assessment,
+//         total_questions: 45,
+//         sections: [
+//           {
+//             section_name: "Aptitude",
+//             section_type: "APTITUDE",
+//             question_count: aptitudeQuestions.length,
+//             questions: aptitudeQuestions,
+//           },
+//           {
+//             section_name: "Technical",
+//             section_type: "TECHNICAL",
+//             question_count: technicalQuestions.length,
+//             questions: technicalQuestions,
+//           },
+//         ],
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Start assessment error:", error);
+
+//     return res.status(500).json({
+//       success: false,
+//       statusCode: 500,
+//       message: "Internal Server Error",
+//     });
+//   }
+// };
+
 exports.startAssessment = async (req, res) => {
   const { assessment_id } = req.params;
   const studentId = req.user?.student_id;
@@ -643,17 +846,20 @@ exports.startAssessment = async (req, res) => {
     }
 
     const attemptResult = await pool.query(
-      `SELECT attempt_id, student_id, assessment_id, status, started_at
+      `SELECT
+         attempt_id,
+         student_id,
+         assessment_id,
+         status,
+         started_at
        FROM tbl_internship_assessment_attempts
        WHERE student_id = $1
          AND assessment_id = $2`,
       [studentId, Number(assessment_id)]
     );
 
-    let attempt;
-
     if (attemptResult.rowCount > 0) {
-      attempt = attemptResult.rows[0];
+      const attempt = attemptResult.rows[0];
 
       if (attempt.status !== "IN_PROGRESS") {
         return res.status(409).json({
@@ -662,7 +868,148 @@ exports.startAssessment = async (req, res) => {
           message: "You have already attempted this assessment",
         });
       }
+
+      return res.status(200).json({
+        success: true,
+        statusCode: 200,
+        message: "Assessment resumed successfully",
+        data: {
+          attempt,
+          assessment
+        },
+      });
     }
+
+    const questionCountResult = await pool.query(
+      `SELECT
+         s.section_type,
+         COUNT(q.question_id)::INTEGER AS available_questions
+       FROM tbl_internship_assessment_sections s
+       LEFT JOIN tbl_internship_question_bank q
+         ON q.section_id = s.section_id
+        AND q.is_active = TRUE
+       WHERE s.assessment_id = $1
+         AND s.section_type IN ('APTITUDE', 'TECHNICAL')
+       GROUP BY s.section_type`,
+      [Number(assessment_id)]
+    );
+
+    const availableQuestions = {
+      APTITUDE: 0,
+      TECHNICAL: 0,
+    };
+
+    questionCountResult.rows.forEach((row) => {
+      availableQuestions[row.section_type] = row.available_questions;
+    });
+
+    if (
+      availableQuestions.APTITUDE < 15 ||
+      availableQuestions.TECHNICAL < 30
+    ) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "The assessment does not have enough active questions",
+        data: {
+          aptitude_available: availableQuestions.APTITUDE,
+          aptitude_required: 15,
+          technical_available: availableQuestions.TECHNICAL,
+          technical_required: 30,
+        },
+      });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO tbl_internship_assessment_attempts (
+         student_id,
+         assessment_id,
+         status,
+         started_at
+       )
+       VALUES ($1, $2, 'IN_PROGRESS', CURRENT_TIMESTAMP)
+       RETURNING
+         attempt_id,
+         student_id,
+         assessment_id,
+         status,
+         started_at`,
+      [studentId, Number(assessment_id)]
+    );
+
+    return res.status(201).json({
+      success: true,
+      statusCode: 201,
+      message: "Assessment started successfully",
+      data: {
+        attempt: result.rows[0],
+        assessment
+      },
+    });
+  } catch (error) {
+    console.error("Start assessment error:", error);
+
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getAssessmentQuestions = async (req, res) => {
+  const { assessment_id } = req.params;
+  const studentId = req.user?.student_id;
+
+  try {
+    if (!/^[1-9]\d*$/.test(assessment_id || "")) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Valid assessment ID is required",
+      });
+    }
+
+    if (!Number.isInteger(studentId) || studentId <= 0) {
+      return res.status(401).json({
+        success: false,
+        statusCode: 401,
+        message: "Authenticated student ID is required",
+      });
+    }
+
+    const attemptResult = await pool.query(
+      `SELECT
+         att.attempt_id,
+         att.student_id,
+         att.assessment_id,
+         att.status,
+         att.started_at,
+         a.title,
+         a.total_questions,
+         a.total_duration_minutes,
+         a.total_marks,
+         a.starts_at,
+         a.ends_at
+       FROM tbl_internship_assessment_attempts att
+       INNER JOIN tbl_internship_assessments a
+         ON a.assessment_id = att.assessment_id
+       WHERE att.student_id = $1
+         AND att.assessment_id = $2
+         AND att.status = 'IN_PROGRESS'
+         AND a.status = 'PUBLISHED'`,
+      [studentId, Number(assessment_id)]
+    );
+
+    if (attemptResult.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "In-progress assessment attempt not found",
+      });
+    }
+
+    const attempt = attemptResult.rows[0];
 
     const questionsResult = await pool.query(
       `SELECT
@@ -728,33 +1075,27 @@ exports.startAssessment = async (req, res) => {
       });
     }
 
-    if (!attempt) {
-      const result = await pool.query(
-        `INSERT INTO tbl_internship_assessment_attempts (
-           student_id,
-           assessment_id,
-           status,
-           started_at
-         )
-         VALUES ($1, $2, 'IN_PROGRESS', CURRENT_TIMESTAMP)
-         RETURNING attempt_id, student_id, assessment_id, status, started_at`,
-        [studentId, Number(assessment_id)]
-      );
-
-      attempt = result.rows[0];
-    }
-
-    return res.status(attemptResult.rowCount > 0 ? 200 : 201).json({
+    return res.status(200).json({
       success: true,
-      statusCode: attemptResult.rowCount > 0 ? 200 : 201,
-      message:
-        attemptResult.rowCount > 0
-          ? "Assessment resumed successfully"
-          : "Assessment started successfully",
+      statusCode: 200,
+      message: "Assessment questions retrieved successfully",
       data: {
-        attempt,
-        assessment,
-        total_questions: 45,
+        attempt: {
+          attempt_id: attempt.attempt_id,
+          student_id: attempt.student_id,
+          assessment_id: attempt.assessment_id,
+          status: attempt.status,
+          started_at: attempt.started_at,
+        },
+        assessment: {
+          assessment_id: attempt.assessment_id,
+          title: attempt.title,
+          total_questions: attempt.total_questions,
+          total_duration_minutes: attempt.total_duration_minutes,
+          total_marks: attempt.total_marks,
+          starts_at: attempt.starts_at,
+          ends_at: attempt.ends_at,
+        },
         sections: [
           {
             section_name: "Aptitude",
@@ -772,7 +1113,7 @@ exports.startAssessment = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Start assessment error:", error);
+    console.error("Get assessment questions error:", error);
 
     return res.status(500).json({
       success: false,
@@ -781,7 +1122,6 @@ exports.startAssessment = async (req, res) => {
     });
   }
 };
-
 
 exports.submitAssessmentAnswers = async (req, res) => {
   const { assessment_id } = req.params;
