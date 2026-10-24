@@ -476,6 +476,7 @@ exports.getTodayAssessments = async (req, res) => {
         attempt.percentage,
         attempt.aptitude_score,
         attempt.technical_score,
+        attempt.section_results,
         attempt.time_spent_minutes,
         attempt.is_qualified,
         CASE
@@ -513,7 +514,7 @@ exports.getTodayAssessments = async (req, res) => {
         a.qualification_percentage,
         a.starts_at,
         a.ends_at,
-        COALESCE(attempt.status, 'NOT_STARTED') AS attempt_status,
+        attempt.status AS attempt_status,
         attempt.attempt_id,
         attempt.started_at,
         attempt.submitted_at,
@@ -543,9 +544,9 @@ exports.getTodayAssessments = async (req, res) => {
           ELSE 'NOT_STARTED'
         END AS student_exam_status
       FROM tbl_internship_assessments a
-      LEFT JOIN tbl_internship_assessment_attempts attempt
+      INNER JOIN tbl_internship_assessment_attempts attempt
         ON attempt.assessment_id = a.assessment_id
-       AND attempt.student_id = $1
+      AND attempt.student_id = $1
       WHERE a.status = 'PUBLISHED'
         AND a.ends_at::date < CURRENT_DATE
       ORDER BY a.starts_at DESC
@@ -607,7 +608,8 @@ exports.startAssessment = async (req, res) => {
          total_duration_minutes,
          total_marks,
          starts_at,
-         ends_at
+         ends_at,
+         CURRENT_TIMESTAMP AS current_time
        FROM tbl_internship_assessments
        WHERE assessment_id = $1
          AND status = 'PUBLISHED'`,
@@ -623,6 +625,22 @@ exports.startAssessment = async (req, res) => {
     }
 
     const assessment = assessmentResult.rows[0];
+
+    if (new Date(assessment.current_time) < new Date(assessment.starts_at)) {
+      return res.status(403).json({
+        success: false,
+        statusCode: 403,
+        message: "Assessment has not started yet",
+      });
+    }
+
+    if (new Date(assessment.current_time) >= new Date(assessment.ends_at)) {
+      return res.status(403).json({
+        success: false,
+        statusCode: 403,
+        message: "Assessment has ended",
+      });
+    }
 
     const attemptResult = await pool.query(
       `SELECT attempt_id, student_id, assessment_id, status, started_at
@@ -949,6 +967,7 @@ exports.submitAssessmentAnswers = async (req, res) => {
         configuredQuestionCount += sectionQuestionCount;
 
         sections[section.section_id] = {
+          section_id: Number(section.section_id),
           section_type: section.section_type,
           section_name:
             section.section_type === "APTITUDE"
@@ -1116,6 +1135,7 @@ exports.submitAssessmentAnswers = async (req, res) => {
       let technicalScore = 0;
 
       const sectionSummaries = Object.values(sections).map((section) => {
+        section.section_id = Number(section.section_id);
         section.total_marks = Number(section.total_marks.toFixed(2));
 
         section.percentage =
@@ -1170,19 +1190,20 @@ exports.submitAssessmentAnswers = async (req, res) => {
 
       await client.query(
         `UPDATE tbl_internship_assessment_attempts
-         SET status = 'SUBMITTED',
-             submitted_at = CURRENT_TIMESTAMP,
-             total_marks = $1,
-             correct_answers = $2,
-             incorrect_answers = $3,
-             answered_answers = $4,
-             unanswered_answers = $5,
-             time_spent_minutes = $6,
-             percentage = $7,
-             aptitude_score = $8,
-             technical_score = $9,
-             is_qualified = $10
-         WHERE attempt_id = $11`,
+        SET status = 'SUBMITTED',
+            submitted_at = CURRENT_TIMESTAMP,
+            total_marks = $1,
+            correct_answers = $2,
+            incorrect_answers = $3,
+            answered_answers = $4,
+            unanswered_answers = $5,
+            time_spent_minutes = $6,
+            percentage = $7,
+            aptitude_score = $8,
+            technical_score = $9,
+            is_qualified = $10,
+            section_results = $11::jsonb
+        WHERE attempt_id = $12`,
         [
           Number(totalMarksObtained.toFixed(2)),
           correctCount,
@@ -1194,6 +1215,7 @@ exports.submitAssessmentAnswers = async (req, res) => {
           Number(aptitudeScore.toFixed(2)),
           Number(technicalScore.toFixed(2)),
           isQualified,
+          JSON.stringify(sectionSummaries),
           attempt.attempt_id,
         ]
       );
