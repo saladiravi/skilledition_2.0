@@ -980,24 +980,27 @@ exports.getAssessmentQuestions = async (req, res) => {
 
     const attemptResult = await pool.query(
       `SELECT
-         att.attempt_id,
-         att.student_id,
-         att.assessment_id,
-         att.status,
-         att.started_at,
-         a.title,
-         a.total_questions,
-         a.total_duration_minutes,
-         a.total_marks,
-         a.starts_at,
-         a.ends_at
-       FROM tbl_internship_assessment_attempts att
-       INNER JOIN tbl_internship_assessments a
-         ON a.assessment_id = att.assessment_id
-       WHERE att.student_id = $1
-         AND att.assessment_id = $2
-         AND att.status = 'IN_PROGRESS'
-         AND a.status = 'PUBLISHED'`,
+        att.attempt_id,
+        att.student_id,
+        st.email,
+        att.assessment_id,
+        att.status,
+        att.started_at,
+        a.title,
+        a.total_questions,
+        a.total_duration_minutes,
+        a.total_marks,
+        a.starts_at,
+        a.ends_at
+      FROM tbl_internship_assessment_attempts att
+      INNER JOIN tbl_internship_assessments a
+        ON a.assessment_id = att.assessment_id
+      INNER JOIN tbl_internship_students st
+        ON st.student_id = att.student_id
+      WHERE att.student_id = $1
+        AND att.assessment_id = $2
+        AND att.status = 'IN_PROGRESS'
+        AND a.status = 'PUBLISHED'`,
       [studentId, Number(assessment_id)]
     );
 
@@ -1083,6 +1086,7 @@ exports.getAssessmentQuestions = async (req, res) => {
         attempt: {
           attempt_id: attempt.attempt_id,
           student_id: attempt.student_id,
+          email: attempt.email,
           assessment_id: attempt.assessment_id,
           status: attempt.status,
           started_at: attempt.started_at,
