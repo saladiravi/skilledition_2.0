@@ -983,6 +983,7 @@ exports.getAssessmentQuestions = async (req, res) => {
         att.attempt_id,
         att.student_id,
         st.email,
+        st.full_name,
         att.assessment_id,
         att.status,
         att.started_at,
@@ -1086,6 +1087,7 @@ exports.getAssessmentQuestions = async (req, res) => {
         attempt: {
           attempt_id: attempt.attempt_id,
           student_id: attempt.student_id,
+          full_name: attempt.full_name,
           email: attempt.email,
           assessment_id: attempt.assessment_id,
           status: attempt.status,
