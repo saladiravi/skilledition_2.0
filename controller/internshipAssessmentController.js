@@ -1084,17 +1084,11 @@ exports.getAssessmentQuestions = async (req, res) => {
       statusCode: 200,
       message: "Assessment questions retrieved successfully",
       data: {
-        attempt: {
-          attempt_id: attempt.attempt_id,
+        assessment: {
+          assessment_id: attempt.assessment_id,
           student_id: attempt.student_id,
           full_name: attempt.full_name,
           email: attempt.email,
-          assessment_id: attempt.assessment_id,
-          status: attempt.status,
-          started_at: attempt.started_at,
-        },
-        assessment: {
-          assessment_id: attempt.assessment_id,
           title: attempt.title,
           total_questions: attempt.total_questions,
           total_duration_minutes: attempt.total_duration_minutes,
