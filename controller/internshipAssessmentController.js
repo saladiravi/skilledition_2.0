@@ -1204,7 +1204,9 @@ exports.submitAssessmentAnswers = async (req, res) => {
            assessment_id,
            total_questions,
            total_marks,
-           qualification_percentage
+           qualification_percentage,
+           aptitude_qualification_percentage,
+           technical_qualification_percentage
          FROM tbl_internship_assessments
          WHERE assessment_id = $1
          FOR SHARE`,
@@ -1525,8 +1527,21 @@ exports.submitAssessmentAnswers = async (req, res) => {
 
       const timeSpentMinutes = timeResult.rows[0].time_spent_minutes;
 
+      const aptitudeSection = sectionSummaries.find(
+        (section) => section.section_type === "APTITUDE"
+      );
+
+      const technicalSection = sectionSummaries.find(
+        (section) => section.section_type === "TECHNICAL"
+      );
+
       const isQualified =
-        percentage >= Number(assessment.qualification_percentage);
+        aptitudeSection &&
+        aptitudeSection.percentage >=
+        Number(assessment.aptitude_qualification_percentage) &&
+        technicalSection &&
+        technicalSection.percentage >=
+        Number(assessment.technical_qualification_percentage);
 
       await client.query(
         `UPDATE tbl_internship_assessment_attempts
