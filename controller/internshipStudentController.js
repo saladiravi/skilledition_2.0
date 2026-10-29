@@ -15,6 +15,13 @@ exports.registerInternshipStudent = async (req, res) => {
     specialization,
     current_year,
     graduation_year,
+    native_place,
+    father_name,
+    address,
+    father_phone,
+    father_occupation,
+    family_annual_income,
+    siblings_count,
   } = req.body || {};
 
   try {
@@ -37,7 +44,23 @@ exports.registerInternshipStudent = async (req, res) => {
       !current_year.trim() ||
       graduation_year === undefined ||
       graduation_year === null ||
-      graduation_year === ""
+      graduation_year === "" ||
+      typeof native_place !== "string" ||
+      !native_place.trim() ||
+      typeof father_name !== "string" ||
+      !father_name.trim() ||
+      typeof address !== "string" ||
+      !address.trim() ||
+      typeof father_phone !== "string" ||
+      !father_phone.trim() ||
+      typeof father_occupation !== "string" ||
+      !father_occupation.trim() ||
+      family_annual_income === undefined ||
+      family_annual_income === null ||
+      family_annual_income === "" ||
+      siblings_count === undefined ||
+      siblings_count === null ||
+      siblings_count === ""
     ) {
       return res.status(400).json({
         success: false,
@@ -53,21 +76,15 @@ exports.registerInternshipStudent = async (req, res) => {
     const cleanedCollegeName = college_name.trim();
     const cleanedSpecialization = specialization.trim();
     const cleanedCurrentYear = current_year.trim();
+    const cleanedNativePlace = native_place.trim();
+    const cleanedFatherName = father_name.trim();
+    const cleanedAddress = address.trim();
+    const cleanedFatherOccupation = father_occupation.trim();
+    const cleanedFatherPhone = father_phone.trim().replace(/[\s()-]/g, "");
+
     const parsedGraduationYear = Number(graduation_year);
-
-    let normalizedPhone;
-
-    if (/^[6-9]\d{9}$/.test(cleanedPhone)) {
-      normalizedPhone = `+91${cleanedPhone}`;
-    } else if (/^\+91[6-9]\d{9}$/.test(cleanedPhone)) {
-      normalizedPhone = cleanedPhone;
-    } else {
-      return res.status(400).json({
-        success: false,
-        statusCode: 400,
-        message: "Valid Indian mobile number is required",
-      });
-    }
+    const parsedFamilyAnnualIncome = Number(family_annual_income);
+    const parsedSiblingsCount = Number(siblings_count);
 
     if (cleanedName.length > 150) {
       return res.status(400).json({
@@ -96,11 +113,11 @@ exports.registerInternshipStudent = async (req, res) => {
       });
     }
 
-    if (cleanedCollegeId.length > 50) {
+    if (cleanedCollegeId.length > 255) {
       return res.status(400).json({
         success: false,
         statusCode: 400,
-        message: "College ID must not exceed 50 characters",
+        message: "College ID must not exceed 255 characters",
       });
     }
 
@@ -140,6 +157,82 @@ exports.registerInternshipStudent = async (req, res) => {
       });
     }
 
+    if (cleanedNativePlace.length > 255) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Native place must not exceed 255 characters",
+      });
+    }
+
+    if (cleanedFatherName.length > 150) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Father name must not exceed 150 characters",
+      });
+    }
+
+    if (cleanedFatherOccupation.length > 150) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Father occupation must not exceed 150 characters",
+      });
+    }
+
+    let normalizedPhone;
+
+    if (/^[6-9]\d{9}$/.test(cleanedPhone)) {
+      normalizedPhone = `+91${cleanedPhone}`;
+    } else if (/^\+91[6-9]\d{9}$/.test(cleanedPhone)) {
+      normalizedPhone = cleanedPhone;
+    } else {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Valid Indian mobile number is required",
+      });
+    }
+
+    let normalizedFatherPhone;
+
+    if (/^[6-9]\d{9}$/.test(cleanedFatherPhone)) {
+      normalizedFatherPhone = `+91${cleanedFatherPhone}`;
+    } else if (/^\+91[6-9]\d{9}$/.test(cleanedFatherPhone)) {
+      normalizedFatherPhone = cleanedFatherPhone;
+    } else {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Valid father's Indian mobile number is required",
+      });
+    }
+
+    if (
+      !Number.isFinite(parsedFamilyAnnualIncome) ||
+      parsedFamilyAnnualIncome < 0 ||
+      parsedFamilyAnnualIncome > 9999999999.99
+    ) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Valid family annual income is required",
+      });
+    }
+
+    if (
+      !Number.isInteger(parsedSiblingsCount) ||
+      parsedSiblingsCount < 0 ||
+      parsedSiblingsCount > 100
+    ) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Siblings count must be a non-negative integer",
+      });
+    }
+
     const existingStudent = await pool.query(
       `SELECT student_id
        FROM tbl_internship_students
@@ -168,9 +261,19 @@ exports.registerInternshipStudent = async (req, res) => {
         college_name,
         specialization,
         current_year,
-        graduation_year
+        graduation_year,
+        native_place,
+        father_name,
+        address,
+        father_phone,
+        father_occupation,
+        family_annual_income,
+        siblings_count
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8,
+        $9, $10, $11, $12, $13, $14, $15, $16
+      )
       RETURNING
         student_id,
         full_name,
@@ -181,6 +284,13 @@ exports.registerInternshipStudent = async (req, res) => {
         specialization,
         current_year,
         graduation_year,
+        native_place,
+        father_name,
+        address,
+        father_phone,
+        father_occupation,
+        family_annual_income,
+        siblings_count,
         created_at`,
       [
         cleanedName,
@@ -192,6 +302,13 @@ exports.registerInternshipStudent = async (req, res) => {
         cleanedSpecialization,
         cleanedCurrentYear,
         parsedGraduationYear,
+        cleanedNativePlace,
+        cleanedFatherName,
+        cleanedAddress,
+        normalizedFatherPhone,
+        cleanedFatherOccupation,
+        parsedFamilyAnnualIncome,
+        parsedSiblingsCount,
       ]
     );
 
