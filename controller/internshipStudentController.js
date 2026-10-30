@@ -22,6 +22,9 @@ exports.registerInternshipStudent = async (req, res) => {
     father_occupation,
     family_annual_income,
     siblings_count,
+    post_btech_plan,
+    higher_studies_destination,
+    preferred_countries,
   } = req.body || {};
 
   try {
@@ -60,12 +63,14 @@ exports.registerInternshipStudent = async (req, res) => {
       family_annual_income === "" ||
       siblings_count === undefined ||
       siblings_count === null ||
-      siblings_count === ""
+      siblings_count === "" ||
+      typeof post_btech_plan !== "string" ||
+      !post_btech_plan.trim()
     ) {
       return res.status(400).json({
         success: false,
         statusCode: 400,
-        message: "All fields are required",
+        message: "All required fields must be provided",
       });
     }
 
@@ -233,6 +238,56 @@ exports.registerInternshipStudent = async (req, res) => {
       });
     }
 
+    const cleanedPostBtechPlan = post_btech_plan.trim().toUpperCase();
+
+    let cleanedHigherStudiesDestination = null;
+    let cleanedPreferredCountries = null;
+
+    if (!["JOB", "HIGHER_STUDIES"].includes(cleanedPostBtechPlan)) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Valid post-B.Tech plan is required",
+      });
+    }
+
+    if (cleanedPostBtechPlan === "HIGHER_STUDIES") {
+      cleanedHigherStudiesDestination =
+        higher_studies_destination?.trim().toUpperCase();
+
+      if (!["INDIA", "ABROAD"].includes(cleanedHigherStudiesDestination)) {
+        return res.status(400).json({
+          success: false,
+          statusCode: 400,
+          message: "Valid higher studies destination is required",
+        });
+      }
+
+      if (cleanedHigherStudiesDestination === "ABROAD") {
+        if (
+          !Array.isArray(preferred_countries) ||
+          preferred_countries.length === 0 ||
+          preferred_countries.some(
+            (country) => typeof country !== "string" || !country.trim()
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            statusCode: 400,
+            message: "Select at least one preferred country",
+          });
+        }
+
+        cleanedPreferredCountries = [
+          ...new Set(
+            preferred_countries.map((country) =>
+              country.trim().toUpperCase()
+            )
+          ),
+        ];
+      }
+    }
+
     const existingStudent = await pool.query(
       `SELECT student_id
        FROM tbl_internship_students
@@ -268,11 +323,14 @@ exports.registerInternshipStudent = async (req, res) => {
         father_phone,
         father_occupation,
         family_annual_income,
-        siblings_count
+        siblings_count,
+        post_btech_plan,
+        higher_studies_destination,
+        preferred_countries
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8,
-        $9, $10, $11, $12, $13, $14, $15, $16
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15, $16, $17, $18, $19
       )
       RETURNING
         student_id,
@@ -291,6 +349,9 @@ exports.registerInternshipStudent = async (req, res) => {
         father_occupation,
         family_annual_income,
         siblings_count,
+        post_btech_plan,
+        higher_studies_destination,
+        preferred_countries,
         created_at`,
       [
         cleanedName,
@@ -309,6 +370,9 @@ exports.registerInternshipStudent = async (req, res) => {
         cleanedFatherOccupation,
         parsedFamilyAnnualIncome,
         parsedSiblingsCount,
+        cleanedPostBtechPlan,
+        cleanedHigherStudiesDestination,
+        cleanedPreferredCountries,
       ]
     );
 
