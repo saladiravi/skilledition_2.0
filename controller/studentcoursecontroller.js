@@ -301,262 +301,78 @@ console.log("Create Order Request:", JSON.stringify(request, null, 2));
   }
 };
 
-// exports.paymentCallback = async (req, res) => {
-    
-//   try {
-//     const order_id = req.body?.data?.order?.order_id;
-
-//     if (!order_id) {
-//       return res.status(200).json({
-//         success: true,
-//         message: "Webhook test received",
-//       });
-//     }
-
-//     // ==========================
-//     // FETCH ORDER STATUS
-//     // ==========================
-//     const orderResponse = await cashfree.PGFetchOrder(order_id);
-
-//     const order_status = orderResponse?.data?.order_status;
-
-//     // ==========================
-//     // FETCH PAYMENT DETAILS
-//     // ==========================
-//     const paymentResponse = await cashfree.PGOrderFetchPayments(order_id);
-
-//     const payments = paymentResponse?.data || [];
-
-//     const payment = payments[payments.length - 1] || {};
-
-//     // ==========================
-//     // MAP STATUS
-//     // ==========================
-//     let payment_status = "PENDING";
-
-//     if (order_status === "PAID") {
-//       payment_status = "SUCCESS";
-//     } else if (order_status === "ACTIVE") {
-//       // user dropped / incomplete / failed
-//       payment_status = payment?.payment_status || "INCOMPLETE";
-//     } else if (order_status === "FAILED" || order_status === "EXPIRED") {
-//       payment_status = "FAILED";
-//     }
-
-//     // ==========================
-//     // PAYMENT DETAILS
-//     // ==========================
-//     const transaction_id =
-//       payment?.cf_payment_id ||
-//       payment?.payment_id ||
-//       payment?.bank_reference ||
-//       null;
-
-//     const payment_method = payment?.payment_method || null;
-
-//     // ==========================
-//     // PURCHASE CHECK
-//     // ==========================
-//     const purchaseData = await pool.query(
-//       `
-//         SELECT
-//           student_id,
-//           course_id,
-//           status,
-//           invoice_number
-//         FROM tbl_student_course
-//         WHERE order_id = $1
-//         `,
-//       [order_id],
-//     );
-
-//     if (purchaseData.rows.length === 0) {
-//       return res.status(404).json({
-//         statusCode: 404,
-//         message: "Purchase not found",
-//       });
-//     }
-
-//     const {
-//       student_id,
-//       course_id,
-//       status,
-//       invoice_number: existing_invoice,
-//     } = purchaseData.rows[0];
-
-//     // ==========================
-//     // AVOID DUPLICATE SUCCESS
-//     // ==========================
-//     if (status === "SUCCESS") {
-//       return res.status(200).json({
-//         success: true,
-//         message: "Already processed",
-//       });
-//     }
-
-//     // ==========================
-//     // SUCCESS
-//     // ==========================
-//     if (payment_status === "SUCCESS") {
-//       let invoice_number = existing_invoice;
-
-//       // Generate invoice only once
-//       if (!invoice_number) {
-//         const invoiceResult = await pool.query(`
-//           SELECT COUNT(*) AS total
-//           FROM tbl_student_course
-//           WHERE invoice_number
-//           IS NOT NULL
-//         `);
-
-//         const count = Number(invoiceResult.rows[0].total) + 1;
-
-//         invoice_number = `INV-${new Date()
-//           .toISOString()
-//           .slice(0, 10)
-//           .replace(/-/g, "")}-${String(count).padStart(4, "0")}`;
-//       }
-
-//       await pool.query(
-//         `
-//         UPDATE tbl_student_course
-//         SET
-//           status = $1,
-//           transaction_id = $2,
-//           payment_method = $3,
-//           invoice_number = $4
-//         WHERE order_id = $5
-//         `,
-//         [
-//           payment_status,
-//           transaction_id,
-//           payment_method,
-//           invoice_number,
-//           order_id,
-//         ],
-//       );
-
-//       await buyCourseAfterPayment(student_id, course_id);
-//     }
-
-//     // ==========================
-//     // FAILED / INCOMPLETE /
-//     // USER_DROPPED / PENDING
-//     // ==========================
-//     else {
-//       await pool.query(
-//         `
-//         UPDATE tbl_student_course
-//         SET
-//           status = $1,
-//           transaction_id = $2,
-//           payment_method = $3
-//         WHERE order_id = $4
-//         `,
-//         [payment_status, transaction_id, payment_method, order_id],
-//       );
-//     }
-
-//     return res.status(200).json({
-//       success: true,
-//       payment_status,
-//       transaction_id,
-//     });
-//   } catch (error) {
-//     return res.status(500).json({
-//       statusCode: 500,
-//       message: "Internal Server Error",
-//     });
-//   }
-// };
-
- 
-
 exports.paymentCallback = async (req, res) => {
+    
   try {
-    console.log("========== CASHFREE CALLBACK START ==========");
-    console.log("Webhook body:", JSON.stringify(req.body, null, 2));
-
     const order_id = req.body?.data?.order?.order_id;
 
-    console.log("Received Order ID:", order_id);
-
     if (!order_id) {
-      console.error("Order ID missing in callback");
-
       return res.status(200).json({
         success: true,
-        message: "Webhook received without order ID",
+        message: "Webhook test received",
       });
     }
 
-    // 1. Fetch Cashfree order
+    // ==========================
+    // FETCH ORDER STATUS
+    // ==========================
     const orderResponse = await cashfree.PGFetchOrder(order_id);
 
     const order_status = orderResponse?.data?.order_status;
 
-    console.log("Cashfree order status:", order_status);
-
-    // 2. Fetch payment attempts
-    const paymentResponse =
-      await cashfree.PGOrderFetchPayments(order_id);
+    // ==========================
+    // FETCH PAYMENT DETAILS
+    // ==========================
+    const paymentResponse = await cashfree.PGOrderFetchPayments(order_id);
 
     const payments = paymentResponse?.data || [];
 
-    console.log(
-      "Cashfree payment attempts:",
-      JSON.stringify(payments, null, 2)
-    );
+    const payment = payments[payments.length - 1] || {};
 
-    // Select successful payment instead of blindly selecting last attempt
-    const payment =
-      payments.find((p) => p.payment_status === "SUCCESS") ||
-      payments[payments.length - 1] ||
-      {};
-
-    const transaction_id = payment?.cf_payment_id || null;
-    const payment_method = payment?.payment_method || null;
-
-    console.log("Selected payment:", payment);
-    console.log("Transaction ID:", transaction_id);
-
-    // 3. Determine payment status
+    // ==========================
+    // MAP STATUS
+    // ==========================
     let payment_status = "PENDING";
 
     if (order_status === "PAID") {
       payment_status = "SUCCESS";
     } else if (order_status === "ACTIVE") {
+      // user dropped / incomplete / failed
       payment_status = payment?.payment_status || "INCOMPLETE";
-    } else if (
-      order_status === "FAILED" ||
-      order_status === "EXPIRED"
-    ) {
+    } else if (order_status === "FAILED" || order_status === "EXPIRED") {
       payment_status = "FAILED";
     }
 
-    console.log("Final payment status:", payment_status);
+    // ==========================
+    // PAYMENT DETAILS
+    // ==========================
+    const transaction_id =
+      payment?.cf_payment_id ||
+      payment?.payment_id ||
+      payment?.bank_reference ||
+      null;
 
-    // 4. Find purchase
+    const payment_method = payment?.payment_method || null;
+
+    // ==========================
+    // PURCHASE CHECK
+    // ==========================
     const purchaseData = await pool.query(
       `
-      SELECT
-        student_id,
-        course_id,
-        status,
-        invoice_number
-      FROM tbl_student_course
-      WHERE order_id = $1
-      `,
-      [order_id]
+        SELECT
+          student_id,
+          course_id,
+          status,
+          invoice_number
+        FROM tbl_student_course
+        WHERE order_id = $1
+        `,
+      [order_id],
     );
 
-    console.log("Purchase found:", purchaseData.rows);
-
     if (purchaseData.rows.length === 0) {
-      console.error("Purchase not found for:", order_id);
-
       return res.status(404).json({
-        success: false,
+        statusCode: 404,
         message: "Purchase not found",
       });
     }
@@ -568,24 +384,29 @@ exports.paymentCallback = async (req, res) => {
       invoice_number: existing_invoice,
     } = purchaseData.rows[0];
 
+    // ==========================
+    // AVOID DUPLICATE SUCCESS
+    // ==========================
     if (status === "SUCCESS") {
-      console.log("Purchase already marked SUCCESS");
-
       return res.status(200).json({
         success: true,
         message: "Already processed",
       });
     }
 
-    // 5. Successful payment
+    // ==========================
+    // SUCCESS
+    // ==========================
     if (payment_status === "SUCCESS") {
       let invoice_number = existing_invoice;
 
+      // Generate invoice only once
       if (!invoice_number) {
         const invoiceResult = await pool.query(`
           SELECT COUNT(*) AS total
           FROM tbl_student_course
-          WHERE invoice_number IS NOT NULL
+          WHERE invoice_number
+          IS NOT NULL
         `);
 
         const count = Number(invoiceResult.rows[0].total) + 1;
@@ -596,18 +417,15 @@ exports.paymentCallback = async (req, res) => {
           .replace(/-/g, "")}-${String(count).padStart(4, "0")}`;
       }
 
-      console.log("Updating purchase to SUCCESS...");
-
-      const updateResult = await pool.query(
+      await pool.query(
         `
         UPDATE tbl_student_course
         SET
           status = $1,
-          transaction_id = COALESCE($2, transaction_id),
-          payment_method = COALESCE($3, payment_method),
+          transaction_id = $2,
+          payment_method = $3,
           invoice_number = $4
         WHERE order_id = $5
-        RETURNING *
         `,
         [
           payment_status,
@@ -615,62 +433,44 @@ exports.paymentCallback = async (req, res) => {
           payment_method,
           invoice_number,
           order_id,
-        ]
+        ],
       );
 
-      console.log("Updated purchase:", updateResult.rows);
-
-      // 6. Activate course
-      console.log("Calling buyCourseAfterPayment...", {
-        student_id,
-        course_id,
-      });
-
       await buyCourseAfterPayment(student_id, course_id);
+    }
 
-      console.log("Course activation completed successfully");
-    } else {
-      // Failed / incomplete / pending
-      const updateResult = await pool.query(
+    // ==========================
+    // FAILED / INCOMPLETE /
+    // USER_DROPPED / PENDING
+    // ==========================
+    else {
+      await pool.query(
         `
         UPDATE tbl_student_course
         SET
           status = $1,
-          transaction_id = COALESCE($2, transaction_id),
-          payment_method = COALESCE($3, payment_method)
+          transaction_id = $2,
+          payment_method = $3
         WHERE order_id = $4
-        RETURNING *
         `,
-        [
-          payment_status,
-          transaction_id,
-          payment_method,
-          order_id,
-        ]
+        [payment_status, transaction_id, payment_method, order_id],
       );
-
-      console.log("Non-success payment updated:", updateResult.rows);
     }
-
-    console.log("========== CASHFREE CALLBACK END ==========");
 
     return res.status(200).json({
       success: true,
       payment_status,
       transaction_id,
     });
-
   } catch (error) {
-    console.error("========== CASHFREE CALLBACK ERROR ==========");
-    console.error(error);
-
     return res.status(500).json({
-      success: false,
+      statusCode: 500,
       message: "Internal Server Error",
     });
   }
 };
 
+ 
 
 const buyCourseAfterPayment = async (student_id, course_id) => {
   const client = await pool.connect();
