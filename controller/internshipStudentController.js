@@ -513,7 +513,7 @@ exports.loginInternshipStudent = async (req, res) => {
 
 
 exports.sendForgotPasswordOTP = async (req, res) => {
-  const { email } = req.body;
+  const { email } = req.body || {};
 
   if (
     !email ||
@@ -521,12 +521,14 @@ exports.sendForgotPasswordOTP = async (req, res) => {
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
   ) {
     return res.status(400).json({
+      success: false,
       statusCode: 400,
       message: "Valid email is required",
     });
   }
 
   const normalizedEmail = email.trim().toLowerCase();
+  let emailOtpId = null;
 
   try {
     const emailExists = await pool.query(
@@ -538,18 +540,13 @@ exports.sendForgotPasswordOTP = async (req, res) => {
 
     if (emailExists.rowCount === 0) {
       return res.status(404).json({
+        success: false,
         statusCode: 404,
         message: "Email not found",
       });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000);
-
-    await pool.query(
-      `DELETE FROM tbl_email_otp
-       WHERE email = $1`,
-      [normalizedEmail]
-    );
 
     const otpResult = await pool.query(
       `INSERT INTO tbl_email_otp (email, otp, expires_at)
@@ -562,17 +559,29 @@ exports.sendForgotPasswordOTP = async (req, res) => {
 
     await sendforgotpasswordOtpMail(normalizedEmail, otp);
 
+    await pool.query(
+      `DELETE FROM tbl_email_otp
+       WHERE email = $1
+       AND email_otp_id != $2`,
+      [normalizedEmail, emailOtpId]
+    );
+
     return res.status(200).json({
+      success: true,
       statusCode: 200,
       message: "Forgot password OTP sent successfully",
       email_otp_id: emailOtpId,
     });
   } catch (error) {
-
-    await pool.query(
-      "DELETE FROM tbl_email_otp WHERE email_otp_id = $1",
-      [emailOtpId]
-    );
+    if (emailOtpId) {
+      await pool.query(
+        `DELETE FROM tbl_email_otp
+         WHERE email_otp_id = $1`,
+        [emailOtpId]
+      ).catch((cleanupError) => {
+        console.error("OTP cleanup failed:", cleanupError);
+      });
+    }
 
     console.error("Failed to send forgot password OTP:", error);
 
